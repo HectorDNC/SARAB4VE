@@ -7,12 +7,13 @@
 
 ## 🌎 Descripción
 
-**SARA** nace como una solución desarrollada durante un hackatón para responder a las necesidades de las personas con discapacidad afectadas por un desastre natural.
+**SARA** nace como una solución desarrollada durante la hackatón Build 4 Venezuela, para responder a las necesidades de las personas con discapacidad afectadas por un desastre natural.
 
 La plataforma permite solicitar ayuda específica de forma rápida y geolocalizada, conectando a las personas afectadas con voluntarios, organizaciones humanitarias, profesionales de la salud y donantes cercanos.
 
 Nuestro objetivo es garantizar que **nadie quede sin asistencia debido a una barrera de accesibilidad.**
 
+Por los que ya no están, por los que aún luchan y por los que vienen ✊🇻🇪
 ---
 
 # 🚨 Problemática
