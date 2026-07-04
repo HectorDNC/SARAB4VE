@@ -1,20 +1,69 @@
+import dynamic from "next/dynamic";
+import { type LocationStatus } from "./types";
+
+const MiniMap = dynamic(() => import("./MiniMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-36 sm:h-44 rounded-2xl border-2 border-outline-variant bg-surface-container-low flex items-center justify-center">
+      <span className="material-symbols-rounded text-3xl text-on-surface-variant animate-pulse">map</span>
+    </div>
+  ),
+});
+
 interface StepInitialStatusProps {
   isInjured: boolean | null;
   cannotMove: boolean | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationStatus: LocationStatus;
   onInjuredChange: (value: boolean) => void;
   onCannotMoveChange: (value: boolean) => void;
+  onRetryLocation: () => void;
 }
 
 export default function StepInitialStatus({
   isInjured,
   cannotMove,
+  latitude,
+  longitude,
+  locationStatus,
   onInjuredChange,
   onCannotMoveChange,
+  onRetryLocation,
 }: StepInitialStatusProps) {
+  const hasLocation = latitude !== null && longitude !== null && locationStatus === "ready";
+
   return (
     <section aria-labelledby="step-1-title" className="max-w-3xl w-full mx-auto">
-      <h2 id="step-1-title" className="text-lg sm:text-xl font-bold text-on-surface">1) Estado inicial</h2>
-      <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-on-surface-variant">Responde rápido para priorizar riesgo.</p>
+      <h2 id="step-1-title" className="text-lg sm:text-xl font-bold text-on-surface">1) Geolocalización y estado inicial</h2>
+      <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-on-surface-variant">Confirma tu ubicación y responde rápido para priorizar riesgo.</p>
+
+      {/* ── Mini mapa con ubicación detectada (Requisito 2.1) ── */}
+      <div className="mt-3 sm:mt-4">
+        {hasLocation ? (
+          <MiniMap latitude={latitude!} longitude={longitude!} label="Estás aquí" />
+        ) : (
+          <div className="w-full h-36 sm:h-44 rounded-2xl border-2 border-dashed border-outline-variant bg-surface-container-low flex flex-col items-center justify-center gap-2">
+            <span className={`material-symbols-rounded text-4xl ${locationStatus === "loading" ? "animate-spin text-primary" : "text-on-surface-variant"}`}>
+              {locationStatus === "loading" ? "sync" : "location_off"}
+            </span>
+            <p className="text-xs sm:text-sm font-medium text-on-surface-variant text-center px-4">
+              {locationStatus === "loading"
+                ? "Detectando tu ubicación…"
+                : "Activa el GPS para mostrar tu ubicación en el mapa"}
+            </p>
+            {locationStatus === "error" && (
+              <button
+                type="button"
+                onClick={onRetryLocation}
+                className="mt-1 min-h-9 rounded-xl border-2 border-primary px-4 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 active:scale-95 transition-all"
+              >
+                Reintentar ubicación
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* ── ¿Herida? ── */}
       <div className="mt-4 sm:mt-5 rounded-2xl border border-outline p-3 sm:p-4">
