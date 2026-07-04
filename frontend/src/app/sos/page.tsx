@@ -94,6 +94,23 @@ export default function SOSFlowPage() {
     }, 140);
   };
 
+  // ── Auto-avance al completar selecciones ──
+  useEffect(() => {
+    if (currentStep === 1 && isInjured !== null && cannotMove !== null) {
+      const timer = window.setTimeout(() => goToStep(2), 350);
+      return () => window.clearTimeout(timer);
+    }
+  }, [isInjured, cannotMove, currentStep]);
+
+  useEffect(() => {
+    if (currentStep === 2 && disabilityType !== null) {
+      if (disabilityType !== "auditiva" || communicationMode !== null) {
+        const timer = window.setTimeout(() => goToStep(3), 350);
+        return () => window.clearTimeout(timer);
+      }
+    }
+  }, [disabilityType, communicationMode, currentStep]);
+
   const description = useMemo(() => {
     const hasManualReference = extraInfo.trim().length > 3;
     const hasGeolocation = latitude !== null && longitude !== null && locationStatus === "ready";
@@ -226,7 +243,7 @@ export default function SOSFlowPage() {
                 <span className="material-symbols-rounded text-xs sm:text-sm" aria-hidden="true">emergency</span>
                 Modo emergencia
               </div>
-              <h1 id="sos-title" className="mt-1.5 sm:mt-2 text-xl sm:text-2xl lg:text-3xl font-black text-on-surface leading-tight">Solicitud SOS accesible</h1>
+              <h1 id="sos-title" className="mt-1.5 sm:mt-2 text-xl sm:text-2xl lg:text-3xl font-black text-on-surface leading-tight">Solicitud SOS Emergencia</h1>
             </div>
             <p className="text-xs sm:text-sm font-semibold text-on-surface-variant shrink-0">Paso {currentStep}/{TOTAL_STEPS}</p>
           </div>
