@@ -36,7 +36,7 @@ export default function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors min-h-0 ${
+              className={`px-4 py-2 flex items-center rounded-lg text-sm font-semibold transition-colors min-h-0 ${
                 pathname === link.href
                   ? "bg-primary-fixed text-primary"
                   : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
