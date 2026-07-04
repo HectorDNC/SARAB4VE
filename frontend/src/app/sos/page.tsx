@@ -160,16 +160,17 @@ export default function SOSFlowPage() {
     setSubmitting(true);
 
     try {
-      await sendHelpRequest({
-        requesterName: finalRequesterName,
-        contactMethod: "onsite",
-        contactValue: finalRequesterName,
-        needType: mapNeedType(disabilityType),
-        description,
-        latitude: finalLatitude,
-        longitude: finalLongitude,
-        urgency: mapUrgency(isInjured, cannotMove),
-      });
+      // TODO: Enviar al servicio de SOS. Una Tabla y servicio distinto para solicitudes de apoyo. 
+      // await sendHelpRequest({
+      //   requesterName: finalRequesterName,
+      //   contactMethod: "onsite",
+      //   contactValue: finalRequesterName,
+      //   needType: mapNeedType(disabilityType),
+      //   description,
+      //   latitude: finalLatitude,
+      //   longitude: finalLongitude,
+      //   urgency: mapUrgency(isInjured, cannotMove),
+      // });
 
       setSent(true);
       alertService.success("SOS enviado. Mantente en un lugar seguro.");
@@ -183,28 +184,28 @@ export default function SOSFlowPage() {
 
   if (sent) {
     return (
-      <main className="h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] px-4 pt-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-4 flex items-start lg:items-center justify-center" aria-live="polite">
-        <div className="w-full max-w-3xl rounded-3xl border border-outline-variant bg-primary-fixed p-6 lg:p-8">
-          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-            <span className="material-symbols-rounded text-base" aria-hidden="true">check_circle</span>
+      <main className="min-h-[calc(100dvh-4rem)] px-3 sm:px-4 pt-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-6 flex items-start lg:items-center justify-center" aria-live="polite">
+        <div className="w-full max-w-3xl rounded-3xl border border-outline-variant bg-primary-fixed p-5 sm:p-6 lg:p-8">
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-primary/10 px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm font-semibold text-primary">
+            <span className="material-symbols-rounded text-sm sm:text-base" aria-hidden="true">check_circle</span>
             SOS recibido
           </div>
-          <h1 className="mt-4 text-3xl font-bold text-on-surface">Tu solicitud ya esta en la red SARA</h1>
-          <p className="mt-3 text-on-surface-variant text-base leading-relaxed">
+          <h1 className="mt-3 sm:mt-4 text-xl sm:text-2xl lg:text-3xl font-bold text-on-surface leading-tight">Tu solicitud ya está en la red SARA</h1>
+          <p className="mt-2 sm:mt-3 text-on-surface-variant text-sm sm:text-base leading-relaxed">
             Ya notificamos a voluntarios y puntos de apoyo cercanos. Si puedes, permanece en un lugar seguro y visible.
           </p>
 
-          <div className="mt-7 grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 sm:mt-7 grid gap-2 sm:gap-3 sm:grid-cols-2">
             <Link
               href="/mapa"
-              className="min-h-14 inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 font-bold text-on-primary hover:opacity-90 transition-opacity"
+              className="min-h-12 sm:min-h-14 inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 sm:px-5 py-2.5 sm:py-3 font-bold text-on-primary text-sm sm:text-base hover:opacity-90 transition-opacity"
             >
               <span className="material-symbols-rounded" aria-hidden="true">map</span>
               Ver mapa de apoyo
             </Link>
             <Link
               href="/"
-              className="min-h-14 inline-flex items-center justify-center gap-2 rounded-2xl border border-outline px-5 py-3 font-semibold text-on-surface hover:bg-surface-container transition-colors"
+              className="min-h-12 sm:min-h-14 inline-flex items-center justify-center gap-2 rounded-2xl border border-outline px-4 sm:px-5 py-2.5 sm:py-3 font-semibold text-on-surface text-sm sm:text-base hover:bg-surface-container transition-colors"
             >
               <span className="material-symbols-rounded" aria-hidden="true">home</span>
               Volver al inicio
@@ -216,25 +217,25 @@ export default function SOSFlowPage() {
   }
 
   return (
-    <main className="h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] px-4 pt-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-4 flex items-start lg:items-center justify-center" aria-labelledby="sos-title">
-      <section className="w-full max-w-4xl h-full max-h-[760px] rounded-3xl border border-outline-variant bg-surface-container-low shadow-xl flex flex-col overflow-hidden">
-        <header className="px-4 lg:px-6 pt-4 lg:pt-5 pb-3 border-b border-outline-variant">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-error/10 px-3 py-1 text-xs font-semibold text-error">
-                <span className="material-symbols-rounded text-sm" aria-hidden="true">emergency</span>
+    <main className="min-h-[calc(100dvh-4rem)] px-3 sm:px-4 pt-3 sm:pt-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-6 flex items-start lg:items-center justify-center" aria-labelledby="sos-title">
+      <section className="w-full max-w-4xl rounded-3xl border border-outline-variant bg-surface-container-low shadow-xl flex flex-col min-h-[calc(90dvh-5rem)] lg:min-h-[calc(85dvh-5rem)] lg:max-h-[760px]">
+        <header className="px-3 sm:px-5 lg:px-6 pt-3 sm:pt-4 lg:pt-5 pb-2 sm:pb-3 border-b border-outline-variant shrink-0">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-error/10 px-2 sm:px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold text-error">
+                <span className="material-symbols-rounded text-xs sm:text-sm" aria-hidden="true">emergency</span>
                 Modo emergencia
               </div>
-              <h1 id="sos-title" className="mt-2 text-2xl lg:text-3xl font-black text-on-surface">Solicitud SOS accesible</h1>
+              <h1 id="sos-title" className="mt-1.5 sm:mt-2 text-xl sm:text-2xl lg:text-3xl font-black text-on-surface leading-tight">Solicitud SOS accesible</h1>
             </div>
-            <p className="text-sm font-semibold text-on-surface-variant">Paso {currentStep}/{TOTAL_STEPS}</p>
+            <p className="text-xs sm:text-sm font-semibold text-on-surface-variant shrink-0">Paso {currentStep}/{TOTAL_STEPS}</p>
           </div>
-          <div className="mt-3 h-2 rounded-full bg-surface-container-high overflow-hidden" aria-label="Progreso">
+          <div className="mt-2 sm:mt-3 h-1.5 sm:h-2 rounded-full bg-surface-container-high overflow-hidden" aria-label="Progreso">
             <div className="h-full bg-primary transition-all duration-200" style={{ width: `${progress}%` }} />
           </div>
         </header>
 
-        <div className={`flex-1 px-2 lg:px-2 flex flex-col justify-center overflow transition-all duration-150 ${isTransitioning ? "opacity-0 translate-x-2" : "opacity-100 translate-x-0"}`}>
+        <div className={`flex-1 overflow-y-auto px-3 sm:px-5 lg:px-6 py-4 sm:py-5 transition-all duration-150 ${isTransitioning ? "opacity-0 translate-x-2" : "opacity-100 translate-x-0"}`}>
           {currentStep === 1 && (
             <StepInitialStatus
               isInjured={isInjured}
@@ -267,19 +268,19 @@ export default function SOSFlowPage() {
 
         </div>
 
-        <footer className="px-4 lg:px-6 py-3 border-t border-outline-variant flex gap-3">
+        <footer className="px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3 border-t border-outline-variant flex gap-2 sm:gap-3 shrink-0">
           {currentStep > 1 ? (
             <button
               type="button"
               onClick={() => goToStep(currentStep - 1)}
-              className="flex-1 min-h-12 rounded-xl border border-outline font-semibold text-on-surface"
+              className="flex-1 min-h-11 sm:min-h-12 rounded-xl border border-outline font-semibold text-on-surface text-sm sm:text-base hover:bg-surface-container transition-colors"
             >
-              Atras
+              Atrás
             </button>
           ) : (
             <Link
               href="/"
-              className="flex-1 min-h-12 rounded-xl border border-outline font-semibold text-on-surface inline-flex items-center justify-center"
+              className="flex-1 min-h-11 sm:min-h-12 rounded-xl border border-outline font-semibold text-on-surface text-sm sm:text-base inline-flex items-center justify-center hover:bg-surface-container transition-colors"
             >
               Cancelar
             </Link>
@@ -289,7 +290,7 @@ export default function SOSFlowPage() {
             type="button"
             onClick={handleContinue}
             disabled={submitting || (currentStep === TOTAL_STEPS && !canSubmit)}
-            className="flex-1 min-h-12 rounded-xl bg-primary text-on-primary font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 min-h-11 sm:min-h-12 rounded-xl bg-primary text-on-primary font-bold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
           >
             {currentStep === TOTAL_STEPS ? (submitting ? "Enviando SOS..." : "Enviar SOS") : "Continuar"}
           </button>
