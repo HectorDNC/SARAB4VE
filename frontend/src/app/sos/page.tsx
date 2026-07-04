@@ -7,18 +7,32 @@ import { alertService } from "@/services/alertService";
 import StepDisabilityType from "./components/StepDisabilityType";
 import StepInitialStatus from "./components/StepInitialStatus";
 import StepNameAndLocation from "./components/StepNameAndLocation";
-import { type CommunicationMode, type DisabilityType, type LocationStatus } from "./components/types";
+import {
+  type CommunicationMode,
+  type DisabilityType,
+  type LocationStatus,
+  type VisualSubcategory,
+  type NeuroSubcategory,
+  type MotrizSubcategory,
+  type VoiceNote,
+} from "./components/types";
 
-function mapNeedType(disabilityType: DisabilityType): string {
+function mapNeedType(
+  disabilityType: DisabilityType,
+  communicationMode: CommunicationMode | null,
+  visualSubcategory: VisualSubcategory | null,
+  neuroSubcategory: NeuroSubcategory | null,
+  motrizSubcategory: MotrizSubcategory | null,
+): string {
   switch (disabilityType) {
     case "visual":
-      return "accessible_information";
+      return visualSubcategory ? `visual_${visualSubcategory}` : "accessible_information";
     case "auditiva":
-      return "interpreter";
+      return communicationMode ? `hearing_${communicationMode}` : "interpreter";
     case "neuro":
-      return "neurodivergent_support";
+      return neuroSubcategory ? `neuro_${neuroSubcategory}` : "neurodivergent_support";
     case "motriz":
-      return "transport";
+      return motrizSubcategory ? `motor_${motrizSubcategory}` : "transport";
     default:
       return "companionship";
   }
@@ -42,8 +56,12 @@ export default function SOSFlowPage() {
   const [cannotMove, setCannotMove] = useState<boolean | null>(null);
   const [disabilityType, setDisabilityType] = useState<DisabilityType | null>(null);
   const [communicationMode, setCommunicationMode] = useState<CommunicationMode | null>(null);
+  const [visualSubcategory, setVisualSubcategory] = useState<VisualSubcategory | null>(null);
+  const [neuroSubcategory, setNeuroSubcategory] = useState<NeuroSubcategory | null>(null);
+  const [motrizSubcategory, setMotrizSubcategory] = useState<MotrizSubcategory | null>(null);
   const [requesterName, setRequesterName] = useState("");
   const [extraInfo, setExtraInfo] = useState("");
+  const [voiceNote, setVoiceNote] = useState<VoiceNote | null>(null);
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
@@ -104,12 +122,18 @@ export default function SOSFlowPage() {
 
   useEffect(() => {
     if (currentStep === 2 && disabilityType !== null) {
-      if (disabilityType !== "auditiva" || communicationMode !== null) {
+      const needsSubcategory =
+        (disabilityType === "auditiva" && communicationMode === null) ||
+        (disabilityType === "visual" && visualSubcategory === null) ||
+        (disabilityType === "neuro" && neuroSubcategory === null) ||
+        (disabilityType === "motriz" && motrizSubcategory === null);
+
+      if (!needsSubcategory) {
         const timer = window.setTimeout(() => goToStep(3), 350);
         return () => window.clearTimeout(timer);
       }
     }
-  }, [disabilityType, communicationMode, currentStep]);
+  }, [disabilityType, communicationMode, visualSubcategory, neuroSubcategory, motrizSubcategory, currentStep]);
 
   const description = useMemo(() => {
     const hasManualReference = extraInfo.trim().length > 3;
@@ -118,17 +142,26 @@ export default function SOSFlowPage() {
       `Estado inicial: herido=${isInjured ? "si" : "no"}; movilidad_reducida=${cannotMove ? "si" : "no"}.`,
       `Discapacidad prioritaria: ${disabilityType ?? "no definida"}.`,
       disabilityType === "auditiva" ? `Subcategoria comunicacion: ${communicationMode ?? "sin definir"}.` : null,
+      disabilityType === "visual" ? `Subcategoria visual: ${visualSubcategory ?? "sin definir"}.` : null,
+      disabilityType === "neuro" ? `Subcategoria neuro: ${neuroSubcategory ?? "sin definir"}.` : null,
+      disabilityType === "motriz" ? `Subcategoria motriz: ${motrizSubcategory ?? "sin definir"}.` : null,
       extraInfo.trim() ? `Info adicional: ${extraInfo.trim()}.` : null,
+      voiceNote ? `Nota de voz adjunta (${voiceNote.durationSec}s).` : null,
       hasManualReference && !hasGeolocation ? "Ubicacion enviada con referencia manual (sin GPS)." : null,
     ].filter(Boolean);
 
     return blocks.join(" ");
-  }, [cannotMove, communicationMode, disabilityType, extraInfo, isInjured, latitude, locationStatus, longitude]);
+  }, [cannotMove, communicationMode, disabilityType, extraInfo, isInjured, latitude, locationStatus, longitude, visualSubcategory, neuroSubcategory, motrizSubcategory, voiceNote]);
 
   const progress = useMemo(() => Math.round((currentStep / TOTAL_STEPS) * 100), [currentStep]);
 
   const canContinueStep1 = isInjured !== null && cannotMove !== null;
-  const canContinueStep2 = disabilityType !== null && (disabilityType !== "auditiva" || communicationMode !== null);
+  const canContinueStep2 =
+    disabilityType !== null &&
+    (disabilityType !== "auditiva" || communicationMode !== null) &&
+    (disabilityType !== "visual" || visualSubcategory !== null) &&
+    (disabilityType !== "neuro" || neuroSubcategory !== null) &&
+    (disabilityType !== "motriz" || motrizSubcategory !== null);
   const hasGeolocation = latitude !== null && longitude !== null && locationStatus === "ready";
   const hasManualReference = extraInfo.trim().length > 3;
   const canContinueStep3 = hasGeolocation || hasManualReference;
@@ -138,7 +171,19 @@ export default function SOSFlowPage() {
     cannotMove !== null &&
     disabilityType !== null &&
     (disabilityType !== "auditiva" || communicationMode !== null) &&
+    (disabilityType !== "visual" || visualSubcategory !== null) &&
+    (disabilityType !== "neuro" || neuroSubcategory !== null) &&
+    (disabilityType !== "motriz" || motrizSubcategory !== null) &&
     (hasGeolocation || hasManualReference);
+
+  const handleDisabilityTypeChange = (value: DisabilityType) => {
+    // Resetear subcategorías al cambiar de tipo de discapacidad
+    setDisabilityType(value);
+    setCommunicationMode(null);
+    setVisualSubcategory(null);
+    setNeuroSubcategory(null);
+    setMotrizSubcategory(null);
+  };
 
   const handleContinue = () => {
     if (currentStep === 1 && !canContinueStep1) {
@@ -182,7 +227,7 @@ export default function SOSFlowPage() {
       //   requesterName: finalRequesterName,
       //   contactMethod: "onsite",
       //   contactValue: finalRequesterName,
-      //   needType: mapNeedType(disabilityType),
+      //   needType: mapNeedType(disabilityType, communicationMode, visualSubcategory, neuroSubcategory, motrizSubcategory),
       //   description,
       //   latitude: finalLatitude,
       //   longitude: finalLongitude,
@@ -207,9 +252,9 @@ export default function SOSFlowPage() {
             <span className="material-symbols-rounded text-sm sm:text-base" aria-hidden="true">check_circle</span>
             SOS recibido
           </div>
-          <h1 className="mt-3 sm:mt-4 text-xl sm:text-2xl lg:text-3xl font-bold text-on-surface leading-tight">Tu solicitud ya está en la red SARA</h1>
+          <h1 className="mt-3 sm:mt-4 text-xl sm:text-2xl lg:text-3xl font-bold text-on-surface leading-tight">Tu alerta ya está en nuestro mapa</h1>
           <p className="mt-2 sm:mt-3 text-on-surface-variant text-sm sm:text-base leading-relaxed">
-            Ya notificamos a voluntarios y puntos de apoyo cercanos. Si puedes, permanece en un lugar seguro y visible.
+            Ya notificamos a voluntarios y puntos de apoyo cercanos. No cierres esta ventana.
           </p>
 
           <div className="mt-5 sm:mt-7 grid gap-2 sm:gap-3 sm:grid-cols-2">
@@ -257,8 +302,12 @@ export default function SOSFlowPage() {
             <StepInitialStatus
               isInjured={isInjured}
               cannotMove={cannotMove}
+              latitude={latitude}
+              longitude={longitude}
+              locationStatus={locationStatus}
               onInjuredChange={setIsInjured}
               onCannotMoveChange={setCannotMove}
+              onRetryLocation={requestLocation}
             />
           )}
 
@@ -266,8 +315,14 @@ export default function SOSFlowPage() {
             <StepDisabilityType
               disabilityType={disabilityType}
               communicationMode={communicationMode}
-              onDisabilityTypeChange={setDisabilityType}
+              visualSubcategory={visualSubcategory}
+              neuroSubcategory={neuroSubcategory}
+              motrizSubcategory={motrizSubcategory}
+              onDisabilityTypeChange={handleDisabilityTypeChange}
               onCommunicationModeChange={setCommunicationMode}
+              onVisualSubcategoryChange={setVisualSubcategory}
+              onNeuroSubcategoryChange={setNeuroSubcategory}
+              onMotrizSubcategoryChange={setMotrizSubcategory}
             />
           )}
 
@@ -275,10 +330,14 @@ export default function SOSFlowPage() {
             <StepNameAndLocation
               requesterName={requesterName}
               extraInfo={extraInfo}
+              voiceNote={voiceNote}
+              latitude={latitude}
+              longitude={longitude}
               locationStatus={locationStatus}
               locationError={locationError}
               onRequesterNameChange={setRequesterName}
               onExtraInfoChange={setExtraInfo}
+              onVoiceNoteChange={setVoiceNote}
               onRetryLocation={requestLocation}
             />
           )}
