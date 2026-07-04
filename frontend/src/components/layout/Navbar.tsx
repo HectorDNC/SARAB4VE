@@ -36,7 +36,7 @@ export default function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors min-h-0 ${
+              className={`px-4 py-2 flex items-center rounded-lg text-sm font-semibold transition-colors min-h-0 ${
                 pathname === link.href
                   ? "bg-primary-fixed text-primary"
                   : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
@@ -52,12 +52,12 @@ export default function Navbar() {
         <div className="hidden lg:flex items-center gap-3">
           <Link
             href="/sos"
-            className="flex items-center gap-2 bg-secondary-container text-on-secondary px-5 py-2 rounded-full font-bold text-sm hover:opacity-90 transition-opacity min-h-0"
+            className="flex items-center gap-3 bg-error text-on-error px-6 py-2.5 rounded-full font-extrabold text-base shadow-lg shadow-error/25 hover:brightness-110 active:scale-95 transition-all min-h-0 animate-pulse"
           >
-            <span className="material-symbols-rounded text-lg" aria-hidden="true">
+            <span className="material-symbols-rounded text-2xl" aria-hidden="true">
               crisis_alert
             </span>
-            NECESITO AYUDA
+            NECESITO AYUDA - SOS
           </Link>
         </div>
 
@@ -101,12 +101,12 @@ export default function Navbar() {
               <Link
                 href="/sos"
                 onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2 px-5 py-4 text-base font-bold text-secondary-container"
+                className="flex items-center justify-center gap-3 mx-4 my-2 px-5 py-3 rounded-full bg-error text-on-error font-extrabold text-base shadow-lg shadow-error/25 active:scale-95 animate-pulse transition-all"
               >
-                <span className="material-symbols-rounded text-lg" aria-hidden="true">
+                <span className="material-symbols-rounded text-2xl" aria-hidden="true">
                   crisis_alert
                 </span>
-                NECESITO AYUDA — SOS
+                NECESITO AYUDA - SOS
               </Link>
             </li>
           </ul>
