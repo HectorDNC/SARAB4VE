@@ -119,7 +119,7 @@ function validateCreateEmergency(payload) {
     (!Number.isFinite(Number(payload.voiceNoteDurationSec)) ||
       Number(payload.voiceNoteDurationSec) <= 0)
   ) {
-    errors.push("voiceNoteDurationSec must be a positive number");
+    payload.voiceNoteDurationSec = null;
   }
 
   return {
