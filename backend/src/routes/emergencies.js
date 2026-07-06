@@ -5,7 +5,7 @@ const {
   createEmergency,
   validateEmergencySearchParams,
   buildListEmergenciesQuery,
-} = require("../emergencies");
+} = require("../modules/emergencies");
 
 const router = express.Router();
 

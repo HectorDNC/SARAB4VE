@@ -1,1 +1,1 @@
-module.exports = require("../helpRequests");
+module.exports = require("../modules/helpRequests");

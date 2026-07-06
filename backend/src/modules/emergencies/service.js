@@ -1,7 +1,7 @@
 /**
  * Operaciones de base de datos para el dominio de emergencias (SOS).
  */
-const db = require("../db");
+const db = require("../../db");
 const { normalizeEmergency } = require("./normalize");
 
 /**

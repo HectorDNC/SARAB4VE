@@ -2,7 +2,7 @@
  * Validación de query params para listar emergencias.
  */
 const { EMERGENCY_STATUS_SET } = require("./shared");
-const { toNumber } = require("../lib/validation");
+const { toNumber } = require("../../lib/validation");
 
 const DEFAULT_RADIUS_KM = 10;
 const MAX_RADIUS_KM = 100;

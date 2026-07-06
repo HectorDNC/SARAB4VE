@@ -1,4 +1,4 @@
-const { isBlank, isFiniteNumber, isUuid, toNumber } = require("../lib/validation");
+const { isBlank, isFiniteNumber, isUuid, toNumber } = require("../../lib/validation");
 
 const NEED_TYPES = [
   "equipment",

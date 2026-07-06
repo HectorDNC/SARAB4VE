@@ -7,7 +7,7 @@ const {
   DISABILITY_SUBCATEGORY_SET,
   URGENCY_LEVEL_SET,
 } = require("./shared");
-const { isBlank, isFiniteNumber } = require("../lib/validation");
+const { isBlank, isFiniteNumber } = require("../../lib/validation");
 
 /**
  * @param {Object} payload — cuerpo del request sin procesar
