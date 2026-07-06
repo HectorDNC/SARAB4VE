@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
-const { router: helpRequestsRouter } = require("./routes/helpRequests");
-const { router: emergenciesRouter } = require("./routes/emergencies");
+const helpRequestsRouter = require("./modules/helpRequests/helpRequests.routes");
+const emergenciesRouter = require("./modules/emergencies/emergencies.routes");
 
 const app = express();
 

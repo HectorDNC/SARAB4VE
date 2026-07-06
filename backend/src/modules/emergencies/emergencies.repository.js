@@ -1,8 +1,13 @@
 /**
- * Constructor dinámico de queries para listar emergencias.
- * Soporta filtro por status y búsqueda por geolocalización (radio en km).
+ * Repositorio — consultas SQL para el dominio de emergencias.
  */
 
+/**
+ * Expresión de distancia geográfica mediante la fórmula del haversine.
+ * @param {number} latitudeIndex  — índice posicional ($N) de la latitud
+ * @param {number} longitudeIndex — índice posicional ($N) de la longitud
+ * @returns {string} expresión SQL
+ */
 function buildDistanceExpression(latitudeIndex, longitudeIndex) {
   return `
     6371 * acos(
@@ -20,7 +25,10 @@ function buildDistanceExpression(latitudeIndex, longitudeIndex) {
 }
 
 /**
- * @param {Object} filters — salida de validateEmergencySearchParams().filters
+ * Construye la query dinámica para listar emergencias.
+ * Soporta filtro por status y búsqueda por geolocalización (radio en km).
+ *
+ * @param {Object} filters — salida de validateSearchEmergencies().filters
  * @returns {{ sql: string, values: Array }}
  */
 function buildListEmergenciesQuery(filters) {
@@ -81,4 +89,7 @@ function buildListEmergenciesQuery(filters) {
   return { sql, values };
 }
 
-module.exports = { buildListEmergenciesQuery };
+module.exports = {
+  buildDistanceExpression,
+  buildListEmergenciesQuery,
+};
