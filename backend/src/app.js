@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
-const { router: helpRequestsRouter } = require("./routes/helpRequests");
+const helpRequestsRouter = require("./modules/helpRequests/helpRequests.routes");
+const emergenciesRouter = require("./modules/emergencies/emergencies.routes");
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/help-requests", helpRequestsRouter);
+app.use("/api/emergencies", emergenciesRouter);
 
 app.use((error, _req, res, _next) => {
   console.error(error);
