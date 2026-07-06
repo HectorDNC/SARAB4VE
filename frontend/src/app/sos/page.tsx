@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { sendHelpRequest } from "@/api/helpRequests";
+import { sendEmergency } from "@/api/emergencies";
 import { alertService } from "@/services/alertService";
 import StepDisabilityType from "./components/StepDisabilityType";
 import StepInitialStatus from "./components/StepInitialStatus";
@@ -216,23 +216,38 @@ export default function SOSFlowPage() {
     }
 
     const finalRequesterName = requesterName.trim() || "Persona en emergencia";
-    const finalLatitude = hasGeolocation ? latitude : FALLBACK_EMERGENCY_COORDINATES.latitude;
-    const finalLongitude = hasGeolocation ? longitude : FALLBACK_EMERGENCY_COORDINATES.longitude;
+    const finalLatitude = hasGeolocation ? latitude! : FALLBACK_EMERGENCY_COORDINATES.latitude;
+    const finalLongitude = hasGeolocation ? longitude! : FALLBACK_EMERGENCY_COORDINATES.longitude;
+
+    // Determinar disabilitySubcategory según el tipo de discapacidad
+    let disabilitySubcategory: string | null = null;
+    if (disabilityType === "visual") {
+      disabilitySubcategory = visualSubcategory;
+    } else if (disabilityType === "neuro") {
+      disabilitySubcategory = neuroSubcategory;
+    } else if (disabilityType === "motriz") {
+      disabilitySubcategory = motrizSubcategory;
+    }
 
     setSubmitting(true);
 
     try {
-      // TODO: Enviar al servicio de SOS. Una Tabla y servicio distinto para solicitudes de apoyo. 
-      // await sendHelpRequest({
-      //   requesterName: finalRequesterName,
-      //   contactMethod: "onsite",
-      //   contactValue: finalRequesterName,
-      //   needType: mapNeedType(disabilityType, communicationMode, visualSubcategory, neuroSubcategory, motrizSubcategory),
-      //   description,
-      //   latitude: finalLatitude,
-      //   longitude: finalLongitude,
-      //   urgency: mapUrgency(isInjured, cannotMove),
-      // });
+      await sendEmergency({
+        requesterName: finalRequesterName,
+        isInjured,
+        cannotMove,
+        disabilityType,
+        communicationMode: disabilityType === "auditiva" ? communicationMode : null,
+        disabilitySubcategory,
+        extraInfo: extraInfo.trim() || undefined,
+        voiceNoteUrl: voiceNote?.url ?? null,
+        voiceNoteDurationSec: voiceNote?.durationSec ?? null,
+        latitude: finalLatitude,
+        longitude: finalLongitude,
+        urgency: mapUrgency(isInjured, cannotMove),
+        needType: mapNeedType(disabilityType, communicationMode, visualSubcategory, neuroSubcategory, motrizSubcategory),
+        description,
+      });
 
       setSent(true);
       alertService.success("SOS enviado. Mantente en un lugar seguro.");
