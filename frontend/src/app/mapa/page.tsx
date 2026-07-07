@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { AccessibilityTag } from '@/types/index'
-import { Refugios, CONFIGURACION_ACCESIBILIDAD, CONFIGURACION_SERVICIOS } from '@/mocks/refugios'
-import { TarjetaRefugio } from '@/app/mapa/TarjetaRefugio'
-import { EstadoVacio } from '@/app/mapa/EstadoVacio'
+import { MapItem, UrgencyLevel } from "@/types";
+import { Refugios, CONFIGURACION_SERVICIOS } from "@/mocks/refugios";
+import { TarjetaRefugio } from "@/app/mapa/TarjetaRefugio";
+import { TarjetaEmergencia } from "@/app/mapa/TarjetaEmergencia";
+import { TarjetaSolicitud } from "@/app/mapa/TarjetaSolicitud";
+import { EstadoVacio } from "@/app/mapa/EstadoVacio";
+import { listEmergencies, EmergencyListItem } from "@/api/emergencies";
+import { listHelpRequests, HelpRequestListItem } from "@/api/helpRequests";
 
 const LeafletMap = dynamic(() => import("./LeafletMap"), {
   ssr: false,
@@ -21,63 +25,182 @@ const LeafletMap = dynamic(() => import("./LeafletMap"), {
   ),
 });
 
+// ── Helpers de mapeo ────────────────────────────────────────────────────────
+
+const URGENCY_ORDER: Record<UrgencyLevel, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
+function emergencyToMapItem(e: EmergencyListItem): MapItem {
+  return {
+    kind: "emergency",
+    id: e.id,
+    lat: e.latitude,
+    lng: e.longitude,
+    urgency: e.urgency,
+    status: e.status,
+    createdAt: e.created_at,
+    requesterName: e.requester_name,
+    disabilityType: e.disability_type as MapItem["disabilityType"],
+    needType: e.need_type,
+    description: e.description,
+    isInjured: e.is_injured,
+    cannotMove: e.cannot_move,
+    extraInfo: e.extra_info,
+    distanceKm: e.distanceKm,
+  };
+}
+
+function helpRequestToMapItem(h: HelpRequestListItem): MapItem {
+  return {
+    kind: "help_request",
+    id: h.id,
+    lat: h.latitude,
+    lng: h.longitude,
+    urgency: h.urgency,
+    status: h.status,
+    createdAt: h.created_at,
+    requesterName: h.requester_name,
+    needType: h.need_type,
+    description: h.description,
+    contactMethod: h.contact_method,
+    contactValue: h.contact_value,
+    volunteerName: h.volunteer_name,
+    distanceKm: h.distanceKm,
+  };
+}
+
+// ── Página ──────────────────────────────────────────────────────────────────
+
 export default function MapaPage() {
   const [query, setQuery] = useState("");
-  const [activeFilters, setActiveFilters] = useState<Set<AccessibilityTag>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showBanner, setShowBanner] = useState(true);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
-
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
-  const toggleFilter = useCallback((key: AccessibilityTag) => {
-    setActiveFilters((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
+  // ── Datos de la API ──
+  const [mapItems, setMapItems] = useState<MapItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchData() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const [emergencies, helpRequests] = await Promise.all([
+          listEmergencies({ status: "received" }),
+          listHelpRequests({ status: "open" }),
+        ]);
+
+        if (cancelled) return;
+
+        // Convertir a MapItem[]
+        const emergencyItems: MapItem[] = emergencies.map(emergencyToMapItem);
+        const helpRequestItems: MapItem[] = helpRequests.map(helpRequestToMapItem);
+
+        // Merge: emergencias primero, ordenadas por urgencia, luego solicitudes
+        const sorted: MapItem[] = [
+          ...emergencyItems.sort(
+            (a, b) =>
+              URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency] ||
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          ),
+          ...helpRequestItems.sort(
+            (a, b) =>
+              URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency] ||
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          ),
+        ];
+
+        setMapItems(sorted);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Error al cargar datos");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  // Filtrar refugios (mock)
   const refugiosFiltrados = Refugios.filter((s) => {
     const coincideBusqueda =
       query.trim() === "" ||
       s.name.toLowerCase().includes(query.toLowerCase()) ||
       s.sector.toLowerCase().includes(query.toLowerCase()) ||
       s.address.toLowerCase().includes(query.toLowerCase());
-    const coincideFiltros =
-      activeFilters.size === 0 || [...activeFilters].every((f) => s.tags.includes(f));
-    return coincideBusqueda && coincideFiltros;
+    return coincideBusqueda;
   });
 
-  const refugioSeleccionado = Refugios.find((r) => r.id === selectedId) ?? null;
+  // Filtrar mapItems (emergencias + solicitudes) por búsqueda de texto
+  const mapItemsFiltrados = mapItems.filter((item) => {
+    if (query.trim() === "") return true;
+    const q = query.toLowerCase();
+    return (
+      (item.requesterName ?? "").toLowerCase().includes(q) ||
+      (item.needType ?? "").toLowerCase().includes(q) ||
+      (item.description ?? "").toLowerCase().includes(q) ||
+      (item.disabilityType ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  const totalResultados = mapItemsFiltrados.length + refugiosFiltrados.length;
+
+  // ── Elemento seleccionado ──────────────────────────────────────────────
+
+  const selectedItem = selectedId
+    ? mapItems.find((m) => m.id === selectedId) ?? null
+    : null;
+  const selectedShelter = selectedId
+    ? Refugios.find((r) => r.id === selectedId) ?? null
+    : null;
 
   const handleSeleccionar = (id: string | null) => {
     setSelectedId((prev) => (prev === id ? null : id));
-
     if (id) setMobileDrawerOpen(false);
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-background relative">
-
       {/* ══════════════════════════════════════════════════
-          DESKTOP SIDEBAR 
+          DESKTOP SIDEBAR
       ══════════════════════════════════════════════════ */}
       <aside
-        className={`hidden lg:flex flex-col bg-surface border-r border-outline-variant transition-all duration-200 shrink-0 ${sidebarOpen ? "w-80 xl:w-96" : "w-14"
-          } overflow-hidden`}
+        className={`hidden lg:flex flex-col bg-surface border-r border-outline-variant transition-all duration-200 shrink-0 ${
+          sidebarOpen ? "w-80 xl:w-96" : "w-14"
+        } overflow-hidden`}
         aria-label="Panel de refugios"
       >
         {/* Cabecera */}
         <div className={`pt-4 pb-3 border-b border-outline-variant ${sidebarOpen ? "px-4" : "px-2"}`}>
-          <div className={`flex items-center ${sidebarOpen ? "justify-between mb-3" : "justify-center mb-1"}`}>
+          <div
+            className={`flex items-center ${
+              sidebarOpen ? "justify-between mb-3" : "justify-center mb-1"
+            }`}
+          >
             {sidebarOpen ? (
               <h1 className="text-base font-bold text-on-surface flex items-center gap-2">
                 <span className="material-symbols-rounded text-primary text-xl" aria-hidden="true">
                   emergency_home
                 </span>
-                Refugios Disponibles
+                Solicitudes Cercana
               </h1>
             ) : null}
             <button
@@ -105,8 +228,8 @@ export default function MapaPage() {
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar por ciudad o zona..."
-                  aria-label="Buscar refugio por ciudad o zona"
+                  placeholder="Buscar por nombre o necesidad…"
+                  aria-label="Buscar"
                   className="w-full pl-9 pr-3 py-2.5 bg-surface-container rounded-xl text-sm text-on-surface placeholder:text-on-surface-variant border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
                 />
                 {query && (
@@ -133,52 +256,37 @@ export default function MapaPage() {
           </div>
         </div>
 
-        {/* Filtros */}
-        <div className={`py-3 border-b border-outline-variant ${sidebarOpen ? "px-4" : "px-2"}`}>
-          {sidebarOpen ? (
-            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">
-              Filtros de Accesibilidad
-            </p>
-          ) : null}
-          <div className="flex flex-col gap-1.5">
-            {CONFIGURACION_ACCESIBILIDAD.map((f) => {
-              const active = activeFilters.has(f.key);
-              return (
-                <button
-                  key={f.key}
-                  onClick={() => toggleFilter(f.key)}
-                  aria-pressed={active}
-                  title={f.label}
-                  className={`flex items-center transition-all duration-150 shrink-0 ${sidebarOpen
-                    ? "gap-2.5 w-full px-3 py-2 rounded-xl text-sm font-semibold text-left"
-                    : "w-8 h-8 rounded-full justify-center mx-auto"
-                    } ${active
-                      ? "bg-primary text-on-primary shadow-sm"
-                      : "bg-surface-container-lowest border border-outline-variant text-on-surface hover:bg-surface-container-low"
-                    }`}
-                >
-                  <span className="material-symbols-rounded text-lg" aria-hidden="true">{f.icon}</span>
-                  {sidebarOpen ? <span className="flex-1 text-left">{f.label}</span> : null}
-                  {sidebarOpen && active ? (
-                    <span className="w-5 h-5 rounded-full bg-white flex items-center justify-center text-primary" aria-hidden="true">
-                      <span className="material-symbols-rounded text-[14px] font-bold">check</span>
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Lista de resultados o Detalle del Refugio - solo si está expandido */}
+        {/* Lista de resultados */}
         {sidebarOpen ? (
           <div
             className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3"
             role="list"
-            aria-label="Lista de refugios"
+            aria-label="Lista de ayuda"
             aria-live="polite"
           >
-            {selectedId && refugioSeleccionado ? (
+            {/* Spinner */}
+            {loading && (
+              <div className="flex items-center justify-center py-10">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div className="flex flex-col items-center gap-2 py-6 text-center">
+                <span className="material-symbols-rounded text-3xl text-red-500">error</span>
+                <p className="text-sm text-red-600">{error}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
+                  Reintentar
+                </button>
+              </div>
+            )}
+
+            {/* Detalle de seleccionado */}
+            {!loading && selectedId && (selectedItem || selectedShelter) ? (
               <div className="flex flex-col gap-4">
                 <button
                   onClick={() => setSelectedId(null)}
@@ -187,16 +295,59 @@ export default function MapaPage() {
                   <span className="material-symbols-rounded text-sm">arrow_back</span>
                   Volver a la lista
                 </button>
-                <TarjetaDetalle refugio={refugioSeleccionado} />
+
+                {selectedItem ? (
+                  selectedItem.kind === "emergency" ? (
+                    <TarjetaDetalleEmergencia item={selectedItem} />
+                  ) : (
+                    <TarjetaDetalleSolicitud item={selectedItem} />
+                  )
+                ) : selectedShelter ? (
+                  <TarjetaDetalleRefugio refugio={selectedShelter} />
+                ) : null}
               </div>
-            ) : refugiosFiltrados.length === 0 ? (
-              <EstadoVacio query={query} filtrosActivos={activeFilters} onLimpiar={() => { setQuery(""); setActiveFilters(new Set()); }} />
-            ) : (
+            ) : !loading && totalResultados === 0 ? (
+              <EstadoVacio
+                query={query}
+                filtrosActivos={new Set()}
+                onLimpiar={() => {
+                  setQuery("");
+                }}
+              />
+            ) : !loading ? (
               <>
                 <p className="text-xs text-on-surface-variant px-1 mb-1">
-                  <strong className="text-on-surface">{refugiosFiltrados.length}</strong>{" "}
-                  refugio{refugiosFiltrados.length !== 1 ? "s" : ""} encontrado{refugiosFiltrados.length !== 1 ? "s" : ""}
+                  <strong className="text-on-surface">{totalResultados}</strong> resultado
+                  {totalResultados !== 1 ? "s" : ""}
                 </p>
+
+                {/* ── Emergencias (prioridad) ── */}
+                {mapItemsFiltrados
+                  .filter((m) => m.kind === "emergency")
+                  .map((item) => (
+                    <div key={item.id} role="listitem">
+                      <TarjetaEmergencia
+                        item={item}
+                        isSelected={selectedId === item.id}
+                        onClick={() => handleSeleccionar(item.id)}
+                      />
+                    </div>
+                  ))}
+
+                {/* ── Solicitudes de ayuda ── */}
+                {mapItemsFiltrados
+                  .filter((m) => m.kind === "help_request")
+                  .map((item) => (
+                    <div key={item.id} role="listitem">
+                      <TarjetaSolicitud
+                        item={item}
+                        isSelected={selectedId === item.id}
+                        onClick={() => handleSeleccionar(item.id)}
+                      />
+                    </div>
+                  ))}
+
+                {/* ── Refugios (mock) ── */}
                 {refugiosFiltrados.map((s) => (
                   <div key={s.id} role="listitem">
                     <TarjetaRefugio
@@ -207,28 +358,27 @@ export default function MapaPage() {
                   </div>
                 ))}
               </>
-            )}
+            ) : null}
           </div>
         ) : null}
       </aside>
 
       {/* ══════════════════════════════════════════════════
-          MAPA (ocupa todo en móvil, flex-1 en desktop)
+          MAPA
       ══════════════════════════════════════════════════ */}
       <div className="flex-1 relative">
         <LeafletMap
           shelters={refugiosFiltrados}
           selectedId={selectedId}
           onSelect={handleSeleccionar}
+          mapItems={mapItemsFiltrados}
         />
 
-        {/* ── MOBILE: Buscador flotante encima del mapa ── */}
-
+        {/* ── MOBILE: Buscador flotante ── */}
         <div className="lg:hidden absolute top-3 left-3 right-3 z-[1000] flex items-center gap-2">
-          {/* Botón para abrir el drawer lateral en mobile */}
           <button
             onClick={() => setMobileDrawerOpen((v) => !v)}
-            aria-label={mobileDrawerOpen ? "Cerrar panel" : "Abrir panel de refugios"}
+            aria-label={mobileDrawerOpen ? "Cerrar panel" : "Abrir panel"}
             className="flex w-11 h-11 items-center justify-center bg-white border border-outline-variant rounded-xl shadow-md hover:bg-surface-container transition-colors shrink-0"
           >
             <span className="material-symbols-rounded text-xl text-on-surface">
@@ -236,7 +386,6 @@ export default function MapaPage() {
             </span>
           </button>
 
-          {/* Buscador compacto flotante */}
           <div className="relative flex-1">
             <span
               className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-rounded text-on-surface-variant text-lg pointer-events-none"
@@ -248,8 +397,8 @@ export default function MapaPage() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar refugio..."
-              aria-label="Buscar refugio"
+              placeholder="Buscar…"
+              aria-label="Buscar"
               className="w-full pl-9 pr-9 py-2.5 bg-white rounded-xl text-sm text-on-surface placeholder:text-on-surface-variant border border-outline-variant shadow-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
             />
             {query && (
@@ -266,8 +415,7 @@ export default function MapaPage() {
           </div>
         </div>
 
-        {/* ── MOBILE: Drawer lateral que se superpone al mapa ── */}
-        {/* Overlay: solo cubre el área del mapa, no el navbar */}
+        {/* ── MOBILE: Drawer lateral ── */}
         {mobileDrawerOpen && (
           <div
             className="lg:hidden absolute inset-0 z-[1500] bg-black/40 backdrop-blur-[2px]"
@@ -276,19 +424,18 @@ export default function MapaPage() {
           />
         )}
 
-        {/* Panel drawer lateral — ocupa el alto del contenedor (sin navbar) */}
         <div
-          className={`lg:hidden absolute top-0 left-0 bottom-0 z-[1600] flex flex-col bg-surface shadow-2xl transition-all duration-300 ease-in-out ${mobileDrawerOpen ? "w-[85vw] max-w-sm" : "w-0"
-            } overflow-hidden`}
-          aria-label="Panel de refugios (móvil)"
+          className={`lg:hidden absolute top-0 left-0 bottom-0 z-[1600] flex flex-col bg-surface shadow-2xl transition-all duration-300 ease-in-out ${
+            mobileDrawerOpen ? "w-[85vw] max-w-sm" : "w-0"
+          } overflow-hidden`}
+          aria-label="Panel (móvil)"
         >
-          {/* Cabecera del drawer */}
           <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-outline-variant shrink-0">
             <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
               <span className="material-symbols-rounded text-primary text-xl" aria-hidden="true">
                 emergency_home
               </span>
-              Refugios Disponibles
+              Solicitudes Cercana
             </h2>
             <button
               onClick={() => setMobileDrawerOpen(false)}
@@ -299,52 +446,60 @@ export default function MapaPage() {
             </button>
           </div>
 
-          {/* Filtros de accesibilidad en el drawer */}
-          <div className="px-4 py-3 border-b border-outline-variant shrink-0">
-            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">
-              Filtros de Accesibilidad
-            </p>
-            <div className="flex flex-col gap-1.5">
-              {CONFIGURACION_ACCESIBILIDAD.map((f) => {
-                const active = activeFilters.has(f.key);
-                return (
-                  <button
-                    key={f.key}
-                    onClick={() => toggleFilter(f.key)}
-                    aria-pressed={active}
-                    className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${active
-                      ? "bg-primary text-on-primary shadow-sm"
-                      : "bg-surface-container-lowest border border-outline-variant text-on-surface hover:bg-surface-container-low"
-                      }`}
-                  >
-                    <span className="material-symbols-rounded text-lg" aria-hidden="true">{f.icon}</span>
-                    <span className="flex-1 text-left">{f.label}</span>
-                    {active ? (
-                      <span className="w-5 h-5 rounded-full bg-white flex items-center justify-center text-primary" aria-hidden="true">
-                        <span className="material-symbols-rounded text-[14px] font-bold">check</span>
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Lista de refugios en el drawer */}
+          {/* Lista */}
           <div
             className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3"
             role="list"
-            aria-label="Lista de refugios"
+            aria-label="Lista de ayuda"
             aria-live="polite"
           >
-            {refugiosFiltrados.length === 0 ? (
-              <EstadoVacio query={query} filtrosActivos={activeFilters} onLimpiar={() => { setQuery(""); setActiveFilters(new Set()); }} />
-            ) : (
+            {loading && (
+              <div className="flex items-center justify-center py-10">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+            {error && (
+              <div className="flex flex-col items-center gap-2 py-6 text-center">
+                <span className="material-symbols-rounded text-3xl text-red-500">error</span>
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+            {!loading && totalResultados === 0 ? (
+              <EstadoVacio
+                query={query}
+                filtrosActivos={new Set()}
+                onLimpiar={() => {
+                  setQuery("");
+                }}
+              />
+            ) : !loading ? (
               <>
                 <p className="text-xs text-on-surface-variant px-1 mb-1">
-                  <strong className="text-on-surface">{refugiosFiltrados.length}</strong>{" "}
-                  refugio{refugiosFiltrados.length !== 1 ? "s" : ""} encontrado{refugiosFiltrados.length !== 1 ? "s" : ""}
+                  <strong className="text-on-surface">{totalResultados}</strong> resultado
+                  {totalResultados !== 1 ? "s" : ""}
                 </p>
+                {mapItemsFiltrados
+                  .filter((m) => m.kind === "emergency")
+                  .map((item) => (
+                    <div key={item.id} role="listitem">
+                      <TarjetaEmergencia
+                        item={item}
+                        isSelected={selectedId === item.id}
+                        onClick={() => handleSeleccionar(item.id)}
+                      />
+                    </div>
+                  ))}
+                {mapItemsFiltrados
+                  .filter((m) => m.kind === "help_request")
+                  .map((item) => (
+                    <div key={item.id} role="listitem">
+                      <TarjetaSolicitud
+                        item={item}
+                        isSelected={selectedId === item.id}
+                        onClick={() => handleSeleccionar(item.id)}
+                      />
+                    </div>
+                  ))}
                 {refugiosFiltrados.map((s) => (
                   <div key={s.id} role="listitem">
                     <TarjetaRefugio
@@ -355,19 +510,17 @@ export default function MapaPage() {
                   </div>
                 ))}
               </>
-            )}
+            ) : null}
           </div>
         </div>
 
-        {/* ── MOBILE: Tarjeta de detalle flotante (bottom sheet) al seleccionar ── */}
-        {selectedId && refugioSeleccionado && (
+        {/* ── MOBILE: Bottom sheet detalle ── */}
+        {selectedId && (selectedItem || selectedShelter) && (
           <div className="lg:hidden absolute bottom-0 left-0 right-0 z-[1000] animate-slide-up">
             <div className="bg-surface rounded-t-3xl shadow-2xl border-t border-outline-variant overflow-hidden">
-              {/* Handle / agarradera */}
               <div className="flex justify-center pt-3 pb-1">
                 <div className="w-10 h-1 rounded-full bg-outline-variant"></div>
               </div>
-              {/* Botón cerrar */}
               <div className="flex items-center justify-between px-4 pb-2">
                 <button
                   onClick={() => setSelectedId(null)}
@@ -384,17 +537,22 @@ export default function MapaPage() {
                   <span className="material-symbols-rounded text-base text-on-surface-variant">close</span>
                 </button>
               </div>
-
-              {/* Contenido de la tarjeta detallada */}
-              <div className="px-4 pb-6">
-                <TarjetaDetalle refugio={refugioSeleccionado} />
+              <div className="px-4 pb-6 max-h-[50vh] overflow-y-auto">
+                {selectedItem ? (
+                  selectedItem.kind === "emergency" ? (
+                    <TarjetaDetalleEmergencia item={selectedItem} />
+                  ) : (
+                    <TarjetaDetalleSolicitud item={selectedItem} />
+                  )
+                ) : selectedShelter ? (
+                  <TarjetaDetalleRefugio refugio={selectedShelter} />
+                ) : null}
               </div>
             </div>
           </div>
         )}
 
-        {/* ── Banner de seguridad flotante ── */}
-
+        {/* ── Banner de seguridad ── */}
         {showBanner && !selectedId && (
           <div className="absolute bottom-24 sm:bottom-6 left-1/2 -translate-x-1/2 z-[900] w-[90%] sm:w-[480px] bg-[#1c1b1b] text-white rounded-xl px-4 py-3 flex items-center justify-between gap-3 shadow-lg border border-neutral-800">
             <div className="flex items-start gap-2.5">
@@ -416,7 +574,7 @@ export default function MapaPage() {
         )}
       </div>
 
-      {/* Animación slide-up para el bottom sheet */}
+      {/* Animación slide-up */}
       <style jsx global>{`
         @keyframes slide-up {
           from { transform: translateY(100%); }
@@ -430,17 +588,185 @@ export default function MapaPage() {
   );
 }
 
-// ── Componente auxiliar: Tarjeta detallada del refugio seleccionado ─────────
-function TarjetaDetalle({ refugio }: { refugio: NonNullable<ReturnType<typeof Refugios.find>> }) {
+// ── Componentes de detalle ──────────────────────────────────────────────────
+
+const URGENCY_LABELS: Record<string, string> = {
+  low: "Baja",
+  medium: "Media",
+  high: "Alta",
+  critical: "Crítica",
+};
+
+const DISABILITY_LABELS: Record<string, string> = {
+  visual: "Visual",
+  auditiva: "Auditiva",
+  neuro: "Neurodivergente",
+  motriz: "Motriz",
+};
+
+const NEED_TYPE_LABELS: Record<string, string> = {
+  equipment: "Equipamiento",
+  medication: "Medicación",
+  transport: "Transporte",
+  companionship: "Acompañamiento",
+  interpreter: "Intérprete",
+  accessible_information: "Información accesible",
+  neurodivergent_support: "Apoyo neurodivergente",
+  psychosocial_support: "Apoyo psicosocial",
+};
+
+function TarjetaDetalleEmergencia({ item }: { item: MapItem }) {
   return (
     <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden shadow-card">
-      {/* Imagen */}
+      <div className="p-4 flex flex-col gap-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-base font-bold text-on-surface leading-tight">
+              {item.requesterName ?? "Persona en emergencia"}
+            </h2>
+            <span
+              className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                item.urgency === "critical"
+                  ? "bg-red-100 text-red-700"
+                  : item.urgency === "high"
+                    ? "bg-orange-100 text-orange-700"
+                    : "bg-yellow-100 text-yellow-700"
+              }`}
+            >
+              Urgencia {URGENCY_LABELS[item.urgency] ?? item.urgency}
+            </span>
+          </div>
+          <span className="material-symbols-rounded text-3xl text-red-500">emergency</span>
+        </div>
+
+        {/* Tags */}
+        <div className="flex flex-wrap gap-1.5">
+          {item.disabilityType && (
+            <span className="bg-surface-container text-on-surface-variant text-[10px] font-bold px-2.5 py-1 rounded-full">
+              {DISABILITY_LABELS[item.disabilityType] ?? item.disabilityType}
+            </span>
+          )}
+          {item.needType && (
+            <span className="bg-surface-container text-on-surface-variant text-[10px] font-bold px-2.5 py-1 rounded-full">
+              {NEED_TYPE_LABELS[item.needType] ?? item.needType}
+            </span>
+          )}
+          {item.isInjured && (
+            <span className="bg-red-50 text-red-700 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+              <span className="material-symbols-rounded text-[12px]">personal_injury</span>
+              Herido
+            </span>
+          )}
+          {item.cannotMove && (
+            <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+              <span className="material-symbols-rounded text-[12px]">wheelchair_pickup</span>
+              No puede moverse
+            </span>
+          )}
+        </div>
+
+        {item.description && (
+          <p className="text-sm text-on-surface-variant leading-relaxed">{item.description}</p>
+        )}
+
+        {item.extraInfo && (
+          <div className="bg-surface-container p-3 rounded-xl">
+            <p className="text-xs font-semibold text-on-surface mb-1">Información adicional</p>
+            <p className="text-xs text-on-surface-variant">{item.extraInfo}</p>
+          </div>
+        )}
+
+        {/* Botón */}
+        <a
+          href={`https://www.openstreetmap.org/directions?from=&to=${item.lat},${item.lng}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white rounded-xl py-3 text-sm font-bold shadow-sm transition-colors mt-2"
+        >
+          <span className="material-symbols-rounded text-lg">directions</span>
+          Cómo llegar
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function TarjetaDetalleSolicitud({ item }: { item: MapItem }) {
+  return (
+    <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden shadow-card">
+      <div className="p-4 flex flex-col gap-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-base font-bold text-on-surface leading-tight">
+              {item.requesterName ?? "Solicitante anónimo"}
+            </h2>
+            <span
+              className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                item.urgency === "critical"
+                  ? "bg-orange-100 text-orange-700"
+                  : item.urgency === "high"
+                    ? "bg-orange-100 text-orange-700"
+                    : "bg-yellow-100 text-yellow-700"
+              }`}
+            >
+              Urgencia {URGENCY_LABELS[item.urgency] ?? item.urgency}
+            </span>
+          </div>
+          <span className="material-symbols-rounded text-3xl text-[#0040a1]">handshake</span>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {item.needType && (
+            <span className="bg-surface-container text-on-surface-variant text-[10px] font-bold px-2.5 py-1 rounded-full">
+              {NEED_TYPE_LABELS[item.needType] ?? item.needType}
+            </span>
+          )}
+          {item.volunteerName && (
+            <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+              <span className="material-symbols-rounded text-[12px]">volunteer_activism</span>
+              {item.volunteerName}
+            </span>
+          )}
+        </div>
+
+        {item.description && (
+          <p className="text-sm text-on-surface-variant leading-relaxed">{item.description}</p>
+        )}
+
+        {item.contactValue && (
+          <div className="bg-surface-container p-3 rounded-xl">
+            <p className="text-xs font-semibold text-on-surface mb-1">Contacto</p>
+            <p className="text-xs text-on-surface-variant">
+              {item.contactMethod}: {item.contactValue}
+            </p>
+          </div>
+        )}
+
+        <a
+          href={`https://www.openstreetmap.org/directions?from=&to=${item.lat},${item.lng}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-center gap-2 bg-[#0040a1] hover:bg-[#0056d2] text-white rounded-xl py-3 text-sm font-bold shadow-sm transition-colors mt-2"
+        >
+          <span className="material-symbols-rounded text-lg">directions</span>
+          Cómo llegar
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function TarjetaDetalleRefugio({ refugio }: { refugio: (typeof Refugios)[number] }) {
+  return (
+    <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden shadow-card">
       <div className="relative h-40 w-full bg-surface-container-high">
         <img
           src={refugio.imagen || "/logo.webp"}
           alt={refugio.name}
           className="w-full h-full object-cover"
-          onError={(e) => { e.currentTarget.src = "/logo.webp"; }}
+          onError={(e) => {
+            e.currentTarget.src = "/logo.webp";
+          }}
         />
         {refugio.status === "activo" && (
           <div className="absolute top-3 right-3 bg-[#fc6018] text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
@@ -449,8 +775,6 @@ function TarjetaDetalle({ refugio }: { refugio: NonNullable<ReturnType<typeof Re
           </div>
         )}
       </div>
-
-      {/* Detalles */}
       <div className="p-4 flex flex-col gap-3">
         <div>
           <h2 className="text-base font-bold text-on-surface leading-tight">{refugio.name}</h2>
@@ -459,8 +783,6 @@ function TarjetaDetalle({ refugio }: { refugio: NonNullable<ReturnType<typeof Re
             <span className="text-xs font-semibold">{refugio.address}</span>
           </div>
         </div>
-
-        {/* Servicios */}
         {refugio.services.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1">
             {refugio.services.map((svc) => (
@@ -476,8 +798,6 @@ function TarjetaDetalle({ refugio }: { refugio: NonNullable<ReturnType<typeof Re
             ))}
           </div>
         )}
-
-        {/* Botón Cómo llegar */}
         <a
           href={`https://www.openstreetmap.org/directions?from=&to=${refugio.lat},${refugio.lng}`}
           target="_blank"
