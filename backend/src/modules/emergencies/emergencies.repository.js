@@ -44,7 +44,7 @@ function buildListEmergenciesQuery(filters) {
   // El detalle completo se obtiene con GET /api/emergencies/:id
   const columns = `
     id, latitude, longitude, urgency, need_type,
-    disability_type, status, created_at
+    disability_type, status, created_at, requester_name
   `;
 
   if (!filters.hasGeoFilter) {

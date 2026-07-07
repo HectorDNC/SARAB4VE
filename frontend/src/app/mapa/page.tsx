@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { AccessibilityTag, MapItem, UrgencyLevel } from "@/types";
-import { Refugios, CONFIGURACION_ACCESIBILIDAD, CONFIGURACION_SERVICIOS } from "@/mocks/refugios";
+import { MapItem, UrgencyLevel } from "@/types";
+import { Refugios, CONFIGURACION_SERVICIOS } from "@/mocks/refugios";
 import { TarjetaRefugio } from "@/app/mapa/TarjetaRefugio";
 import { TarjetaEmergencia } from "@/app/mapa/TarjetaEmergencia";
 import { TarjetaSolicitud } from "@/app/mapa/TarjetaSolicitud";
@@ -77,7 +77,6 @@ function helpRequestToMapItem(h: HelpRequestListItem): MapItem {
 
 export default function MapaPage() {
   const [query, setQuery] = useState("");
-  const [activeFilters, setActiveFilters] = useState<Set<AccessibilityTag>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showBanner, setShowBanner] = useState(true);
 
@@ -138,16 +137,6 @@ export default function MapaPage() {
     };
   }, []);
 
-  // ── Filtros ──────────────────────────────────────────────────────────────
-
-  const toggleFilter = useCallback((key: AccessibilityTag) => {
-    setActiveFilters((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
-  }, []);
-
   // Filtrar refugios (mock)
   const refugiosFiltrados = Refugios.filter((s) => {
     const coincideBusqueda =
@@ -155,9 +144,7 @@ export default function MapaPage() {
       s.name.toLowerCase().includes(query.toLowerCase()) ||
       s.sector.toLowerCase().includes(query.toLowerCase()) ||
       s.address.toLowerCase().includes(query.toLowerCase());
-    const coincideFiltros =
-      activeFilters.size === 0 || [...activeFilters].every((f) => s.tags.includes(f));
-    return coincideBusqueda && coincideFiltros;
+    return coincideBusqueda;
   });
 
   // Filtrar mapItems (emergencias + solicitudes) por búsqueda de texto
@@ -213,7 +200,7 @@ export default function MapaPage() {
                 <span className="material-symbols-rounded text-primary text-xl" aria-hidden="true">
                   emergency_home
                 </span>
-                Ayuda Cercana
+                Solicitudes Cercana
               </h1>
             ) : null}
             <button
@@ -266,47 +253,6 @@ export default function MapaPage() {
                 <span className="material-symbols-rounded text-lg">search</span>
               </button>
             )}
-          </div>
-        </div>
-
-        {/* Filtros */}
-        <div className={`py-3 border-b border-outline-variant ${sidebarOpen ? "px-4" : "px-2"}`}>
-          {sidebarOpen ? (
-            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">
-              Filtros de Accesibilidad
-            </p>
-          ) : null}
-          <div className="flex flex-col gap-1.5">
-            {CONFIGURACION_ACCESIBILIDAD.map((f) => {
-              const active = activeFilters.has(f.key);
-              return (
-                <button
-                  key={f.key}
-                  onClick={() => toggleFilter(f.key)}
-                  aria-pressed={active}
-                  title={f.label}
-                  className={`flex items-center transition-all duration-150 shrink-0 ${
-                    sidebarOpen
-                      ? "gap-2.5 w-full px-3 py-2 rounded-xl text-sm font-semibold text-left"
-                      : "w-8 h-8 rounded-full justify-center mx-auto"
-                  } ${
-                    active
-                      ? "bg-primary text-on-primary shadow-sm"
-                      : "bg-surface-container-lowest border border-outline-variant text-on-surface hover:bg-surface-container-low"
-                  }`}
-                >
-                  <span className="material-symbols-rounded text-lg" aria-hidden="true">
-                    {f.icon}
-                  </span>
-                  {sidebarOpen ? <span className="flex-1 text-left">{f.label}</span> : null}
-                  {sidebarOpen && active ? (
-                    <span className="w-5 h-5 rounded-full bg-white flex items-center justify-center text-primary" aria-hidden="true">
-                      <span className="material-symbols-rounded text-[14px] font-bold">check</span>
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
           </div>
         </div>
 
@@ -363,10 +309,9 @@ export default function MapaPage() {
             ) : !loading && totalResultados === 0 ? (
               <EstadoVacio
                 query={query}
-                filtrosActivos={activeFilters}
+                filtrosActivos={new Set()}
                 onLimpiar={() => {
                   setQuery("");
-                  setActiveFilters(new Set());
                 }}
               />
             ) : !loading ? (
@@ -490,7 +435,7 @@ export default function MapaPage() {
               <span className="material-symbols-rounded text-primary text-xl" aria-hidden="true">
                 emergency_home
               </span>
-              Ayuda Cercana
+              Solicitudes Cercana
             </h2>
             <button
               onClick={() => setMobileDrawerOpen(false)}
@@ -499,40 +444,6 @@ export default function MapaPage() {
             >
               <span className="material-symbols-rounded text-base text-on-surface-variant">chevron_left</span>
             </button>
-          </div>
-
-          {/* Filtros */}
-          <div className="px-4 py-3 border-b border-outline-variant shrink-0">
-            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">
-              Filtros de Accesibilidad
-            </p>
-            <div className="flex flex-col gap-1.5">
-              {CONFIGURACION_ACCESIBILIDAD.map((f) => {
-                const active = activeFilters.has(f.key);
-                return (
-                  <button
-                    key={f.key}
-                    onClick={() => toggleFilter(f.key)}
-                    aria-pressed={active}
-                    className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
-                      active
-                        ? "bg-primary text-on-primary shadow-sm"
-                        : "bg-surface-container-lowest border border-outline-variant text-on-surface hover:bg-surface-container-low"
-                    }`}
-                  >
-                    <span className="material-symbols-rounded text-lg" aria-hidden="true">
-                      {f.icon}
-                    </span>
-                    <span className="flex-1 text-left">{f.label}</span>
-                    {active ? (
-                      <span className="w-5 h-5 rounded-full bg-white flex items-center justify-center text-primary" aria-hidden="true">
-                        <span className="material-symbols-rounded text-[14px] font-bold">check</span>
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           {/* Lista */}
@@ -556,10 +467,9 @@ export default function MapaPage() {
             {!loading && totalResultados === 0 ? (
               <EstadoVacio
                 query={query}
-                filtrosActivos={activeFilters}
+                filtrosActivos={new Set()}
                 onLimpiar={() => {
                   setQuery("");
-                  setActiveFilters(new Set());
                 }}
               />
             ) : !loading ? (
@@ -793,7 +703,7 @@ function TarjetaDetalleSolicitud({ item }: { item: MapItem }) {
             <span
               className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                 item.urgency === "critical"
-                  ? "bg-red-100 text-red-700"
+                  ? "bg-orange-100 text-orange-700"
                   : item.urgency === "high"
                     ? "bg-orange-100 text-orange-700"
                     : "bg-yellow-100 text-yellow-700"

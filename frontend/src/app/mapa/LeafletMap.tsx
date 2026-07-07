@@ -14,8 +14,17 @@ const URGENCY_RING: Record<UrgencyLevel, string> = {
   critical: "#ef4444",
 };
 
+/** Colores para solicitudes de ayuda: el rojo se reemplaza por naranja */
+const HELP_URGENCY_RING: Record<UrgencyLevel, string> = {
+  low: "#3b82f6",
+  medium: "#f59e0b",
+  high: "#f97316",
+  critical: "#f97316",
+};
+
 function buildEmergencyIcon(label: string, urgency: UrgencyLevel, isSelected: boolean): L.DivIcon {
-  const color = URGENCY_RING[urgency];
+  // Las emergencias siempre usan icono rojo, sin importar la urgencia
+  const color = "#ef4444";
   const size = isSelected ? "w-9 h-9" : "w-7 h-7";
   const textSize = isSelected ? "text-[20px]" : "text-[16px]";
   const ring = isSelected ? "border-[3px]" : "border-2";
@@ -40,7 +49,7 @@ function buildEmergencyIcon(label: string, urgency: UrgencyLevel, isSelected: bo
 }
 
 function buildHelpRequestIcon(label: string, urgency: UrgencyLevel, isSelected: boolean): L.DivIcon {
-  const color = URGENCY_RING[urgency];
+  const color = HELP_URGENCY_RING[urgency];
   const size = isSelected ? "w-9 h-9" : "w-7 h-7";
   const textSize = isSelected ? "text-[20px]" : "text-[16px]";
   const ring = isSelected ? "border-[3px]" : "border-2";
