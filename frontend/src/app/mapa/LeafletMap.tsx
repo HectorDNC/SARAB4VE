@@ -3,10 +3,103 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { iRefugio, LeafletMapProps } from "@/types";
+import { iRefugio, LeafletMapProps, MapItem, UrgencyLevel } from "@/types";
 
+// ── Helpers para construir iconos ───────────────────────────────────────────
 
-export default function LeafletMap({ shelters, selectedId, onSelect }: LeafletMapProps) {
+const URGENCY_RING: Record<UrgencyLevel, string> = {
+  low: "#3b82f6",
+  medium: "#f59e0b",
+  high: "#f97316",
+  critical: "#ef4444",
+};
+
+function buildEmergencyIcon(label: string, urgency: UrgencyLevel, isSelected: boolean): L.DivIcon {
+  const color = URGENCY_RING[urgency];
+  const size = isSelected ? "w-9 h-9" : "w-7 h-7";
+  const textSize = isSelected ? "text-[20px]" : "text-[16px]";
+  const ring = isSelected ? "border-[3px]" : "border-2";
+
+  const labelHtml = isSelected
+    ? `<div class="mt-1 bg-white border border-[#ef4444] text-[#ef4444] px-2 py-0.5 rounded shadow text-[10px] font-bold whitespace-nowrap">${label}</div>`
+    : "";
+
+  return L.divIcon({
+    html: `
+      <div class="flex flex-col items-center justify-center select-none" style="transform: translate(-50%, ${isSelected ? "-75%" : "-50%"});">
+        <div class="${size} rounded-full flex items-center justify-center ${ring} border-white shadow-lg ${isSelected ? "animate-bounce-short" : "hover:scale-110 transition-transform"}" style="background-color: ${color}">
+          <span class="material-symbols-rounded text-white ${textSize}">emergency</span>
+        </div>
+        ${labelHtml}
+      </div>
+    `,
+    className: "custom-marker-emergency",
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+  });
+}
+
+function buildHelpRequestIcon(label: string, urgency: UrgencyLevel, isSelected: boolean): L.DivIcon {
+  const color = URGENCY_RING[urgency];
+  const size = isSelected ? "w-9 h-9" : "w-7 h-7";
+  const textSize = isSelected ? "text-[20px]" : "text-[16px]";
+  const ring = isSelected ? "border-[3px]" : "border-2";
+
+  const labelHtml = isSelected
+    ? `<div class="mt-1 bg-white border border-[#0040a1] text-[#0040a1] px-2 py-0.5 rounded shadow text-[10px] font-bold whitespace-nowrap">${label}</div>`
+    : "";
+
+  return L.divIcon({
+    html: `
+      <div class="flex flex-col items-center justify-center select-none" style="transform: translate(-50%, ${isSelected ? "-75%" : "-50%"});">
+        <div class="${size} rounded-lg flex items-center justify-center ${ring} border-white shadow-lg ${isSelected ? "animate-bounce-short" : "hover:scale-110 transition-transform"}" style="background-color: ${color}">
+          <span class="material-symbols-rounded text-white ${textSize}">handshake</span>
+        </div>
+        ${labelHtml}
+      </div>
+    `,
+    className: "custom-marker-help-request",
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+  });
+}
+
+function buildShelterIcon(name: string, isSelected: boolean): L.DivIcon {
+  if (isSelected) {
+    return L.divIcon({
+      html: `
+        <div class="flex flex-col items-center justify-center select-none" style="transform: translate(-50%, -75%);">
+          <div class="w-8 h-8 rounded-full bg-[#0040a1] flex items-center justify-center border-2 border-white shadow-lg animate-bounce-short">
+            <span class="material-symbols-rounded text-white text-[18px]">location_on</span>
+          </div>
+          <div class="mt-1 bg-white border border-[#0040a1] text-[#0040a1] px-2 py-0.5 rounded shadow text-[10px] font-bold whitespace-nowrap">
+            ${name}
+          </div>
+        </div>
+      `,
+      className: "custom-marker-active",
+      iconSize: [0, 0],
+      iconAnchor: [0, 0],
+    });
+  }
+
+  return L.divIcon({
+    html: `
+      <div class="flex items-center justify-center select-none" style="transform: translate(-50%, -50%);">
+        <div class="w-7 h-7 rounded-lg bg-[#a83900] flex items-center justify-center border-2 border-white shadow hover:scale-110 transition-transform">
+          <span class="material-symbols-rounded text-white text-[16px]">emergency_home</span>
+        </div>
+      </div>
+    `,
+    className: "custom-marker-inactive",
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+  });
+}
+
+// ── Componente ──────────────────────────────────────────────────────────────
+
+export default function LeafletMap({ shelters, selectedId, onSelect, mapItems }: LeafletMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [id: string]: L.Marker }>({});
@@ -16,7 +109,6 @@ export default function LeafletMap({ shelters, selectedId, onSelect }: LeafletMa
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    // Centrar en Caracas
     const defaultCenter: L.LatLngTuple = [10.48, -66.90];
     const defaultZoom = 13;
 
@@ -48,6 +140,8 @@ export default function LeafletMap({ shelters, selectedId, onSelect }: LeafletMa
     };
   }, []);
 
+  // ── Renderizar marcadores ───────────────────────────────────────────────
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isMapReady) return;
@@ -57,45 +151,34 @@ export default function LeafletMap({ shelters, selectedId, onSelect }: LeafletMa
     });
     markersRef.current = {};
 
+    // ── Emergencias y Solicitudes (mapItems) ──
+    if (mapItems) {
+      mapItems.forEach((item) => {
+        const isSelected = selectedId === item.id;
+        let icon: L.DivIcon;
+
+        if (item.kind === "emergency") {
+          const label = item.requesterName ?? "Emergencia";
+          icon = buildEmergencyIcon(label, item.urgency, isSelected);
+        } else {
+          const label = item.requesterName ?? "Solicitud";
+          icon = buildHelpRequestIcon(label, item.urgency, isSelected);
+        }
+
+        const marker = L.marker([item.lat, item.lng], { icon })
+          .addTo(map)
+          .on("click", () => {
+            onSelect(isSelected ? null : item.id);
+          });
+
+        markersRef.current[item.id] = marker;
+      });
+    }
+
+    // ── Refugios ──
     shelters.forEach((shelter) => {
       const isSelected = selectedId === shelter.id;
-
-      let icon: L.DivIcon;
-
-      if (isSelected) {
-
-        icon = L.divIcon({
-          html: `
-            <div class="flex flex-col items-center justify-center select-none" style="transform: translate(-50%, -75%);">
-              <!-- Marker Pin -->
-              <div class="w-8 h-8 rounded-full bg-[#0040a1] flex items-center justify-center border-2 border-white shadow-lg animate-bounce-short">
-                <span class="material-symbols-rounded text-white text-[18px]">location_on</span>
-              </div>
-              <!-- Text Label -->
-              <div class="mt-1 bg-white border border-[#0040a1] text-[#0040a1] px-2 py-0.5 rounded shadow text-[10px] font-bold whitespace-nowrap">
-                ${shelter.name}
-              </div>
-            </div>
-          `,
-          className: "custom-marker-active",
-          iconSize: [0, 0],
-          iconAnchor: [0, 0],
-        });
-      } else {
-
-        icon = L.divIcon({
-          html: `
-            <div class="flex items-center justify-center select-none" style="transform: translate(-50%, -50%);">
-              <div class="w-7 h-7 rounded-lg bg-[#a83900] flex items-center justify-center border-2 border-white shadow hover:scale-110 transition-transform">
-                <span class="material-symbols-rounded text-white text-[16px]">emergency_home</span>
-              </div>
-            </div>
-          `,
-          className: "custom-marker-inactive",
-          iconSize: [0, 0],
-          iconAnchor: [0, 0],
-        });
-      }
+      const icon = buildShelterIcon(shelter.name, isSelected);
 
       const marker = L.marker([shelter.lat, shelter.lng], { icon })
         .addTo(map)
@@ -105,12 +188,24 @@ export default function LeafletMap({ shelters, selectedId, onSelect }: LeafletMa
 
       markersRef.current[shelter.id] = marker;
     });
-  }, [shelters, selectedId, isMapReady, onSelect]);
+  }, [shelters, mapItems, selectedId, isMapReady, onSelect]);
+
+  // ── Volar al seleccionado ────────────────────────────────────────────────
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isMapReady || !selectedId) return;
 
+    // Buscar en mapItems primero
+    if (mapItems) {
+      const found = mapItems.find((m) => m.id === selectedId);
+      if (found) {
+        map.flyTo([found.lat, found.lng], 15, { animate: true, duration: 1.5 });
+        return;
+      }
+    }
+
+    // Luego en shelters
     const selectedShelter = shelters.find((s) => s.id === selectedId);
     if (selectedShelter) {
       map.flyTo([selectedShelter.lat, selectedShelter.lng], 15, {
@@ -118,23 +213,27 @@ export default function LeafletMap({ shelters, selectedId, onSelect }: LeafletMa
         duration: 1.5,
       });
     }
-  }, [selectedId, shelters, isMapReady]);
+  }, [selectedId, shelters, mapItems, isMapReady]);
 
-  // Personalizar zoom
-  const handleZoomIn = () => {
-    mapRef.current?.zoomIn();
-  };
+  // ── Controles ────────────────────────────────────────────────────────────
 
-  const handleZoomOut = () => {
-    mapRef.current?.zoomOut();
-  };
+  const handleZoomIn = () => mapRef.current?.zoomIn();
+  const handleZoomOut = () => mapRef.current?.zoomOut();
 
-  // Geolocalizar / Re-centrar en el grupo de refugios
   const handleLocate = () => {
     const map = mapRef.current;
     if (!map || !isMapReady) return;
 
     if (selectedId) {
+      // Buscar en mapItems
+      if (mapItems) {
+        const found = mapItems.find((m) => m.id === selectedId);
+        if (found) {
+          map.flyTo([found.lat, found.lng], 15);
+          return;
+        }
+      }
+      // Buscar en shelters
       const selected = shelters.find((s) => s.id === selectedId);
       if (selected) {
         map.flyTo([selected.lat, selected.lng], 15);
@@ -142,7 +241,7 @@ export default function LeafletMap({ shelters, selectedId, onSelect }: LeafletMa
       }
     }
 
-    if (shelters.length > 0) {
+    if (Object.keys(markersRef.current).length > 0) {
       const group = L.featureGroup(Object.values(markersRef.current));
       map.fitBounds(group.getBounds().pad(0.15), {
         animate: true,
