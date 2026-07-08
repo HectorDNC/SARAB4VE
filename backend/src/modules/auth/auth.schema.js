@@ -1,11 +1,21 @@
 /**
- * Esquema — constantes, validación y normalización para el dominio de auth.
- * Las utilidades de validación reutilizables viven en src/lib/validation.js.
+ * Esquema — schemas Zod + normalización para el dominio de auth.
+ *
+ * Cada DTO se define una sola vez como schema Zod. El mismo schema:
+ *   1. Valida el request body en el controller (safeParse)
+ *   2. Genera la documentación OpenAPI automáticamente (.openapi())
+ *
+ * Las funciones normalize* se conservan porque el servicio las necesita
+ * para agregar campos derivados (role, status) antes del INSERT.
  */
-const { isBlank, isFiniteNumber, toNumber } = require("../../lib/validation");
+const { z } = require("zod");
+const { extendZodWithOpenApi } = require("@asteasolutions/zod-to-openapi");
+
+// Extender Zod con el método .openapi() — requerido por zod-to-openapi v8+
+extendZodWithOpenApi(z);
 
 // ---------------------------------------------------------------------------
-// Constantes
+// Constantes (sin cambios)
 // ---------------------------------------------------------------------------
 
 /** Roles válidos en el sistema. */
@@ -35,203 +45,246 @@ const INITIAL_STATUS = {
 };
 
 // ---------------------------------------------------------------------------
-// Helpers de validación
+// Schemas reutilizables (sub-schemas compartidos entre DTOs)
 // ---------------------------------------------------------------------------
 
 /**
- * Valida que el email tenga un formato razonable.
- * @param {string} email
- * @returns {boolean}
+ * Coordenadas geográficas { lat, lng }.
+ * Se usa como sub-schema en todos los DTOs de registro.
  */
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+const LocationSchema = z.object({
+  lat: z.number()
+    .min(-90, "location.lat debe ser una coordenada válida (-90 a 90)")
+    .max(90, "location.lat debe ser una coordenada válida (-90 a 90)"),
+  lng: z.number()
+    .min(-180, "location.lng debe ser una coordenada válida (-180 a 180)")
+    .max(180, "location.lng debe ser una coordenada válida (-180 a 180)"),
+}).openapi({ description: "Coordenadas geográficas del usuario" });
 
 /**
- * Valida que el teléfono tenga un formato internacional o local básico.
- * Acepta: +58XXXXXXXXX, 58XXXXXXXXX, 0XXX-XXXXXXX, etc.
- * @param {string} phone
- * @returns {boolean}
+ * Campos comunes a todos los registros (fullName, email, phone, password,
+ * location, zone). Se extiende con .extend() en cada DTO.
  */
-function isValidPhone(phone) {
-  return /^\+?[0-9]{7,15}$/.test(phone.replace(/[\s-]/g, ""));
-}
+const CommonFields = z.object({
+  fullName: z.string()
+    .min(1, "fullName es requerido")
+    .openapi({ example: "María González", description: "Nombre completo" }),
 
-/**
- * Valida que el password tenga al menos 8 caracteres.
- * @param {string} password
- * @returns {boolean}
- */
-function isValidPassword(password) {
-  return typeof password === "string" && password.length >= 8;
-}
+  email: z.string()
+    .min(1, "email es requerido")
+    .email("email no tiene un formato válido")
+    .openapi({ example: "maria@email.com", description: "Correo electrónico" }),
 
-/**
- * Valida campos comunes a todos los registros (fullName, email, phone, password, location, zone).
- * @param {Object} payload
- * @returns {string[]} — Array de errores (vacío si es válido)
- */
-function validateCommonFields(payload) {
-  const errors = [];
+  phone: z.string()
+    .min(1, "phone es requerido")
+    .refine(
+      (val) => /^\+?[0-9]{7,15}$/.test(val.replace(/[\s-]/g, "")),
+      "phone no tiene un formato válido (mínimo 7 dígitos)",
+    )
+    .openapi({ example: "+584241234567", description: "Teléfono (formato internacional o local)" }),
 
-  // fullName — requerido
-  if (isBlank(payload.fullName)) {
-    errors.push("fullName es requerido");
-  }
+  password: z.string()
+    .min(8, "password debe tener al menos 8 caracteres")
+    .openapi({ example: "unaClaveSegura2024!", description: "Contraseña (mín. 8 caracteres)" }),
 
-  // email — requerido y con formato válido
-  if (isBlank(payload.email)) {
-    errors.push("email es requerido");
-  } else if (!isValidEmail(payload.email.trim())) {
-    errors.push("email no tiene un formato válido");
-  }
+  location: LocationSchema.nullable().optional()
+    .openapi({ description: "Ubicación geográfica (opcional)" }),
 
-  // phone — requerido y con formato válido
-  if (isBlank(payload.phone)) {
-    errors.push("phone es requerido");
-  } else if (!isValidPhone(payload.phone.trim())) {
-    errors.push("phone no tiene un formato válido (mínimo 7 dígitos)");
-  }
-
-  // password — requerido y mínimo 8 caracteres
-  if (isBlank(payload.password)) {
-    errors.push("password es requerido");
-  } else if (!isValidPassword(payload.password)) {
-    errors.push("password debe tener al menos 8 caracteres");
-  }
-
-  // location — opcional, pero si viene debe ser válido
-  if (payload.location !== undefined && payload.location !== null) {
-    const lat = toNumber(payload.location?.lat);
-    const lng = toNumber(payload.location?.lng);
-    if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
-      errors.push("location.lat debe ser una coordenada válida (-90 a 90)");
-    }
-    if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
-      errors.push("location.lng debe ser una coordenada válida (-180 a 180)");
-    }
-  }
-
-  return errors;
-}
+  zone: z.string().optional()
+    .openapi({ example: "Caracas - Zona 1", description: "Zona o sector (opcional)" }),
+});
 
 // ---------------------------------------------------------------------------
-// Validación — Citizen
+// POST /api/auth/register/citizen
 // ---------------------------------------------------------------------------
 
-/**
- * Valida el payload de registro de ciudadano.
- * @param {Object} payload
- * @returns {{ isValid: boolean, errors: string[] }}
- */
-function validateRegisterCitizen(payload) {
-  const errors = validateCommonFields(payload);
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
-}
+const RegisterCitizenBody = CommonFields.extend({}).openapi({
+  description: "Payload para registrar un ciudadano (aprobación automática)",
+  example: {
+    fullName: "María González",
+    email: "maria@email.com",
+    phone: "+584241234567",
+    password: "unaClaveSegura2024!",
+    location: { lat: 10.4806, lng: -66.9036 },
+    zone: "Caracas - Zona 1",
+  },
+});
 
 // ---------------------------------------------------------------------------
-// Validación — Volunteer
+// POST /api/auth/register/volunteer
 // ---------------------------------------------------------------------------
 
-/**
- * Valida el payload de registro de voluntario.
- * @param {Object} payload
- * @returns {{ isValid: boolean, errors: string[] }}
- */
-function validateRegisterVolunteer(payload) {
-  const errors = validateCommonFields(payload);
+const RegisterVolunteerBody = CommonFields.extend({
+  skills: z.array(z.string().min(1, "skills contiene valores vacíos"))
+    .min(1, "skills es requerido y debe contener al menos una habilidad")
+    .openapi({
+      example: ["primeros_auxilios", "logistica", "traduccion_lsen"],
+      description: "Habilidades del voluntario",
+    }),
 
-  // skills — requerido, al menos una
-  if (!Array.isArray(payload.skills) || payload.skills.length === 0) {
-    errors.push("skills es requerido y debe contener al menos una habilidad");
-  } else if (payload.skills.some((s) => isBlank(s))) {
-    errors.push("skills contiene valores vacíos");
-  }
+  availableHours: z.number()
+    .int("availableHours debe ser un número entero")
+    .min(1, "availableHours debe ser al menos 1")
+    .max(168, "availableHours no puede exceder 168 (horas en una semana)")
+    .openapi({ example: 20, description: "Horas disponibles por semana (1-168)" }),
 
-  // availableHours — requerido, entre 1 y 168
-  const hours = toNumber(payload.availableHours);
-  if (!Number.isFinite(hours) || hours < 1 || hours > 168) {
-    errors.push("availableHours es requerido y debe estar entre 1 y 168");
-  }
+  availableDays: z.array(
+    z.string().refine((d) => VALID_DAYS_SET.has(d?.toLowerCase?.() ?? ""), {
+      message: "availableDays contiene valores inválidos. Válidos: " + VALID_DAYS.join(", "),
+    }),
+  )
+    .min(1, "availableDays es requerido y debe contener al menos un día")
+    .openapi({
+      example: ["lunes", "miercoles", "sabado"],
+      description: "Días de la semana disponibles",
+    }),
 
-  // availableDays — requerido, al menos un día válido
-  if (!Array.isArray(payload.availableDays) || payload.availableDays.length === 0) {
-    errors.push("availableDays es requerido y debe contener al menos un día");
-  } else {
-    const invalidDays = payload.availableDays.filter(
-      (d) => !VALID_DAYS_SET.has(d?.toLowerCase?.() ?? ""),
-    );
-    if (invalidDays.length > 0) {
-      errors.push(
-        `availableDays contiene valores inválidos: ${invalidDays.join(", ")}. Válidos: ${VALID_DAYS.join(", ")}`,
-      );
-    }
-  }
-
-  // acceptedTerms — debe ser true
-  if (payload.acceptedTerms !== true) {
-    errors.push("acceptedTerms debe ser true para registrarse como voluntario");
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
-}
+  acceptedTerms: z.literal(true, {
+    errorMap: () => ({ message: "acceptedTerms debe ser true para registrarse como voluntario" }),
+  }).openapi({ example: true, description: "Debe ser true" }),
+}).openapi({
+  description: "Payload para registrar un voluntario (requiere aprobación)",
+  example: {
+    fullName: "Carlos Pérez",
+    email: "voluntario@sara.org",
+    phone: "+584241112233",
+    password: "claveSegura2024!",
+    location: { lat: 10.4806, lng: -66.9036 },
+    zone: "Caracas - Zona 1",
+    skills: ["primeros_auxilios", "logistica"],
+    availableHours: 20,
+    availableDays: ["lunes", "miercoles", "sabado"],
+    acceptedTerms: true,
+  },
+});
 
 // ---------------------------------------------------------------------------
-// Validación — Organization
+// POST /api/auth/register/organization
 // ---------------------------------------------------------------------------
 
-/**
- * Valida el payload de registro de organización.
- * @param {Object} payload
- * @returns {{ isValid: boolean, errors: string[] }}
- */
-function validateRegisterOrganization(payload) {
-  const errors = validateCommonFields(payload);
+const RegisterOrganizationBody = CommonFields.extend({
+  organizationName: z.string()
+    .min(1, "organizationName es requerido para organizaciones")
+    .openapi({ example: "Cruz Roja Venezolana", description: "Nombre de la organización" }),
 
-  // organizationName — requerido
-  if (isBlank(payload.organizationName)) {
-    errors.push("organizationName es requerido para organizaciones");
-  }
+  legalDocument: z.string()
+    .min(1, "legalDocument es requerido para organizaciones")
+    .openapi({ example: "RIF-J-12345678-9", description: "Documento legal (RIF, cédula jurídica)" }),
 
-  // legalDocument — requerido
-  if (isBlank(payload.legalDocument)) {
-    errors.push("legalDocument es requerido para organizaciones");
-  }
+  workArea: z.array(z.string().min(1, "workArea contiene valores vacíos"))
+    .optional()
+    .openapi({
+      example: ["salud", "logistica", "alimentos"],
+      description: "Áreas de trabajo (opcional)",
+    }),
 
-  // workArea — opcional, pero si viene debe ser array de strings
-  if (payload.workArea !== undefined && payload.workArea !== null) {
-    if (!Array.isArray(payload.workArea)) {
-      errors.push("workArea debe ser un arreglo de strings");
-    } else if (payload.workArea.some((a) => isBlank(a))) {
-      errors.push("workArea contiene valores vacíos");
-    }
-  }
-
-  // acceptedTerms — debe ser true
-  if (payload.acceptedTerms !== true) {
-    errors.push("acceptedTerms debe ser true para registrarse como organización");
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
-}
+  acceptedTerms: z.literal(true, {
+    errorMap: () => ({ message: "acceptedTerms debe ser true para registrarse como organización" }),
+  }).openapi({ example: true, description: "Debe ser true" }),
+}).openapi({
+  description: "Payload para registrar una organización (requiere aprobación)",
+  example: {
+    fullName: "Ana Rodríguez",
+    email: "contacto@cruzroja.org.ve",
+    phone: "+582121234567",
+    password: "claveOrg2024!",
+    location: { lat: 10.4806, lng: -66.9036 },
+    zone: "Caracas - Centro",
+    organizationName: "Cruz Roja Venezolana",
+    legalDocument: "RIF-J-12345678-9",
+    workArea: ["salud", "logistica"],
+    acceptedTerms: true,
+  },
+});
 
 // ---------------------------------------------------------------------------
-// Normalización — Citizen
+// POST /api/auth/register/admin
+// ---------------------------------------------------------------------------
+
+const RegisterAdminBody = CommonFields.extend({
+  adminSecret: z.string()
+    .min(1, "adminSecret es requerido para registrar un administrador")
+    .openapi({
+      example: "******",
+      description: "Secreto de administrador configurado en el servidor",
+    }),
+}).openapi({
+  description: "Payload para registrar un administrador (protegido por ADMIN_SECRET)",
+  example: {
+    fullName: "Admin Principal",
+    email: "admin@sara.org",
+    phone: "+584249990000",
+    password: "adminClaveSegura2024!",
+    location: { lat: 10.4806, lng: -66.9036 },
+    zone: "Caracas - Oficina Central",
+    adminSecret: "******",
+  },
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/login
+// ---------------------------------------------------------------------------
+
+const LoginBody = z.object({
+  email: z.string()
+    .min(1, "email es requerido")
+    .email("email no tiene un formato válido")
+    .openapi({ example: "maria@email.com", description: "Correo electrónico registrado" }),
+
+  password: z.string()
+    .min(1, "password es requerido")
+    .openapi({ example: "unaClaveSegura2024!", description: "Contraseña" }),
+}).openapi({
+  description: "Credenciales de inicio de sesión",
+  example: {
+    email: "maria@email.com",
+    password: "unaClaveSegura2024!",
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Schemas de respuesta (para documentación OpenAPI)
+// ---------------------------------------------------------------------------
+
+/** Envoltura estándar de error: { errors: [...] } */
+const ErrorResponse = z.object({
+  errors: z.array(z.string()).openapi({ example: ["email es requerido"] }),
+}).openapi({ description: "Respuesta de error con lista de mensajes" });
+
+/** Usuario sin password_hash (respuesta de registro y GET /me) */
+const UserProfile = z.object({
+  id: z.string().uuid().openapi({ example: "550e8400-e29b-41d4-a716-446655440000" }),
+  full_name: z.string().openapi({ example: "María González" }),
+  email: z.string().email().openapi({ example: "maria@email.com" }),
+  phone: z.string().openapi({ example: "+584241234567" }),
+  role: z.enum(ROLES).openapi({ example: "citizen" }),
+  status: z.string().openapi({ example: "approved" }),
+  location: LocationSchema.nullable().optional(),
+  zone: z.string().nullable().optional().openapi({ example: "Caracas - Zona 1" }),
+  phone_verified: z.boolean().openapi({ example: false }),
+  email_verified: z.boolean().openapi({ example: false }),
+  created_at: z.string().datetime().openapi({ example: "2024-01-15T10:30:00.000Z" }),
+  updated_at: z.string().datetime().openapi({ example: "2024-01-15T10:30:00.000Z" }),
+}).openapi({ description: "Perfil de usuario sin datos sensibles" });
+
+/** Respuesta de login: { token, user } */
+const LoginResponse = z.object({
+  data: z.object({
+    token: z.string().openapi({
+      example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      description: "JWT para usar en Authorization: Bearer <token>",
+    }),
+    user: UserProfile,
+  }),
+}).openapi({ description: "Token JWT + perfil del usuario" });
+
+// ---------------------------------------------------------------------------
+// Normalizadores (SIN cambios — los servicios dependen de ellos)
 // ---------------------------------------------------------------------------
 
 /**
  * Normaliza el payload de registro de ciudadano para inserción en DB.
- * @param {Object} payload — ya validado
+ * @param {Object} payload — ya validado por Zod
  * @returns {{ user: Object }}
  */
 function normalizeRegisterCitizen(payload) {
@@ -249,13 +302,9 @@ function normalizeRegisterCitizen(payload) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Normalización — Volunteer
-// ---------------------------------------------------------------------------
-
 /**
  * Normaliza el payload de registro de voluntario para inserción en DB.
- * @param {Object} payload — ya validado
+ * @param {Object} payload — ya validado por Zod
  * @returns {{ user: Object, details: Object }}
  */
 function normalizeRegisterVolunteer(payload) {
@@ -279,13 +328,9 @@ function normalizeRegisterVolunteer(payload) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Normalización — Organization
-// ---------------------------------------------------------------------------
-
 /**
  * Normaliza el payload de registro de organización para inserción en DB.
- * @param {Object} payload — ya validado
+ * @param {Object} payload — ya validado por Zod
  * @returns {{ user: Object, details: Object }}
  */
 function normalizeRegisterOrganization(payload) {
@@ -309,38 +354,10 @@ function normalizeRegisterOrganization(payload) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Validación — Admin
-// ---------------------------------------------------------------------------
-
-/**
- * Valida el payload de registro de administrador.
- * Requiere adminSecret para autorizar la creación.
- * @param {Object} payload
- * @returns {{ isValid: boolean, errors: string[] }}
- */
-function validateRegisterAdmin(payload) {
-  const errors = validateCommonFields(payload);
-
-  // adminSecret — requerido
-  if (isBlank(payload.adminSecret)) {
-    errors.push("adminSecret es requerido para registrar un administrador");
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Normalización — Admin
-// ---------------------------------------------------------------------------
-
 /**
  * Normaliza el payload de registro de administrador para inserción en DB.
  * No se crea fila en user_details (igual que citizen).
- * @param {Object} payload — ya validado
+ * @param {Object} payload — ya validado por Zod
  * @returns {{ user: Object }}
  */
 function normalizeRegisterAdmin(payload) {
@@ -358,23 +375,31 @@ function normalizeRegisterAdmin(payload) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Exports
+// ---------------------------------------------------------------------------
+
 module.exports = {
   // Constantes
   ROLES,
   VALID_DAYS,
   VALID_DAYS_SET,
   INITIAL_STATUS,
-  // Helpers
-  isValidEmail,
-  isValidPhone,
-  isValidPassword,
-  validateCommonFields,
-  // Validación
-  validateRegisterCitizen,
-  validateRegisterVolunteer,
-  validateRegisterOrganization,
-  validateRegisterAdmin,
-  // Normalización
+
+  // Schemas Zod para validación 
+  RegisterCitizenBody,
+  RegisterVolunteerBody,
+  RegisterOrganizationBody,
+  RegisterAdminBody,
+  LoginBody,
+
+  // Schemas de respuesta para OpenAPI 
+  UserProfile,
+  LoginResponse,
+  ErrorResponse,
+  LocationSchema,
+
+  // Normalizadores
   normalizeRegisterCitizen,
   normalizeRegisterVolunteer,
   normalizeRegisterOrganization,
