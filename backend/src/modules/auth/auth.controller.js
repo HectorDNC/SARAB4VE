@@ -1,7 +1,31 @@
 /**
  * Controlador — handlers HTTP para el dominio de auth (registro).
  * Cada handler es una factoría que recibe service, schema y repository.
+ *
+ * Cambio: la validación ahora usa Zod.safeParse() en vez de schema.validate*().
  */
+const {
+  RegisterCitizenBody,
+  RegisterVolunteerBody,
+  RegisterOrganizationBody,
+  RegisterAdminBody,
+  LoginBody,
+} = require("./auth.schema");
+
+// ---------------------------------------------------------------------------
+// Helper — convierte errores de Zod al formato { errors: string[] }
+// ---------------------------------------------------------------------------
+
+/**
+ * Convierte un ZodError en el formato de errores de SARA.
+ * @param {import("zod").ZodError} zodError
+ * @returns {string[]}
+ */
+function formatZodErrors(zodError) {
+  return zodError.errors.map(
+    (e) => `${e.path.join(".")}: ${e.message}`,
+  );
+}
 
 // ---------------------------------------------------------------------------
 // POST /api/auth/register/citizen
@@ -15,14 +39,16 @@
  */
 function registerCitizen(service, schema, repository) {
   return async (req, res, next) => {
-    const validation = schema.validateRegisterCitizen(req.body);
+    // Validación con Zod
+    const validation = RegisterCitizenBody.safeParse(req.body);
 
-    if (!validation.isValid) {
-      return res.status(400).json({ errors: validation.errors });
+    if (!validation.success) {
+      return res.status(400).json({ errors: formatZodErrors(validation.error) });
     }
 
     try {
-      const result = await service.registerCitizen(req.body, schema, repository);
+      // validation.data ya tiene los campos validados
+      const result = await service.registerCitizen(validation.data, schema, repository);
 
       if (result.errors) {
         return res.status(result.status).json({ errors: result.errors });
@@ -47,14 +73,16 @@ function registerCitizen(service, schema, repository) {
  */
 function registerVolunteer(service, schema, repository) {
   return async (req, res, next) => {
-    const validation = schema.validateRegisterVolunteer(req.body);
+    // Validación con Zod
+    const validation = RegisterVolunteerBody.safeParse(req.body);
 
-    if (!validation.isValid) {
-      return res.status(400).json({ errors: validation.errors });
+    if (!validation.success) {
+      return res.status(400).json({ errors: formatZodErrors(validation.error) });
     }
 
     try {
-      const result = await service.registerVolunteer(req.body, schema, repository);
+      // validation.data ya tiene los campos validados
+      const result = await service.registerVolunteer(validation.data, schema, repository);
 
       if (result.errors) {
         return res.status(result.status).json({ errors: result.errors });
@@ -79,14 +107,16 @@ function registerVolunteer(service, schema, repository) {
  */
 function registerOrganization(service, schema, repository) {
   return async (req, res, next) => {
-    const validation = schema.validateRegisterOrganization(req.body);
+    // Validación con Zod
+    const validation = RegisterOrganizationBody.safeParse(req.body);
 
-    if (!validation.isValid) {
-      return res.status(400).json({ errors: validation.errors });
+    if (!validation.success) {
+      return res.status(400).json({ errors: formatZodErrors(validation.error) });
     }
 
     try {
-      const result = await service.registerOrganization(req.body, schema, repository);
+      // validation.data ya tiene los campos validados
+      const result = await service.registerOrganization(validation.data, schema, repository);
 
       if (result.errors) {
         return res.status(result.status).json({ errors: result.errors });
@@ -111,14 +141,16 @@ function registerOrganization(service, schema, repository) {
  */
 function registerAdmin(service, schema, repository) {
   return async (req, res, next) => {
-    const validation = schema.validateRegisterAdmin(req.body);
+    // Validación con Zod
+    const validation = RegisterAdminBody.safeParse(req.body);
 
-    if (!validation.isValid) {
-      return res.status(400).json({ errors: validation.errors });
+    if (!validation.success) {
+      return res.status(400).json({ errors: formatZodErrors(validation.error) });
     }
 
     try {
-      const result = await service.registerAdmin(req.body, schema, repository);
+      // validation.data ya tiene los campos validados
+      const result = await service.registerAdmin(validation.data, schema, repository);
 
       if (result.errors) {
         return res.status(result.status).json({ errors: result.errors });
@@ -143,19 +175,14 @@ function registerAdmin(service, schema, repository) {
  */
 function login(service, schema, repository) {
   return async (req, res, next) => {
-    const { email, password } = req.body;
-    const errors = [];
+    // Validación con Zod (reemplaza la validación manual inline)
+    const validation = LoginBody.safeParse(req.body);
 
-    if (!email || typeof email !== "string" || email.trim() === "") {
-      errors.push("email es requerido");
-    }
-    if (!password || typeof password !== "string" || password === "") {
-      errors.push("password es requerido");
+    if (!validation.success) {
+      return res.status(400).json({ errors: formatZodErrors(validation.error) });
     }
 
-    if (errors.length > 0) {
-      return res.status(400).json({ errors });
-    }
+    const { email, password } = validation.data;
 
     try {
       const result = await service.login(email.trim(), password, repository);
