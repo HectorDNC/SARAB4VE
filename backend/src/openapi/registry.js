@@ -31,6 +31,15 @@ const {
 } = require("../modules/auth/auth.schema");
 
 // ---------------------------------------------------------------------------
+// Schemas del módulo users (ya tienen .openapi() definido en users.schema.js)
+// ---------------------------------------------------------------------------
+const {
+  ListUsersQuery,
+  UpdateUserBody,
+  ListUsersResponse,
+} = require("../modules/users/users.schema");
+
+// ---------------------------------------------------------------------------
 // Schemas para módulos que aún no están migrados a Zod
 // (solo se usan para documentación OpenAPI, no para validación en runtime)
 // ---------------------------------------------------------------------------
@@ -525,6 +534,222 @@ registry.registerPath({
     201: { description: "Emergencia creada exitosamente" },
     400: {
       description: "Error de validación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+// =========================================================================
+// USERS — Administración de usuarios
+// =========================================================================
+
+registry.registerPath({
+  method: "get",
+  path: "/api/users",
+  summary: "Listar usuarios",
+  description: [
+    "Lista todos los usuarios registrados con filtros opcionales y paginación.",
+    "Solo accesible por administradores.",
+  ].join(" "),
+  tags: ["Users"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    query: ListUsersQuery,
+  },
+  responses: {
+    200: {
+      description: "Lista paginada de usuarios",
+      content: { "application/json": { schema: ListUsersResponse } },
+    },
+    400: {
+      description: "Error de validación en query params",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Acceso denegado — solo administradores",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/users/{id}",
+  summary: "Obtener usuario por ID",
+  description: [
+    "Obtiene los datos de un usuario específico por su UUID.",
+    "Los administradores pueden ver cualquier usuario.",
+    "Otros roles solo pueden ver su propio perfil.",
+  ].join(" "),
+  tags: ["Users"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID del usuario",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Usuario encontrado",
+      content: { "application/json": { schema: z.object({ data: UserProfile }) } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "No tienes permiso para ver este usuario",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    404: {
+      description: "Usuario no encontrado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/api/users/{id}",
+  summary: "Actualizar usuario",
+  description: [
+    "Actualiza los datos de un usuario.",
+    "Los administradores pueden modificar cualquier usuario.",
+    "Otros roles solo pueden modificar su propio perfil.",
+    "Todos los campos son opcionales — solo se actualiza lo enviado.",
+    "Si se incluye `password`, se hashea automáticamente.",
+  ].join(" "),
+  tags: ["Users"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID del usuario a modificar",
+      }),
+    }),
+    body: {
+      content: { "application/json": { schema: UpdateUserBody } },
+      description: "Campos a actualizar (todos opcionales)",
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      description: "Usuario actualizado exitosamente",
+      content: { "application/json": { schema: z.object({ data: UserProfile }) } },
+    },
+    400: {
+      description: "Error de validación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "No tienes permiso para modificar este usuario",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    404: {
+      description: "Usuario no encontrado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    409: {
+      description: "Conflicto — email o teléfono ya en uso por otro usuario",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/users/{id}/approve",
+  summary: "Aprobar usuario",
+  description: [
+    "Aprueba un usuario que está en estado `pending`.",
+    "Solo accesible por administradores.",
+    "El usuario pasa a estado `approved` y se registra quién lo aprobó.",
+  ].join(" "),
+  tags: ["Users"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID del usuario a aprobar",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Usuario aprobado exitosamente",
+      content: { "application/json": { schema: z.object({ data: UserProfile }) } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Acceso denegado — solo administradores",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    404: {
+      description: "Usuario no encontrado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    409: {
+      description: "El usuario no está en estado pendiente",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/users/{id}/reject",
+  summary: "Rechazar usuario",
+  description: [
+    "Rechaza un usuario que está en estado `pending`.",
+    "Solo accesible por administradores.",
+    "El usuario pasa a estado `rejected`.",
+  ].join(" "),
+  tags: ["Users"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID del usuario a rechazar",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Usuario rechazado exitosamente",
+      content: { "application/json": { schema: z.object({ data: UserProfile }) } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Acceso denegado — solo administradores",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    404: {
+      description: "Usuario no encontrado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    409: {
+      description: "El usuario no está en estado pendiente",
       content: { "application/json": { schema: ErrorResponse } },
     },
   },

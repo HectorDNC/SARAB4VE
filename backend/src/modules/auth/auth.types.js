@@ -73,37 +73,38 @@
  */
 
 /**
- * Fila retornada por SELECT en users (sin password_hash).
+ * Fila retornada por SELECT en users (sin passwordHash).
+ * Las keys se normalizan a camelCase en el repositorio.
  * @typedef {Object} UserRow
  * @property {string}      id
- * @property {string}      full_name
+ * @property {string}      fullName
  * @property {string}      email
  * @property {string}      phone
  * @property {UserRole}    role
  * @property {UserStatus}  status
  * @property {Object|null} location   — GeoJSON point o null
  * @property {string|null} zone
- * @property {boolean}     phone_verified
- * @property {boolean}     email_verified
- * @property {string}      created_at
- * @property {string}      updated_at
+ * @property {boolean}     phoneVerified
+ * @property {boolean}     emailVerified
+ * @property {string}      createdAt
+ * @property {string}      updatedAt
  */
 
 /**
- * Fila retornada por SELECT en user_details.
+ * Fila retornada por SELECT en user_details (keys normalizadas a camelCase).
  * @typedef {Object} UserDetailsRow
- * @property {string}      user_id
+ * @property {string}      userId
  * @property {string[]}    skills
- * @property {number}      available_hours
- * @property {string[]}    available_days
- * @property {string|null} organization_name
- * @property {string|null} legal_document
- * @property {string[]}    work_area
- * @property {boolean}     accepted_terms
- * @property {string|null} terms_accepted_at
- * @property {string|null} approved_by
- * @property {string|null} approved_at
- * @property {string}      updated_at
+ * @property {number}      availableHours
+ * @property {string[]}    availableDays
+ * @property {string|null} organizationName
+ * @property {string|null} legalDocument
+ * @property {string[]}    workArea
+ * @property {boolean}     acceptedTerms
+ * @property {string|null} termsAcceptedAt
+ * @property {string|null} approvedBy
+ * @property {string|null} approvedAt
+ * @property {string}      updatedAt
  */
 
 /**
