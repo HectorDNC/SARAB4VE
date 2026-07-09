@@ -174,6 +174,76 @@ const swaggerHtml = `<!DOCTYPE html>
         color: #000000 !important;
         background-color: #f5f5f5 !important;
     }
+
+    /* ── Modal Authorize ── */
+    .swagger-ui .dialog-ux .modal-ux {
+      background: #1e1e2e !important;
+      border: 1px solid #3b3b5c !important;
+      border-radius: 12px !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+    }
+    .swagger-ui .dialog-ux .modal-ux-header {
+      border-bottom: 1px solid #3b3b5c !important;
+      padding: 16px 24px !important;
+    }
+    .swagger-ui .dialog-ux .modal-ux-header h3 {
+      color: #ffffff !important;
+      font-size: 1.2rem !important;
+    }
+    .swagger-ui .dialog-ux .modal-ux-header .close-modal {
+      opacity: 0.8;
+    }
+    .swagger-ui .dialog-ux .modal-ux-content {
+      padding: 20px 24px !important;
+    }
+    .swagger-ui .dialog-ux .modal-ux-content h4 {
+      color: #ffffff !important;
+      font-size: 0.95rem !important;
+      margin-bottom: 8px !important;
+    }
+    .swagger-ui .dialog-ux .modal-ux-content p,
+    .swagger-ui .dialog-ux .modal-ux-content label {
+      color: #ffffff !important;
+    }
+    /* Input del API key */
+    .swagger-ui .dialog-ux .modal-ux-content input {
+      background: #f0f0f0 !important;
+      color: #111111 !important;
+      border: 1px solid #3b3b5c !important;
+      border-radius: 6px !important;
+      padding: 8px 12px !important;
+      width: 100% !important;
+      color-scheme: none !important;
+    }
+    .swagger-ui .dialog-ux .modal-ux-content input:focus {
+      border-color: #61affe !important;
+      outline: none !important;
+      box-shadow: 0 0 0 2px rgba(97,175,254,0.3) !important;
+    }
+    /* Botones del modal */
+    .swagger-ui .dialog-ux .modal-ux-content .auth-btn-wrapper {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+    .swagger-ui .dialog-ux .modal-ux-content .btn-done,
+    .swagger-ui .dialog-ux .modal-ux-content .btn-cancel {
+      padding: 8px 24px !important;
+      border-radius: 6px !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      border: 1px solid #3b3b5c !important;
+    }
+    .swagger-ui .dialog-ux .modal-ux-content .btn-done {
+      background: #61affe !important;
+      color: #ffffff !important;
+    }
+    .swagger-ui .dialog-ux .modal-ux-content .btn-cancel {
+      background: transparent !important;
+      color: #ffffff !important;
+    }
+
     /* Scrollbar sutil */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #0f0f1a; }
