@@ -9,35 +9,35 @@ const db = require("../../db");
 // Constantes — columnas explícitas (nunca SELECT *)
 // ---------------------------------------------------------------------------
 
-/** Columnas que se retornan al crear un usuario (sin password_hash). */
+/** Columnas que se retornan al crear un usuario (sin passwordHash). */
 const USER_SELECT_COLUMNS = `
   id,
-  full_name,
+  full_name AS "fullName",
   email,
   phone,
   role,
   status,
   ST_AsGeoJSON(location)::json AS location,
   zone,
-  phone_verified,
-  email_verified,
-  created_at,
-  updated_at
+  phone_verified AS "phoneVerified",
+  email_verified AS "emailVerified",
+  created_at AS "createdAt",
+  updated_at AS "updatedAt"
 `;
 
-/** Columnas de user_details (sin user_id duplicado en el objeto anidado). */
+/** Columnas de user_details. */
 const USER_DETAILS_SELECT_COLUMNS = `
   skills,
-  available_hours,
-  available_days,
-  organization_name,
-  legal_document,
-  work_area,
-  accepted_terms,
-  terms_accepted_at,
-  approved_by,
-  approved_at,
-  updated_at
+  available_hours AS "availableHours",
+  available_days AS "availableDays",
+  organization_name AS "organizationName",
+  legal_document AS "legalDocument",
+  work_area AS "workArea",
+  accepted_terms AS "acceptedTerms",
+  terms_accepted_at AS "termsAcceptedAt",
+  approved_by AS "approvedBy",
+  approved_at AS "approvedAt",
+  updated_at AS "updatedAt"
 `;
 
 // ---------------------------------------------------------------------------
@@ -182,18 +182,18 @@ async function withTransaction(callback) {
 const FIND_USER_BY_EMAIL = `
   SELECT
     id,
-    full_name,
+    full_name AS "fullName",
     email,
     phone,
-    password_hash,
+    password_hash AS "passwordHash",
     role,
     status,
     ST_AsGeoJSON(location)::json AS location,
     zone,
-    phone_verified,
-    email_verified,
-    created_at,
-    updated_at
+    phone_verified AS "phoneVerified",
+    email_verified AS "emailVerified",
+    created_at AS "createdAt",
+    updated_at AS "updatedAt"
   FROM users
   WHERE email = $1
 `;

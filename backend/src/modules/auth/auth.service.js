@@ -266,7 +266,7 @@ async function login(email, password, repository) {
   }
 
   // Comparar contraseñas
-  const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+  const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
   if (!isPasswordValid) {
     return {
       errors: ["Credenciales inválidas"],
@@ -287,8 +287,8 @@ async function login(email, password, repository) {
 
   const token = jwt.sign(payload, jwtSecret, { expiresIn: TOKEN_EXPIRATION });
 
-  // Eliminar password_hash de la respuesta
-  const { password_hash, ...safeUser } = user;
+  // Eliminar passwordHash de la respuesta
+  const { passwordHash, ...safeUser } = user;
 
   return {
     data: { token, user: safeUser },

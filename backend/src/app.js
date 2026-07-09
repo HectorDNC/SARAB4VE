@@ -3,6 +3,7 @@ const cors = require("cors");
 const helpRequestsRouter = require("./modules/helpRequests/helpRequests.routes");
 const emergenciesRouter = require("./modules/emergencies/emergencies.routes");
 const authRouter = require("./modules/auth/auth.routes");
+const usersRouter = require("./modules/users/users.routes");
 const { nodeEnv } = require("./config");
 
 const app = express();
@@ -19,6 +20,7 @@ app.get("/health", (_req, res) => {
 app.use("/api/help-requests", helpRequestsRouter);
 app.use("/api/emergencies", emergenciesRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/users", usersRouter);
 
 // 📚 Documentación OpenAPI
 const { setupDocs } = require("./openapi");

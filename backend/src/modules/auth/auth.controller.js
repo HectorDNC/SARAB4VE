@@ -18,11 +18,13 @@ const {
 
 /**
  * Convierte un ZodError en el formato de errores de SARA.
+ * Compatible con Zod v3 (.errors) y Zod v4 (.issues).
  * @param {import("zod").ZodError} zodError
  * @returns {string[]}
  */
 function formatZodErrors(zodError) {
-  return zodError.errors.map(
+  const issues = zodError?.issues || zodError?.errors || [];
+  return issues.map(
     (e) => `${e.path.join(".")}: ${e.message}`,
   );
 }
