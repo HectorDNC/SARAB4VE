@@ -5,11 +5,10 @@
  *   - setupDocs(app): monta GET /api/docs (Swagger UI) y GET /api/docs.json (JSON)
  *   - document: el documento OpenAPI generado (por si se necesita exportar)
  *
- * Solo debe llamarse a setupDocs() en ambientes dev/staging.
- * El guard de producción se hace en app.js.
+ * Usa Swagger UI desde CDN (jsdelivr) en lugar de swaggerUi.serve porque
+ * Vercel + @vercel/node rompe express.static (serve-static) en serverless.
  */
 const { OpenApiGeneratorV3 } = require("@asteasolutions/zod-to-openapi");
-const swaggerUi = require("swagger-ui-express");
 const { registry } = require("./registry");
 
 // ---------------------------------------------------------------------------
@@ -60,35 +59,174 @@ const document = generator.generateDocument({
 });
 
 // ---------------------------------------------------------------------------
-// Setup en la app Express (solo llamado desde app.js si NODE_ENV !== production)
+// HTML de Swagger UI con assets desde CDN + spec inline
+// ---------------------------------------------------------------------------
+
+const SWAGGER_VERSION = "5.20.6"; // mantener en sync con swagger-ui-dist
+
+const swaggerHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SARA API — Documentación</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@${SWAGGER_VERSION}/swagger-ui.css">
+  <style>
+    /* ── Base (modo oscuro) ── */
+    .swagger-ui .topbar { display: none }
+    html { box-sizing: border-box; overflow-y: scroll; }
+    *, *:before, *:after { box-sizing: inherit; }
+    body {
+      margin: 0;
+      background: #0f0f1a;
+      color-scheme: dark;
+    }
+
+    /* ── Capa de inversión principal ── */
+    .swagger-ui {
+      filter: invert(100%) hue-rotate(180deg) saturate(1.3);
+    }
+    /* Unificar fondo del contenedor de servidores con el resto */
+    .swagger-ui .scheme-container {
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+    /* Input y select de Servers: fondo oscuro + letra blanca */
+    .swagger-ui .scheme-container input,
+    .swagger-ui .scheme-container select {
+      background: #1a1a2e !important;
+      color: #ffffff !important;
+      border-color: #3b3b5c !important;
+    }
+    /* Restaurar colores originales en bloques de código */
+    .swagger-ui .highlight-code,
+    .swagger-ui .microlight,
+    .swagger-ui .model-example .tablinks,
+    .swagger-ui .markdown code,
+    .swagger-ui .renderedMarkdown code,
+    .swagger-ui .json-schema-2020-12__title,
+    .swagger-ui .json-schema-2020-12-body .json-schema-2020-12,
+    .swagger-ui .json-schema-2020-12-accordion {
+    //   filter: invert(100%) hue-rotate(180deg);
+    }
+    /* Restaurar imágenes e iconos */
+    .swagger-ui img,
+    .swagger-ui svg,
+    .swagger-ui .arrow {
+      filter: invert(100%) hue-rotate(180deg);
+    }
+    /* Forzar texto blanco en todos los textos relevantes */
+    .swagger-ui .opblock-summary-description,
+    .swagger-ui .opblock-summary-path,
+    .swagger-ui .info .title,
+    .swagger-ui .info p,
+    .swagger-ui .info li,
+    .swagger-ui .info a,
+    .swagger-ui .opblock-tag,
+    .swagger-ui .opblock-tag small,
+    .swagger-ui .parameter__name,
+    .swagger-ui .parameter__type,
+    .swagger-ui .response-col_status,
+    .swagger-ui .response-col_description,
+    .swagger-ui .model-title,
+    .swagger-ui .model-box,
+    .swagger-ui .tab li,
+    .swagger-ui .opblock-section-header h4,
+    .swagger-ui .opblock-section-header label,
+    .swagger-ui .btn,
+    .swagger-ui .authorization__btn,
+    .swagger-ui .dialog-ux .modal-ux-header h3,
+    .swagger-ui .dialog-ux .modal-ux-content p,
+    .swagger-ui .dialog-ux .modal-ux-content label {
+      color: inherit;
+    }
+    .swagger-ui .info h1, .swagger-ui .info h2, .swagger-ui .info h3,
+    .swagger-ui .info h4, .swagger-ui .info h5, .swagger-ui .info li,
+    .swagger-ui .info p, .swagger-ui .info table,
+    .scheme-container, p, li, button, span, h1, h2, h3, h4, h5, h6,
+    th, td, label {
+      color: #ffffff !important;
+    }
+    .swagger-ui .opblock-section-header {
+      background: rgba(97,175,254,.1) !important;
+    }
+    .wrapper, .tab, .opblock-summary-path-description-wrapper, .opblock-summary-path,
+    .opblock-summary-description, .opblock-description-wrapper, .button.tablinks {
+        color: #ffffff !important;
+    }
+    /* Mejor contraste en input de try-out */
+    .swagger-ui input[type="text"],
+    .swagger-ui textarea,
+    .swagger-ui select {
+      color-scheme: dark;
+    }
+    .swagger-ui input[type="text"],
+    .swagger-ui input:not([type]),
+    .swagger-ui textarea,
+    .swagger-ui select {
+        color: #000000 !important;
+        background-color: #f5f5f5 !important;
+        border-color: #3b3b5c !important;
+        color-scheme: none;
+    }
+    /* Ajuste extra para el input de try-out (textarea del body de la request) */
+    .swagger-ui .body-param__text,
+    .swagger-ui textarea.body-param__text {
+        color: #000000 !important;
+        background-color: #f5f5f5 !important;
+    }
+    /* Scrollbar sutil */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f0f1a; }
+    ::-webkit-scrollbar-thumb { background: #3b3b5c; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #5a5a7a; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@${SWAGGER_VERSION}/swagger-ui-bundle.js" crossorigin></script>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@${SWAGGER_VERSION}/swagger-ui-standalone-preset.js" crossorigin></script>
+  <script>
+    window.onload = function () {
+      window.ui = SwaggerUIBundle({
+        spec: __SWAGGER_SPEC__,
+        dom_id: "#swagger-ui",
+        deepLinking: true,
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+        plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+        layout: "StandaloneLayout",
+        tagsSorter: "alpha",
+        operationsSorter: "method"
+      });
+    };
+  </script>
+</body>
+</html>`;
+
+/** HTML final con el spec incrustado (generado una sola vez) */
+const htmlWithSpec = swaggerHtml.replace(
+  "__SWAGGER_SPEC__",
+  JSON.stringify(document),
+);
+
+// ---------------------------------------------------------------------------
+// Setup en la app Express
 // ---------------------------------------------------------------------------
 
 /**
  * Monta los endpoints de documentación en la app.
- * GET /api/docs     → Swagger UI interactiva
+ * GET /api/docs     → Swagger UI interactiva (CDN, spec inline)
  * GET /api/docs.json → Documento OpenAPI en JSON
  *
  * @param {import("express").Express} app
  */
 function setupDocs(app) {
-  // Swagger UI personalizada (sin topbar de Swagger, título SARA)
-  const swaggerOptions = {
-    customCss: ".swagger-ui .topbar { display: none }",
-    customSiteTitle: "SARA API — Documentación",
-    swaggerOptions: {
-      // Ordenar tags alfabéticamente y mantener Auth primero
-      tagsSorter: "alpha",
-      operationsSorter: "method",
-    },
+  const serveDocs = (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(htmlWithSpec);
   };
-
-  // UI interactiva
-  app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(document, swaggerOptions));
-
-  // JSON crudo (útil para importar en Postman, Insomnia, etc.)
-  app.get("/api/docs.json", (_req, res) => {
-    res.json(document);
-  });
+  app.get("/api/docs", serveDocs);
+  app.get("/api/docs/", serveDocs);
+  app.get("/api/docs.json", (_req, res) => res.json(document));
 
   console.log("📚 Swagger UI disponible en /api/docs");
 }

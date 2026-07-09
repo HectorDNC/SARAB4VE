@@ -383,7 +383,6 @@ registry.registerPath({
   summary: "Crear solicitud de ayuda",
   description: "Crea una nueva solicitud de ayuda (SOS). Requiere autenticación.",
   tags: ["Help Requests"],
-  security: [{ bearerAuth: [] }],
   request: {
     body: {
       content: { "application/json": { schema: HelpRequestCreateBody } },

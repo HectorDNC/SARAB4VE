@@ -20,11 +20,9 @@ app.use("/api/help-requests", helpRequestsRouter);
 app.use("/api/emergencies", emergenciesRouter);
 app.use("/api/auth", authRouter);
 
-// 📚 Documentación OpenAPI — solo en dev/staging
-if (nodeEnv !== "production") {
-  const { setupDocs } = require("./openapi");
-  setupDocs(app);
-}
+// 📚 Documentación OpenAPI
+const { setupDocs } = require("./openapi");
+setupDocs(app);
 
 // Error handler global
 app.use((error, _req, res, _next) => {
