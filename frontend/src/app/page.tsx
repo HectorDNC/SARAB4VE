@@ -200,14 +200,14 @@ export default function HomePage() {
             </div>
             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
               <Link
-                href="/registro?tipo=voluntario"
+                href="/registro/volunteer"
                 className="flex items-center justify-center gap-2 bg-on-primary text-primary px-6 py-3 rounded-full font-bold text-sm hover:bg-primary-fixed transition-colors focus-visible:outline-3 focus-visible:outline-on-primary min-h-[48px]"
               >
                 <span className="material-symbols-rounded text-lg" aria-hidden="true">volunteer_activism</span>
                 Soy voluntario
               </Link>
               <Link
-                href="/registro?tipo=organizacion"
+                href="/registro/organization"
                 className="flex items-center justify-center gap-2 border-2 border-on-primary/50 text-on-primary px-6 py-3 rounded-full font-bold text-sm hover:border-on-primary transition-colors focus-visible:outline-3 focus-visible:outline-on-primary min-h-[48px]"
               >
                 <span className="material-symbols-rounded text-lg" aria-hidden="true">corporate_fare</span>

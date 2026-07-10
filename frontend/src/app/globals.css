@@ -107,6 +107,37 @@ a, button {
   outline-offset: 2px;
 }
 
+--- altura personalizada para boton modal ------
+.h-personalized{
+  min-height: 5px!important;
+}
+
+/* ---------- selector de paises ------------ */
+.phone-input-wrapper .PhoneInput {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.phone-input-wrapper .PhoneInputCountry {
+  display: flex !important;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.phone-input-wrapper .PhoneInputCountryIcon {
+  width: 1.5rem;
+  height: 1rem;
+}
+
+.phone-input-wrapper .PhoneInputInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 1rem;
+}
+
 @keyframes toastShrink {
   from {
     width: 100%;
