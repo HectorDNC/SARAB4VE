@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import type { Icon } from "leaflet"; 
+import type { Icon } from "leaflet";
+import { useLocation } from "@/hooks/useLocation";
 
 interface LocationPickerProps {
   value: { lat: number; lng: number } | null;
@@ -29,12 +30,17 @@ function RecenterMap({ center }: { center: [number, number] }) {
   return null;
 }
 
-type GeoStatus = "loading" | "ready" | "error" | "denied";
-
 export default function Location({ value, onChange }: LocationPickerProps) {
-  const [autoCenter, setAutoCenter] = useState<[number, number]>(FALLBACK_CENTER);
-  const [geoStatus, setGeoStatus] = useState<GeoStatus>("loading");
+  const { location: userLocation, status: globalStatus } = useLocation();
   const [markerIcon, setMarkerIcon] = useState<Icon | null>(null);
+
+  // Centrar el mapa en la ubicación del usuario si está disponible
+  const autoCenter: [number, number] = useMemo(() => {
+    if (userLocation) {
+      return [userLocation.latitude, userLocation.longitude];
+    }
+    return FALLBACK_CENTER;
+  }, [userLocation]);
 
   useEffect(() => {
     import("leaflet").then((L) => {
@@ -47,24 +53,6 @@ export default function Location({ value, onChange }: LocationPickerProps) {
       });
       setMarkerIcon(icon);
     });
-  }, []);
-
-  useEffect(() => {
-    if (!navigator?.geolocation) {
-      setGeoStatus("error");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setAutoCenter([position.coords.latitude, position.coords.longitude]);
-        setGeoStatus("ready");
-      },
-      (err) => {
-        setGeoStatus(err.code === err.PERMISSION_DENIED ? "denied" : "error");
-      },
-      { enableHighAccuracy: true, timeout: 7000, maximumAge: 10000 }
-    );
   }, []);
 
   const mapCenter: [number, number] = value ? [value.lat, value.lng] : autoCenter;
@@ -81,16 +69,16 @@ export default function Location({ value, onChange }: LocationPickerProps) {
           attribution='&copy; OpenStreetMap contributors'
         />
         <ClickHandler onChange={onChange} />
-        {!value && geoStatus === "ready" && <RecenterMap center={autoCenter} />}
+        {!value && globalStatus === "ready" && <RecenterMap center={autoCenter} />}
         {value && <Marker position={[value.lat, value.lng]} icon={markerIcon} />}
       </MapContainer>
 
       <div className="text-xs px-3 py-2 bg-surface-container-low space-y-1">
-        {geoStatus === "loading" && <p className="text-on-surface-variant">Buscando tu ubicación actual...</p>}
-        {geoStatus === "denied" && (
+        {globalStatus === "loading" && <p className="text-on-surface-variant">Buscando tu ubicación actual...</p>}
+        {globalStatus === "denied" && (
           <p className="text-on-surface-variant">No activaste tu ubicación. Puedes marcar manualmente en el mapa.</p>
         )}
-        {geoStatus === "error" && (
+        {globalStatus === "error" && (
           <p className="text-on-surface-variant">No pudimos detectar tu ubicación. Marca manualmente en el mapa.</p>
         )}
         {value ? (

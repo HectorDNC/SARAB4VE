@@ -25,7 +25,7 @@ export type MotrizSubcategory =
   | "traslado_asistido" // Necesita ayuda para traslado
   | "evacuacion_accesible"; // Ruta de evacuación accesible
 
-export type LocationStatus = "idle" | "loading" | "ready" | "error";
+export type LocationStatus = "idle" | "loading" | "ready" | "error" | "denied";
 
 // Audio grabado como nota de voz opcional
 export interface VoiceNote {
