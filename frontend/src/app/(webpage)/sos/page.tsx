@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { sendEmergency } from "@/api/emergencies";
 import { alertService } from "@/services/alertService";
+import { useLocation } from "@/hooks/useLocation";
 import StepDisabilityType from "./components/StepDisabilityType";
 import StepInitialStatus from "./components/StepInitialStatus";
 import StepNameAndLocation from "./components/StepNameAndLocation";
@@ -52,6 +53,13 @@ const FALLBACK_EMERGENCY_COORDINATES = {
 };
 
 export default function SOSFlowPage() {
+  const {
+    location,
+    status: globalLocationStatus,
+    error: globalLocationError,
+    requestLocation,
+  } = useLocation();
+
   const [isInjured, setIsInjured] = useState<boolean | null>(null);
   const [cannotMove, setCannotMove] = useState<boolean | null>(null);
   const [disabilityType, setDisabilityType] = useState<DisabilityType | null>(null);
@@ -62,42 +70,27 @@ export default function SOSFlowPage() {
   const [requesterName, setRequesterName] = useState("");
   const [extraInfo, setExtraInfo] = useState("");
   const [voiceNote, setVoiceNote] = useState<VoiceNote | null>(null);
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
-  const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
-  const [locationError, setLocationError] = useState("");
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>(globalLocationStatus);
+  const [locationError, setLocationError] = useState(globalLocationError);
   const [currentStep, setCurrentStep] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const TOTAL_STEPS = 3;
 
-  const requestLocation = () => {
-    if (!navigator?.geolocation) {
-      setLocationStatus("error");
-      setLocationError("Tu dispositivo no permite geolocalizacion.");
-      return;
-    }
-
-    setLocationStatus("loading");
-    setLocationError("");
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLatitude(position.coords.latitude);
-        setLongitude(position.coords.longitude);
-        setLocationStatus("ready");
-      },
-      () => {
-        setLocationStatus("error");
-        setLocationError("Activa la ubicacion para enviar SOS y vuelve a intentar.");
-      },
-      { enableHighAccuracy: true, timeout: 7000, maximumAge: 10000 }
-    );
-  };
-
+  // Sincronizar el estado local con el contexto global de ubicación
   useEffect(() => {
-    requestLocation();
+    setLocationStatus(globalLocationStatus);
+    setLocationError(globalLocationError);
+  }, [globalLocationStatus, globalLocationError]);
+
+  // Al entrar a SOS, pedir ubicación inmediatamente si no está lista
+  useEffect(() => {
+    if (globalLocationStatus !== "ready" && globalLocationStatus !== "loading") {
+      requestLocation();
+    }
+    // Solo ejecutar al montar la página
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const goToStep = (nextStep: number) => {
@@ -137,7 +130,7 @@ export default function SOSFlowPage() {
 
   const description = useMemo(() => {
     const hasManualReference = extraInfo.trim().length > 3;
-    const hasGeolocation = latitude !== null && longitude !== null && locationStatus === "ready";
+    const hasGeolocation = location !== null && locationStatus === "ready";
     const blocks = [
       `Estado inicial: herido=${isInjured ? "si" : "no"}; movilidad_reducida=${cannotMove ? "si" : "no"}.`,
       `Discapacidad prioritaria: ${disabilityType ?? "no definida"}.`,
@@ -151,7 +144,7 @@ export default function SOSFlowPage() {
     ].filter(Boolean);
 
     return blocks.join(" ");
-  }, [cannotMove, communicationMode, disabilityType, extraInfo, isInjured, latitude, locationStatus, longitude, visualSubcategory, neuroSubcategory, motrizSubcategory, voiceNote]);
+  }, [cannotMove, communicationMode, disabilityType, extraInfo, isInjured, location, locationStatus, visualSubcategory, neuroSubcategory, motrizSubcategory, voiceNote]);
 
   const progress = useMemo(() => Math.round((currentStep / TOTAL_STEPS) * 100), [currentStep]);
 
@@ -162,7 +155,7 @@ export default function SOSFlowPage() {
     (disabilityType !== "visual" || visualSubcategory !== null) &&
     (disabilityType !== "neuro" || neuroSubcategory !== null) &&
     (disabilityType !== "motriz" || motrizSubcategory !== null);
-  const hasGeolocation = latitude !== null && longitude !== null && locationStatus === "ready";
+  const hasGeolocation = location !== null && locationStatus === "ready";
   const hasManualReference = extraInfo.trim().length > 3;
   const canContinueStep3 = hasGeolocation || hasManualReference;
 
@@ -216,8 +209,8 @@ export default function SOSFlowPage() {
     }
 
     const finalRequesterName = requesterName.trim() || "Persona en emergencia";
-    const finalLatitude = hasGeolocation ? latitude! : FALLBACK_EMERGENCY_COORDINATES.latitude;
-    const finalLongitude = hasGeolocation ? longitude! : FALLBACK_EMERGENCY_COORDINATES.longitude;
+    const finalLatitude = hasGeolocation ? location!.latitude : FALLBACK_EMERGENCY_COORDINATES.latitude;
+    const finalLongitude = hasGeolocation ? location!.longitude : FALLBACK_EMERGENCY_COORDINATES.longitude;
 
     // Determinar disabilitySubcategory según el tipo de discapacidad
     let disabilitySubcategory: string | null = null;
@@ -317,8 +310,8 @@ export default function SOSFlowPage() {
             <StepInitialStatus
               isInjured={isInjured}
               cannotMove={cannotMove}
-              latitude={latitude}
-              longitude={longitude}
+              latitude={location?.latitude ?? null}
+              longitude={location?.longitude ?? null}
               locationStatus={locationStatus}
               onInjuredChange={setIsInjured}
               onCannotMoveChange={setCannotMove}
@@ -346,8 +339,8 @@ export default function SOSFlowPage() {
               requesterName={requesterName}
               extraInfo={extraInfo}
               voiceNote={voiceNote}
-              latitude={latitude}
-              longitude={longitude}
+              latitude={location?.latitude ?? null}
+              longitude={location?.longitude ?? null}
               locationStatus={locationStatus}
               locationError={locationError}
               onRequesterNameChange={setRequesterName}
