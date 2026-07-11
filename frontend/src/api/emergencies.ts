@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { API, getAuthHeaders } from "./client";
 
 export type EmergencyPayload = {
   requesterName?: string;
@@ -44,7 +44,7 @@ interface ListEmergenciesParams {
 export async function sendEmergency(payload: EmergencyPayload) {
   const res = await fetch(`${API}/api/emergencies`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
 
@@ -73,7 +73,7 @@ export async function listEmergencies(
   const qs = searchParams.toString();
   const url = `${API}/api/emergencies${qs ? `?${qs}` : ""}`;
 
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: getAuthHeaders() });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(text || res.statusText || `HTTP ${res.status}`);

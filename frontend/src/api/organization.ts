@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { API, getAuthHeaders } from "./client";
 
 export type OrganizationPayload = {
   fullName: string;
@@ -16,7 +16,7 @@ export type OrganizationPayload = {
 export async function sendOrganization(payload: OrganizationPayload) {
   const res = await fetch(`${API}/api/auth/register/organization`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
 

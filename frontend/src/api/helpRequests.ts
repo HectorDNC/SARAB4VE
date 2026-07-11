@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { API, getAuthHeaders } from "./client";
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -53,7 +53,7 @@ export async function listHelpRequests(
   const qs = searchParams.toString();
   const url = `${API}/api/help-requests${qs ? `?${qs}` : ""}`;
 
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: getAuthHeaders() });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(text || res.statusText || `HTTP ${res.status}`);
@@ -68,7 +68,7 @@ export async function listHelpRequests(
 export async function sendHelpRequest(payload: HelpRequestPayload) {
   const res = await fetch(`${API}/api/help-requests`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
 
