@@ -37,8 +37,8 @@ export default function Navbar() {
               key={link.href}
               href={link.href}
               className={`px-4 py-2 flex items-center rounded-lg text-sm font-semibold transition-colors min-h-0 ${pathname === link.href
-                  ? "bg-primary-fixed text-primary"
-                  : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                ? "bg-primary-fixed text-primary"
+                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                 }`}
               aria-current={pathname === link.href ? "page" : undefined}
             >
@@ -59,6 +59,10 @@ export default function Navbar() {
             NECESITO AYUDA - SOS
           </Link>
         </div>
+
+        <Link href={'/login'} className={`px-4 py-2 flex items-center rounded-lg text-blue-800 font-bold gap-2`}>
+          <span className="material-symbols-rounded text-blue-800" aria-hidden="true">contacts_product</span> Login
+        </Link>
 
         {/* Mobile menu button */}
         <button
@@ -86,8 +90,8 @@ export default function Navbar() {
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
                   className={`block px-5 py-4 text-base font-medium transition-colors ${pathname === link.href
-                      ? "text-primary bg-primary-fixed"
-                      : "text-on-surface hover:bg-surface-container"
+                    ? "text-primary bg-primary-fixed"
+                    : "text-on-surface hover:bg-surface-container"
                     }`}
                   aria-current={pathname === link.href ? "page" : undefined}
                 >

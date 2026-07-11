@@ -12,34 +12,34 @@ export type DisabilityType = "visual" | "auditiva" | "neuro" | "motriz";
 
 /** Interfaz común para cualquier elemento pintable en el mapa. */
 export interface MapItem {
-  kind: MapItemKind;
-  id: string;
-  lat: number;
-  lng: number;
-  urgency: UrgencyLevel;
-  status: string;
-  createdAt: string;
-  // Emergencia
-  requesterName?: string;
-  disabilityType?: DisabilityType;
-  needType?: string;
-  description?: string;
-  isInjured?: boolean;
-  cannotMove?: boolean;
-  extraInfo?: string;
-  // Help Request
-  contactMethod?: string;
-  contactValue?: string;
-  volunteerName?: string;
-  // Refugio (heredado)
-  name?: string;
-  address?: string;
-  sector?: string;
-  tags?: AccessibilityTag[];
-  services?: ServiceTag[];
-  distance?: string;
-  distanceKm?: number;
-  imagen?: string;
+    kind: MapItemKind;
+    id: string;
+    lat: number;
+    lng: number;
+    urgency: UrgencyLevel;
+    status: string;
+    createdAt: string;
+    // Emergencia
+    requesterName?: string;
+    disabilityType?: DisabilityType;
+    needType?: string;
+    description?: string;
+    isInjured?: boolean;
+    cannotMove?: boolean;
+    extraInfo?: string;
+    // Help Request
+    contactMethod?: string;
+    contactValue?: string;
+    volunteerName?: string;
+    // Refugio (heredado)
+    name?: string;
+    address?: string;
+    sector?: string;
+    tags?: AccessibilityTag[];
+    services?: ServiceTag[];
+    distance?: string;
+    distanceKm?: number;
+    imagen?: string;
 }
 
 // ── LeafletMap ──────────────────────────────────────────────────────────────
@@ -67,6 +67,18 @@ export interface iRefugio {
     imagen?: string;
 }
 
+// -------- Base Person Register ---------------------
+
+interface BaseUserForm {
+    fullName: string;
+    email: string;
+    phone: string;
+    password: string;
+    location: { lat: number; lng: number } | null;
+    zone: string;
+    acceptedTerms: boolean;
+}
+
 // ----------- Volunteer ------------------------
 
 export const SKILLS = [
@@ -89,34 +101,20 @@ export const DAYS_WEEKEND = [
     { value: 'domingo', label: 'Domingo' }
 ]
 
-export interface iVolunteerForm {
-    fullName: string;
-    email: string;
-    phone: string;
-    password: string;
-    location: { lat: number; lng: number } | null;
-    zone: string;
+export interface iVolunteerForm extends BaseUserForm {
     skills: string[];
     availableHours: number;
     availableDays: string[];
-    acceptedTerms: boolean;
 }
 
 
 // ---------- Organitations ---------------------
 
 
-export interface iOrganizationForm {
-    fullName: string;       
-    email: string;
-    phone: string;
-    password: string;
-    location: { lat: number; lng: number } | null;
-    zone: string;
+export interface iOrganizationForm extends BaseUserForm {
     organizationName: string;
     legalDocument: string;
     workArea: string[];
-    acceptedTerms: boolean;
 }
 
 export const WORK_AREAS = [
@@ -127,3 +125,12 @@ export const WORK_AREAS = [
     { value: "rescate", label: "Rescate" },
     { value: "psicosocial", label: "Apoyo psicosocial" },
 ];
+
+// -------- Login Usuario -----------------
+
+export interface UserLogin {
+    email: string;
+    password: string;
+}
+
+export type ROLES_USER = 'admin' | 'organization' | 'volunteer' | 'user';

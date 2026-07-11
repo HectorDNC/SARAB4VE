@@ -1,7 +1,7 @@
 
 import { iRefugio, AccessibilityTag } from "@/types";
-import { TarjetaRefugio } from "@/app/mapa/TarjetaRefugio";
-import { EstadoVacio } from "@/app/mapa/EstadoVacio";
+import { TarjetaRefugio } from "@/app/(webpage)/mapa/TarjetaRefugio";
+import { EstadoVacio } from "@/app/(webpage)/mapa/EstadoVacio";
 
 interface ListaRefugiosProps {
     refugios: iRefugio[];
