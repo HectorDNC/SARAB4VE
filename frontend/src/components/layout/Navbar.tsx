@@ -61,7 +61,7 @@ export default function Navbar() {
         </div>
 
         <Link href={'/login'} className={`px-4 py-2 flex items-center rounded-lg text-blue-800 font-bold gap-2`}>
-          <span className="material-symbols-rounded text-blue-800" aria-hidden="true">contacts_product</span> Login
+          <span className="material-symbols-rounded text-blue-800" aria-hidden="true">contacts_product</span> Iniciar sesión
         </Link>
 
         {/* Mobile menu button */}
