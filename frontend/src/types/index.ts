@@ -66,3 +66,64 @@ export interface iRefugio {
     distance: string;
     imagen?: string;
 }
+
+// ----------- Volunteer ------------------------
+
+export const SKILLS = [
+    { value: 'primeros_auxilios', label: 'Primeros Auxilios' },
+    { value: 'logistica', label: 'Logística' },
+    { value: 'transporte', label: 'Transporte' },
+    { value: 'psicología', label: 'Psicología' },
+    { value: 'idiomas', label: 'Idiomas' },
+    { value: 'rescate', label: 'Rescate' },
+    { value: 'comunicaciones', label: 'Comunicaciones' }
+];
+
+export const DAYS_WEEKEND = [
+    { value: 'lunes', label: 'Lunes' },
+    { value: 'martes', label: 'Martes' },
+    { value: 'miércoles', label: 'Miércoles' },
+    { value: 'jueves', label: 'Jueves' },
+    { value: 'viernes', label: 'Viernes' },
+    { value: 'sábado', label: 'Sábado' },
+    { value: 'domingo', label: 'Domingo' }
+]
+
+export interface iVolunteerForm {
+    fullName: string;
+    email: string;
+    phone: string;
+    password: string;
+    location: { lat: number; lng: number } | null;
+    zone: string;
+    skills: string[];
+    availableHours: number;
+    availableDays: string[];
+    acceptedTerms: boolean;
+}
+
+
+// ---------- Organitations ---------------------
+
+
+export interface iOrganizationForm {
+    fullName: string;       
+    email: string;
+    phone: string;
+    password: string;
+    location: { lat: number; lng: number } | null;
+    zone: string;
+    organizationName: string;
+    legalDocument: string;
+    workArea: string[];
+    acceptedTerms: boolean;
+}
+
+export const WORK_AREAS = [
+    { value: "alimentacion", label: "Alimentación" },
+    { value: "salud", label: "Salud" },
+    { value: "refugio", label: "Refugio" },
+    { value: "logistica", label: "Logística" },
+    { value: "rescate", label: "Rescate" },
+    { value: "psicosocial", label: "Apoyo psicosocial" },
+];
