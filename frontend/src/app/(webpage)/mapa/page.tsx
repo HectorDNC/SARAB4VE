@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { MapItem, UrgencyLevel } from "@/types";
 import { Refugios, CONFIGURACION_SERVICIOS } from "@/mocks/refugios";
-import { TarjetaRefugio } from "@/app/mapa/TarjetaRefugio";
-import { TarjetaEmergencia } from "@/app/mapa/TarjetaEmergencia";
-import { TarjetaSolicitud } from "@/app/mapa/TarjetaSolicitud";
-import { EstadoVacio } from "@/app/mapa/EstadoVacio";
+import { TarjetaRefugio } from "@/app/(webpage)/mapa/TarjetaRefugio";
+import { TarjetaEmergencia } from "@/app/(webpage)/mapa/TarjetaEmergencia";
+import { TarjetaSolicitud } from "@/app/(webpage)/mapa/TarjetaSolicitud";
+import { EstadoVacio } from "@/app/(webpage)/mapa/EstadoVacio";
 import { listEmergencies, EmergencyListItem } from "@/api/emergencies";
 import { listHelpRequests, HelpRequestListItem } from "@/api/helpRequests";
 

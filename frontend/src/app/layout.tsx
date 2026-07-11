@@ -33,10 +33,8 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-on-surface">
-        <Navbar />
-        <AlertsHost />
-        <main className="flex-1 pb-20 lg:pb-0">{children}</main>
-        <BottomNav />
+        <AlertsHost />  
+        {children}
       </body>
     </html>
   );
