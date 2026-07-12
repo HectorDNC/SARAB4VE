@@ -15,19 +15,22 @@ export type HelpRequestPayload = {
 
 export interface HelpRequestListItem {
   id: string;
-  requester_name: string;
-  contact_method: string;
-  contact_value: string;
-  need_type: string;
+  requesterName: string;
+  contactMethod: string;
+  contactValue: string;
+  needType: string;
   description: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   urgency: "low" | "medium" | "high" | "critical";
   status: string;
-  volunteer_name?: string;
-  assigned_at?: string;
-  resolved_at?: string;
-  created_at: string;
+  volunteerName?: string;
+  volunteerContactMethod?: string | null;
+  volunteerContactValue?: string | null;
+  assignedAt?: string | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
   distanceKm?: number;
 }
 
@@ -83,4 +86,39 @@ export async function sendHelpRequest(payload: HelpRequestPayload) {
   } catch {
     return null;
   }
+}
+
+// ── GET — por ID (detalle completo) ──────────────────────────────────────
+
+export interface HelpRequestDetail {
+  id: string;
+  requesterName: string;
+  contactMethod: string;
+  contactValue: string;
+  needType: string;
+  description: string;
+  latitude: number | null;
+  longitude: number | null;
+  urgency: "low" | "medium" | "high" | "critical";
+  status: string;
+  volunteerName: string | null;
+  volunteerContactMethod: string | null;
+  volunteerContactValue: string | null;
+  assignedAt: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
+export async function getHelpRequestById(id: string): Promise<HelpRequestDetail> {
+  const res = await fetch(`${API}/api/help-requests/${encodeURIComponent(id)}`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data;
 }

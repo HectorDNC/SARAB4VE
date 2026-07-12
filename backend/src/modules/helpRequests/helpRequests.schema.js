@@ -36,14 +36,17 @@ const REQUEST_STATUS_SET = new Set(REQUEST_STATUSES);
  * @returns {Object}
  */
 function normalizeCreateHelpRequest(payload) {
+  const hasLat = payload.latitude != null && payload.latitude !== "";
+  const hasLng = payload.longitude != null && payload.longitude !== "";
+
   return {
     requesterName: payload.requesterName.trim(),
     contactMethod: payload.contactMethod.trim(),
     contactValue: payload.contactValue.trim(),
     needType: payload.needType,
     description: payload.description.trim(),
-    latitude: Number(payload.latitude),
-    longitude: Number(payload.longitude),
+    latitude: hasLat && hasLng ? Number(payload.latitude) : null,
+    longitude: hasLat && hasLng ? Number(payload.longitude) : null,
     urgency: payload.urgency || "medium",
   };
 }
@@ -79,16 +82,28 @@ function validateCreateHelpRequest(payload) {
     errors.push("description is required");
   }
 
-  // latitude — requerido (acepta string numérico, ej: "10.03")
-  const lat = toNumber(payload.latitude);
-  if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
-    errors.push("latitude must be a valid coordinate");
+  // latitude — opcional (acepta string numérico, ej: "10.03")
+  const hasLat = payload.latitude != null && payload.latitude !== "";
+  const hasLng = payload.longitude != null && payload.longitude !== "";
+
+  if (hasLat) {
+    const lat = toNumber(payload.latitude);
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+      errors.push("latitude must be a valid coordinate");
+    }
   }
 
-  // longitude — requerido (acepta string numérico, ej: "-70.41")
-  const lng = toNumber(payload.longitude);
-  if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
-    errors.push("longitude must be a valid coordinate");
+  // longitude — opcional (acepta string numérico, ej: "-70.41")
+  if (hasLng) {
+    const lng = toNumber(payload.longitude);
+    if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
+      errors.push("longitude must be a valid coordinate");
+    }
+  }
+
+  // Si se proporciona una coordenada, la otra también debe venir
+  if (hasLat !== hasLng) {
+    errors.push("latitude and longitude must be provided together");
   }
 
   if (payload.urgency && !URGENCY_LEVEL_SET.has(payload.urgency)) {

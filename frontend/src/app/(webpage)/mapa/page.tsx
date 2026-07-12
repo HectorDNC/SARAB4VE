@@ -8,6 +8,7 @@ import { TarjetaRefugio } from "@/app/(webpage)/mapa/TarjetaRefugio";
 import { TarjetaEmergencia } from "@/app/(webpage)/mapa/TarjetaEmergencia";
 import { TarjetaSolicitud } from "@/app/(webpage)/mapa/TarjetaSolicitud";
 import { EstadoVacio } from "@/app/(webpage)/mapa/EstadoVacio";
+import { ModalDetalleSolicitud } from "@/app/(webpage)/mapa/ModalDetalleSolicitud";
 import { listEmergencies, EmergencyListItem } from "@/api/emergencies";
 import { listHelpRequests, HelpRequestListItem } from "@/api/helpRequests";
 
@@ -42,19 +43,29 @@ function emergencyToMapItem(e: EmergencyListItem): MapItem {
     lng: e.longitude,
     urgency: e.urgency,
     status: e.status,
-    createdAt: e.created_at,
-    requesterName: e.requester_name,
-    disabilityType: e.disability_type as MapItem["disabilityType"],
-    needType: e.need_type,
+    createdAt: e.createdAt,
+    requesterName: e.requesterName,
+    disabilityType: e.disabilityType as MapItem["disabilityType"],
+    disabilitySubcategory: e.disabilitySubcategory ?? undefined,
+    communicationMode: e.communicationMode,
+    needType: e.needType,
     description: e.description,
-    isInjured: e.is_injured,
-    cannotMove: e.cannot_move,
-    extraInfo: e.extra_info,
+    isInjured: e.isInjured,
+    cannotMove: e.cannotMove,
+    extraInfo: e.extraInfo,
+    voiceNoteUrl: e.voiceNoteUrl,
+    voiceNoteDurationSec: e.voiceNoteDurationSec,
+    assignedAt: e.assignedAt,
+    resolvedAt: e.resolvedAt,
+    updatedAt: e.updatedAt,
     distanceKm: e.distanceKm,
   };
 }
 
-function helpRequestToMapItem(h: HelpRequestListItem): MapItem {
+function helpRequestToMapItem(h: HelpRequestListItem): MapItem | null {
+  // Sin coordenadas no se puede pintar en el mapa
+  if (h.latitude == null || h.longitude == null) return null;
+
   return {
     kind: "help_request",
     id: h.id,
@@ -62,13 +73,18 @@ function helpRequestToMapItem(h: HelpRequestListItem): MapItem {
     lng: h.longitude,
     urgency: h.urgency,
     status: h.status,
-    createdAt: h.created_at,
-    requesterName: h.requester_name,
-    needType: h.need_type,
+    createdAt: h.createdAt,
+    requesterName: h.requesterName,
+    needType: h.needType,
     description: h.description,
-    contactMethod: h.contact_method,
-    contactValue: h.contact_value,
-    volunteerName: h.volunteer_name,
+    contactMethod: h.contactMethod,
+    contactValue: h.contactValue,
+    volunteerName: h.volunteerName,
+    volunteerContactMethod: h.volunteerContactMethod,
+    volunteerContactValue: h.volunteerContactValue,
+    assignedAt: h.assignedAt,
+    resolvedAt: h.resolvedAt,
+    updatedAt: h.updatedAt,
     distanceKm: h.distanceKm,
   };
 }
@@ -82,6 +98,10 @@ export default function MapaPage() {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  // ── Modal de detalles ──
+  const [modalId, setModalId] = useState<string | null>(null);
+  const [modalKind, setModalKind] = useState<"emergency" | "help_request" | null>(null);
 
   // ── Datos de la API ──
   const [mapItems, setMapItems] = useState<MapItem[]>([]);
@@ -105,7 +125,9 @@ export default function MapaPage() {
 
         // Convertir a MapItem[]
         const emergencyItems: MapItem[] = emergencies.map(emergencyToMapItem);
-        const helpRequestItems: MapItem[] = helpRequests.map(helpRequestToMapItem);
+        const helpRequestItems: MapItem[] = helpRequests
+          .map(helpRequestToMapItem)
+          .filter((item): item is MapItem => item !== null);
 
         // Merge: emergencias primero, ordenadas por urgencia, luego solicitudes
         const sorted: MapItem[] = [
@@ -173,6 +195,11 @@ export default function MapaPage() {
   const handleSeleccionar = (id: string | null) => {
     setSelectedId((prev) => (prev === id ? null : id));
     if (id) setMobileDrawerOpen(false);
+  };
+
+  const handleViewDetails = (item: MapItem) => {
+    setModalId(item.id);
+    setModalKind(item.kind === "emergency" ? "emergency" : "help_request");
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -298,9 +325,9 @@ export default function MapaPage() {
 
                 {selectedItem ? (
                   selectedItem.kind === "emergency" ? (
-                    <TarjetaDetalleEmergencia item={selectedItem} />
+                    <TarjetaDetalleEmergencia item={selectedItem} onViewDetails={handleViewDetails} />
                   ) : (
-                    <TarjetaDetalleSolicitud item={selectedItem} />
+                    <TarjetaDetalleSolicitud item={selectedItem} onViewDetails={handleViewDetails} />
                   )
                 ) : selectedShelter ? (
                   <TarjetaDetalleRefugio refugio={selectedShelter} />
@@ -540,9 +567,9 @@ export default function MapaPage() {
               <div className="px-4 pb-6 max-h-[50vh] overflow-y-auto">
                 {selectedItem ? (
                   selectedItem.kind === "emergency" ? (
-                    <TarjetaDetalleEmergencia item={selectedItem} />
+                    <TarjetaDetalleEmergencia item={selectedItem} onViewDetails={handleViewDetails} />
                   ) : (
-                    <TarjetaDetalleSolicitud item={selectedItem} />
+                    <TarjetaDetalleSolicitud item={selectedItem} onViewDetails={handleViewDetails} />
                   )
                 ) : selectedShelter ? (
                   <TarjetaDetalleRefugio refugio={selectedShelter} />
@@ -584,6 +611,14 @@ export default function MapaPage() {
           animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}</style>
+
+      {/* ── Modal de detalles ── */}
+      <ModalDetalleSolicitud
+        id={modalId}
+        kind={modalKind}
+        open={modalId !== null}
+        onClose={() => { setModalId(null); setModalKind(null); }}
+      />
     </div>
   );
 }
@@ -615,7 +650,7 @@ const NEED_TYPE_LABELS: Record<string, string> = {
   psychosocial_support: "Apoyo psicosocial",
 };
 
-function TarjetaDetalleEmergencia({ item }: { item: MapItem }) {
+function TarjetaDetalleEmergencia({ item, onViewDetails }: { item: MapItem; onViewDetails?: (item: MapItem) => void }) {
   return (
     <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden shadow-card">
       <div className="p-4 flex flex-col gap-3">
@@ -676,22 +711,33 @@ function TarjetaDetalleEmergencia({ item }: { item: MapItem }) {
           </div>
         )}
 
-        {/* Botón */}
-        <a
-          href={`https://www.openstreetmap.org/directions?from=&to=${item.lat},${item.lng}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white rounded-xl py-3 text-sm font-bold shadow-sm transition-colors mt-2"
-        >
-          <span className="material-symbols-rounded text-lg">directions</span>
-          Cómo llegar
-        </a>
+        {/* Botones */}
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <a
+            href={`https://www.openstreetmap.org/directions?from=&to=${item.lat},${item.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white rounded-xl py-3 text-sm font-bold shadow-sm transition-colors"
+          >
+            <span className="material-symbols-rounded text-lg">directions</span>
+            Cómo llegar
+          </a>
+          {onViewDetails && (
+            <button
+              onClick={() => onViewDetails(item)}
+              className="flex items-center justify-center gap-2 border border-red-300 text-red-700 hover:bg-red-50 rounded-xl py-2.5 text-sm font-bold transition-colors"
+            >
+              <span className="material-symbols-rounded text-lg">info</span>
+              Ver detalles
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function TarjetaDetalleSolicitud({ item }: { item: MapItem }) {
+function TarjetaDetalleSolicitud({ item, onViewDetails }: { item: MapItem; onViewDetails?: (item: MapItem) => void }) {
   return (
     <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden shadow-card">
       <div className="p-4 flex flex-col gap-3">
@@ -742,15 +788,27 @@ function TarjetaDetalleSolicitud({ item }: { item: MapItem }) {
           </div>
         )}
 
-        <a
-          href={`https://www.openstreetmap.org/directions?from=&to=${item.lat},${item.lng}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center justify-center gap-2 bg-[#0040a1] hover:bg-[#0056d2] text-white rounded-xl py-3 text-sm font-bold shadow-sm transition-colors mt-2"
-        >
-          <span className="material-symbols-rounded text-lg">directions</span>
-          Cómo llegar
-        </a>
+        {/* Botones */}
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <a
+            href={`https://www.openstreetmap.org/directions?from=&to=${item.lat},${item.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 bg-[#0040a1] hover:bg-[#0056d2] text-white rounded-xl py-3 text-sm font-bold shadow-sm transition-colors"
+          >
+            <span className="material-symbols-rounded text-lg">directions</span>
+            Cómo llegar
+          </a>
+          {onViewDetails && (
+            <button
+              onClick={() => onViewDetails(item)}
+              className="flex items-center justify-center gap-2 border border-[#0040a1]/30 text-[#0040a1] hover:bg-blue-50 rounded-xl py-2.5 text-sm font-bold transition-colors"
+            >
+              <span className="material-symbols-rounded text-lg">info</span>
+              Ver detalles
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

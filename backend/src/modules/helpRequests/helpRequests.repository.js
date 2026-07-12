@@ -47,8 +47,16 @@ function buildListHelpRequestsQuery(filters) {
 
   if (!filters.hasGeoFilter) {
     let sql = `
-      SELECT id, requester_name, contact_method, contact_value, need_type, description,
-             latitude, longitude, urgency, status, assigned_at, resolved_at, created_at
+      SELECT id,
+             requester_name AS "requesterName",
+             contact_method AS "contactMethod",
+             contact_value AS "contactValue",
+             need_type AS "needType",
+             description,
+             latitude, longitude, urgency, status,
+             assigned_at AS "assignedAt",
+             resolved_at AS "resolvedAt",
+             created_at AS "createdAt"
       FROM help_requests
     `;
 
@@ -56,7 +64,7 @@ function buildListHelpRequestsQuery(filters) {
       sql += ` WHERE ${baseConditions.join(" AND ")}`;
     }
 
-    sql += " ORDER BY created_at DESC LIMIT 100";
+    sql += " ORDER BY \"createdAt\" DESC LIMIT 100";
 
     return { sql, values };
   }
@@ -68,13 +76,24 @@ function buildListHelpRequestsQuery(filters) {
   values.push(filters.radiusKm);
   const radiusIndex = values.length;
 
+  // Excluir filas sin coordenadas — no se puede calcular distancia sin ellas
+  baseConditions.push("latitude IS NOT NULL AND longitude IS NOT NULL");
+
   const distanceExpression = buildDistanceExpression(latitudeIndex, longitudeIndex);
   const whereClause = baseConditions.length > 0 ? `WHERE ${baseConditions.join(" AND ")}` : "";
 
   const sql = `
     WITH scoped_help_requests AS (
-      SELECT id, requester_name, contact_method, contact_value, need_type, description,
-             latitude, longitude, urgency, status, assigned_at, resolved_at, created_at,
+      SELECT id,
+             requester_name AS "requesterName",
+             contact_method AS "contactMethod",
+             contact_value AS "contactValue",
+             need_type AS "needType",
+             description,
+             latitude, longitude, urgency, status,
+             assigned_at AS "assignedAt",
+             resolved_at AS "resolvedAt",
+             created_at AS "createdAt",
              ROUND((${distanceExpression})::numeric, 3) AS "distanceKm"
       FROM help_requests
       ${whereClause}
@@ -82,7 +101,7 @@ function buildListHelpRequestsQuery(filters) {
     SELECT *
     FROM scoped_help_requests
     WHERE "distanceKm" <= $${radiusIndex}
-    ORDER BY "distanceKm" ASC, created_at DESC
+    ORDER BY "distanceKm" ASC, "createdAt" DESC
     LIMIT 100
   `;
 
@@ -105,9 +124,16 @@ const INSERT_HELP_REQUEST = `
     urgency
   )
   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-  RETURNING id, requester_name, contact_method, contact_value, need_type,
-            description, latitude, longitude, urgency, status, assigned_at,
-            resolved_at, created_at
+  RETURNING id,
+            requester_name AS "requesterName",
+            contact_method AS "contactMethod",
+            contact_value AS "contactValue",
+            need_type AS "needType",
+            description,
+            latitude, longitude, urgency, status,
+            assigned_at AS "assignedAt",
+            resolved_at AS "resolvedAt",
+            created_at AS "createdAt"
 `;
 
 /**
@@ -136,10 +162,19 @@ const ACCEPT_HELP_REQUEST = `
       status = 'assigned',
       assigned_at = NOW()
   WHERE id = $1 AND status = 'open'
-  RETURNING id, requester_name, contact_method, contact_value, need_type,
-            description, latitude, longitude, urgency, status, created_at,
-            volunteer_name, volunteer_contact_method, volunteer_contact_value,
-            assigned_at, resolved_at
+  RETURNING id,
+            requester_name AS "requesterName",
+            contact_method AS "contactMethod",
+            contact_value AS "contactValue",
+            need_type AS "needType",
+            description,
+            latitude, longitude, urgency, status,
+            created_at AS "createdAt",
+            volunteer_name AS "volunteerName",
+            volunteer_contact_method AS "volunteerContactMethod",
+            volunteer_contact_value AS "volunteerContactValue",
+            assigned_at AS "assignedAt",
+            resolved_at AS "resolvedAt"
 `;
 
 /**
@@ -162,10 +197,19 @@ const RESOLVE_HELP_REQUEST = `
   SET status = 'resolved',
       resolved_at = NOW()
   WHERE id = $1 AND status = 'assigned'
-  RETURNING id, requester_name, contact_method, contact_value, need_type,
-            description, latitude, longitude, urgency, status, created_at,
-            volunteer_name, volunteer_contact_method, volunteer_contact_value,
-            assigned_at, resolved_at
+  RETURNING id,
+            requester_name AS "requesterName",
+            contact_method AS "contactMethod",
+            contact_value AS "contactValue",
+            need_type AS "needType",
+            description,
+            latitude, longitude, urgency, status,
+            created_at AS "createdAt",
+            volunteer_name AS "volunteerName",
+            volunteer_contact_method AS "volunteerContactMethod",
+            volunteer_contact_value AS "volunteerContactValue",
+            assigned_at AS "assignedAt",
+            resolved_at AS "resolvedAt"
 `;
 
 /**
@@ -189,10 +233,19 @@ async function findHelpRequestStatusById(id) {
 }
 
 const FIND_BY_ID = `
-  SELECT id, requester_name, contact_method, contact_value, need_type,
-         description, latitude, longitude, urgency, status,
-         volunteer_name, volunteer_contact_method, volunteer_contact_value,
-         assigned_at, resolved_at, created_at
+  SELECT id,
+         requester_name AS "requesterName",
+         contact_method AS "contactMethod",
+         contact_value AS "contactValue",
+         need_type AS "needType",
+         description,
+         latitude, longitude, urgency, status,
+         volunteer_name AS "volunteerName",
+         volunteer_contact_method AS "volunteerContactMethod",
+         volunteer_contact_value AS "volunteerContactValue",
+         assigned_at AS "assignedAt",
+         resolved_at AS "resolvedAt",
+         created_at AS "createdAt"
   FROM help_requests
   WHERE id = $1
 `;
