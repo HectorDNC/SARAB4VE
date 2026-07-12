@@ -7,6 +7,7 @@ const service = require("./emergencies.service");
 const repository = require("./emergencies.repository");
 const schema = require("./emergencies.schema");
 const { authenticate } = require("../../middleware/authenticate");
+const { authorize } = require("../../middleware/authorize");
 
 const router = express.Router();
 
