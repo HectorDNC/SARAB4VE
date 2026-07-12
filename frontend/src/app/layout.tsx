@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Atkinson_Hyperlegible } from "next/font/google";
 import "./globals.css";
 import LocationProvider from "@/providers/LocationProvider";
+import { AuthProvider } from "@/providers/AuthProvider";
 import AlertsHost from "@/components/ui/AlertsHost";
 
 const atkinson = Atkinson_Hyperlegible({
@@ -32,10 +33,12 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-on-surface">
-        <LocationProvider>
-          <AlertsHost />
-          {children}
-        </LocationProvider>
+        <AuthProvider>
+          <LocationProvider>
+            <AlertsHost />
+            {children}
+          </LocationProvider>
+        </AuthProvider>
       </body>
     </html>
   );

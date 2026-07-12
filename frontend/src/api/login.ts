@@ -7,17 +7,17 @@ export type LoginPayload = {
 
 export type LoginUser = {
   id: string;
-  full_name: string;
+  fullName: string;
   email: string;
   phone: string;
   role: string;
   status: string;
   location: { lat: number; lng: number } | null;
   zone: string | null;
-  phone_verified: boolean;
-  email_verified: boolean;
-  created_at: string;
-  updated_at: string;
+  phoneVerified: boolean;
+  emailVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type LoginResponse = {

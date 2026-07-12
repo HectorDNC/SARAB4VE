@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { loginSchema, getFieldErrors, type LoginFormData } from "./schema";
 import { login } from "@/api/login";
 import { alertService } from "@/services/alertService";
+import { useAuth } from "@/providers/AuthProvider";
 import { UserLogin } from "@/types";
 
 
@@ -17,6 +18,7 @@ export default function Login() {
     };
 
     const router = useRouter();
+    const { login: saveSession } = useAuth();
     const [formData, setFormData] = useState<UserLogin>(initialForm);
     const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({});
     const [isSubmit, setIsSubmit] = useState(false);
@@ -41,9 +43,9 @@ export default function Login() {
                 password: result.data.password,
             });
 
-            localStorage.setItem("token", response.data.token);
+            saveSession(response.data.token, response.data.user);
 
-            alertService.success(`Bienvenida , ${response.data.user.full_name}`);
+            alertService.success(`Bienvenida , ${response.data.user.fullName}`);
             router.push('/');
         } catch (error) {
             const message = error instanceof Error ? error.message : 'No se pudo iniciar sesión';
