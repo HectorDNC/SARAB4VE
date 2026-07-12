@@ -94,8 +94,23 @@ async function listEmergencies(filters, repository) {
   return result.rows;
 }
 
+/**
+ * Obtiene una emergencia por ID (detalle completo).
+ * @param {string} id
+ * @param {Object} repository
+ * @returns {Promise<{ data: Object|null, status: number, errors?: string[] }>}
+ */
+async function getEmergencyById(id, repository) {
+  const row = await repository.findEmergencyById(id, db);
+  if (!row) {
+    return { errors: ["emergency not found"], status: 404 };
+  }
+  return { data: row, status: 200 };
+}
+
 module.exports = {
   normalizeCreateEmergency,
   createEmergency,
   listEmergencies,
+  getEmergencyById,
 };

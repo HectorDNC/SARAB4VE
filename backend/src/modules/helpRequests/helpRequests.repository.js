@@ -188,6 +188,25 @@ async function findHelpRequestStatusById(id) {
   return result.rows[0] || null;
 }
 
+const FIND_BY_ID = `
+  SELECT id, requester_name, contact_method, contact_value, need_type,
+         description, latitude, longitude, urgency, status,
+         volunteer_name, volunteer_contact_method, volunteer_contact_value,
+         assigned_at, resolved_at, created_at
+  FROM help_requests
+  WHERE id = $1
+`;
+
+/**
+ * Busca un help request por ID (fila completa).
+ * @param {string} id
+ * @returns {Promise<Object|null>}
+ */
+async function findHelpRequestById(id) {
+  const result = await db.query(FIND_BY_ID, [id]);
+  return result.rows[0] || null;
+}
+
 module.exports = {
   // queries de lectura
   buildListHelpRequestsQuery,
@@ -196,4 +215,5 @@ module.exports = {
   acceptHelpRequestById,
   resolveHelpRequestById,
   findHelpRequestStatusById,
+  findHelpRequestById,
 };

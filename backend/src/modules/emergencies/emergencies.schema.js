@@ -40,7 +40,7 @@ const EMERGENCY_STATUS_SET = new Set(EMERGENCY_STATUSES);
 // Validación de creación (POST)
 // ---------------------------------------------------------------------------
 
-const { isBlank, isFiniteNumber } = require("../../lib/validation");
+const { isBlank, isFiniteNumber, isUuid } = require("../../lib/validation");
 
 /**
  * @param {Object} payload — cuerpo del request sin procesar
@@ -215,4 +215,6 @@ module.exports = {
   // validación
   validateCreateEmergency,
   validateSearchEmergencies,
+  // utilidades re-exportadas
+  isUuid,
 };

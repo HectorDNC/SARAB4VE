@@ -89,7 +89,28 @@ function buildListEmergenciesQuery(filters) {
   return { sql, values };
 }
 
+const FIND_BY_ID = `
+  SELECT id, requester_name, is_injured, cannot_move, disability_type,
+         communication_mode, disability_subcategory, extra_info,
+         voice_note_url, voice_note_duration_sec,
+         latitude, longitude, urgency, need_type, description,
+         status, assigned_at, resolved_at, created_at, updated_at
+  FROM emergencies
+  WHERE id = $1
+`;
+
+/**
+ * Busca una emergencia por ID (fila completa).
+ * @param {string} id
+ * @returns {Promise<Object|null>}
+ */
+async function findEmergencyById(id, db) {
+  const result = await db.query(FIND_BY_ID, [id]);
+  return result.rows[0] || null;
+}
+
 module.exports = {
   buildDistanceExpression,
   buildListEmergenciesQuery,
+  findEmergencyById,
 };
