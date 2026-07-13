@@ -122,3 +122,47 @@ export async function getHelpRequestById(id: string): Promise<HelpRequestDetail>
   const json = await res.json();
   return json.data;
 }
+
+// ── Attendees ───────────────────────────────────────────────────────────────
+
+export interface HelpRequestAttendee {
+  id: string;
+  helpRequestId?: string;
+  emergencyId?: string;
+  attendedBy: string;
+  attendedAt: string;
+  userName?: string;
+  userEmail?: string;
+  userRole?: string;
+}
+
+/** POST — vincularse como atendiendo una solicitud de ayuda */
+export async function attendHelpRequest(helpRequestId: string): Promise<HelpRequestAttendee> {
+  const res = await fetch(`${API}/api/help-requests/${encodeURIComponent(helpRequestId)}/attendees`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data;
+}
+
+/** GET — listar usuarios que atienden una solicitud */
+export async function listHelpRequestAttendees(helpRequestId: string): Promise<HelpRequestAttendee[]> {
+  const res = await fetch(`${API}/api/help-requests/${encodeURIComponent(helpRequestId)}/attendees`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data ?? [];
+}
