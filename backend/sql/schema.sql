@@ -103,3 +103,29 @@ CREATE INDEX IF NOT EXISTS help_requests_status_idx
 
 CREATE INDEX IF NOT EXISTS help_requests_created_at_idx
   ON help_requests (created_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- Attendees — vinculan emergencies / help_requests con los usuarios que las atienden
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS emergency_attendees (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  emergency_id UUID NOT NULL REFERENCES emergencies(id),
+  attended_by UUID NOT NULL REFERENCES users(id),
+  attended_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (emergency_id, attended_by)
+);
+
+CREATE INDEX IF NOT EXISTS emergency_attendees_emergency_id_idx
+  ON emergency_attendees (emergency_id);
+
+CREATE TABLE IF NOT EXISTS help_request_attendees (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  help_request_id UUID NOT NULL REFERENCES help_requests(id),
+  attended_by UUID NOT NULL REFERENCES users(id),
+  attended_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (help_request_id, attended_by)
+);
+
+CREATE INDEX IF NOT EXISTS help_request_attendees_help_request_id_idx
+  ON help_request_attendees (help_request_id);
