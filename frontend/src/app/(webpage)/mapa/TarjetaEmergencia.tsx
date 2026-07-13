@@ -23,6 +23,17 @@ const DISABILITY_LABELS: Record<string, string> = {
   motriz: "Motriz",
 };
 
+const NEED_TYPE_LABELS: Record<string, string> = {
+  equipment: "Equipamiento",
+  medication: "Medicación",
+  transport: "Transporte",
+  companionship: "Acompañamiento",
+  interpreter: "Intérprete",
+  accessible_information: "Información accesible",
+  neurodivergent_support: "Apoyo neurodivergente",
+  psychosocial_support: "Apoyo psicosocial",
+};
+
 const STATUS_LABELS: Record<string, string> = {
   received: "Recibida",
   assigned: "Asignada",
@@ -38,6 +49,7 @@ interface Props {
 export function TarjetaEmergencia({ item, isSelected, onClick }: Props) {
   const urgency = item.urgency as UrgencyLevel;
   const statusLabel = STATUS_LABELS[item.status] ?? item.status;
+  const needLabel = NEED_TYPE_LABELS[item.needType ?? ""] ?? item.needType;
 
   return (
     <button
@@ -81,9 +93,9 @@ export function TarjetaEmergencia({ item, isSelected, onClick }: Props) {
                 {DISABILITY_LABELS[item.disabilityType] ?? item.disabilityType}
               </span>
             )}
-            {item.needType && (
-              <span className="text-[11px] text-on-surface-variant truncate">
-                &middot; {item.needType}
+            {needLabel && (
+              <span className="text-[11px] text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded">
+                {needLabel}
               </span>
             )}
           </div>
