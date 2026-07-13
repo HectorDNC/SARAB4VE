@@ -43,8 +43,11 @@ function buildListEmergenciesQuery(filters) {
   // Solo lo necesario para pintar marcadores en el mapa.
   // El detalle completo se obtiene con GET /api/emergencies/:id
   const columns = `
-    id, latitude, longitude, urgency, need_type,
-    disability_type, status, created_at, requester_name
+    id, latitude, longitude, urgency,
+    need_type AS "needType",
+    disability_type AS "disabilityType",
+    status, created_at AS "createdAt",
+    requester_name AS "requesterName"
   `;
 
   if (!filters.hasGeoFilter) {
@@ -54,7 +57,7 @@ function buildListEmergenciesQuery(filters) {
       sql += ` WHERE ${baseConditions.join(" AND ")}`;
     }
 
-    sql += " ORDER BY created_at DESC LIMIT 50";
+    sql += " ORDER BY \"createdAt\" DESC LIMIT 50";
 
     return { sql, values };
   }
@@ -82,14 +85,47 @@ function buildListEmergenciesQuery(filters) {
     SELECT *
     FROM scoped_emergencies
     WHERE "distanceKm" <= $${radiusIndex}
-    ORDER BY "distanceKm" ASC, created_at DESC
+    ORDER BY "distanceKm" ASC, "createdAt" DESC
     LIMIT 50
   `;
 
   return { sql, values };
 }
 
+const FIND_BY_ID = `
+  SELECT id,
+         requester_name AS "requesterName",
+         is_injured AS "isInjured",
+         cannot_move AS "cannotMove",
+         disability_type AS "disabilityType",
+         communication_mode AS "communicationMode",
+         disability_subcategory AS "disabilitySubcategory",
+         extra_info AS "extraInfo",
+         voice_note_url AS "voiceNoteUrl",
+         voice_note_duration_sec AS "voiceNoteDurationSec",
+         latitude, longitude, urgency,
+         need_type AS "needType",
+         description, status,
+         assigned_at AS "assignedAt",
+         resolved_at AS "resolvedAt",
+         created_at AS "createdAt",
+         updated_at AS "updatedAt"
+  FROM emergencies
+  WHERE id = $1
+`;
+
+/**
+ * Busca una emergencia por ID (fila completa).
+ * @param {string} id
+ * @returns {Promise<Object|null>}
+ */
+async function findEmergencyById(id, db) {
+  const result = await db.query(FIND_BY_ID, [id]);
+  return result.rows[0] || null;
+}
+
 module.exports = {
   buildDistanceExpression,
   buildListEmergenciesQuery,
+  findEmergencyById,
 };

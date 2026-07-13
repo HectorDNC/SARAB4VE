@@ -22,15 +22,25 @@ export interface MapItem {
     // Emergencia
     requesterName?: string;
     disabilityType?: DisabilityType;
+    disabilitySubcategory?: string;
+    communicationMode?: string | null;
     needType?: string;
     description?: string;
     isInjured?: boolean;
     cannotMove?: boolean;
     extraInfo?: string;
+    voiceNoteUrl?: string | null;
+    voiceNoteDurationSec?: number | null;
     // Help Request
     contactMethod?: string;
     contactValue?: string;
     volunteerName?: string;
+    volunteerContactMethod?: string | null;
+    volunteerContactValue?: string | null;
+    // Timestamps
+    assignedAt?: string | null;
+    resolvedAt?: string | null;
+    updatedAt?: string | null;
     // Refugio (heredado)
     name?: string;
     address?: string;

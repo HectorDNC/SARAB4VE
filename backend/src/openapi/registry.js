@@ -247,6 +247,7 @@ registry.registerPath({
     "configurado en el servidor.",
   ].join(" "),
   tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
   request: {
     body: {
       content: { "application/json": { schema: RegisterAdminBody } },
@@ -488,6 +489,42 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: "get",
+  path: "/api/help-requests/{id}",
+  summary: "Obtener solicitud por ID",
+  description: "Obtiene el detalle completo de una solicitud de ayuda por su UUID. Requiere autenticación y rol admin, organization o volunteer.",
+  tags: ["Help Requests"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID de la solicitud",
+      }),
+    }),
+  },
+  responses: {
+    200: { description: "Detalle completo de la solicitud" },
+    400: {
+      description: "ID inválido (no es UUID)",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Rol no autorizado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    404: {
+      description: "Solicitud no encontrada",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
 // =========================================================================
 // EMERGENCIES
 // =========================================================================
@@ -498,6 +535,7 @@ registry.registerPath({
   summary: "Listar emergencias",
   description: "Lista todas las emergencias activas con filtros opcionales. Público.",
   tags: ["Emergencies"],
+  security: [{ bearerAuth: [] }],
   request: {
     query: z.object({
       status: z.enum(["received", "assigned", "resolved"]).optional().openapi({
@@ -534,6 +572,42 @@ registry.registerPath({
     201: { description: "Emergencia creada exitosamente" },
     400: {
       description: "Error de validación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/emergencies/{id}",
+  summary: "Obtener emergencia por ID",
+  description: "Obtiene el detalle completo de una emergencia por su UUID. Requiere autenticación y rol admin, organization o volunteer.",
+  tags: ["Emergencies"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID de la emergencia",
+      }),
+    }),
+  },
+  responses: {
+    200: { description: "Detalle completo de la emergencia" },
+    400: {
+      description: "ID inválido (no es UUID)",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Rol no autorizado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    404: {
+      description: "Emergencia no encontrada",
       content: { "application/json": { schema: ErrorResponse } },
     },
   },

@@ -7,6 +7,7 @@ const service = require("./auth.service");
 const repository = require("./auth.repository");
 const schema = require("./auth.schema");
 const { authenticate } = require("../../middleware/authenticate");
+const { authorize } = require("../../middleware/authorize");
 
 const router = express.Router();
 
@@ -31,6 +32,7 @@ router.post(
 // Registro de administrador (protegido por ADMIN_SECRET)
 router.post(
   "/register/admin",
+  // authenticate, authorize("admin"),
   controller.registerAdmin(service, schema, repository),
 );
 

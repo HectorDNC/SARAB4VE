@@ -72,9 +72,24 @@ async function resolveHelpRequest(id, repository) {
   return { errors: ["help request is not assigned"], status: 409 };
 }
 
+/**
+ * Obtiene un help request por ID (detalle completo).
+ * @param {string} id
+ * @param {Object} repository
+ * @returns {Promise<{ data: Object|null, status: number, errors?: string[] }>}
+ */
+async function getHelpRequestById(id, repository) {
+  const row = await repository.findHelpRequestById(id);
+  if (!row) {
+    return { errors: ["help request not found"], status: 404 };
+  }
+  return { data: row, status: 200 };
+}
+
 module.exports = {
   createHelpRequest,
   listHelpRequests,
   acceptHelpRequest,
   resolveHelpRequest,
+  getHelpRequestById,
 };

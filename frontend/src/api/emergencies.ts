@@ -22,16 +22,23 @@ export interface EmergencyListItem {
   latitude: number;
   longitude: number;
   urgency: "low" | "medium" | "high" | "critical";
-  need_type: string;
-  disability_type: string;
+  needType: string;
+  disabilityType: string;
   status: string;
-  created_at: string;
+  createdAt: string;
   distanceKm?: number;
-  requester_name?: string;
-  is_injured?: boolean;
-  cannot_move?: boolean;
+  requesterName?: string;
+  isInjured?: boolean;
+  cannotMove?: boolean;
   description?: string;
-  extra_info?: string;
+  extraInfo?: string;
+  disabilitySubcategory?: string | null;
+  communicationMode?: string | null;
+  voiceNoteUrl?: string | null;
+  voiceNoteDurationSec?: number | null;
+  assignedAt?: string | null;
+  resolvedAt?: string | null;
+  updatedAt?: string | null;
 }
 
 interface ListEmergenciesParams {
@@ -81,4 +88,43 @@ export async function listEmergencies(
 
   const json = await res.json();
   return json.data ?? [];
+}
+
+// ── GET — por ID (detalle completo) ──────────────────────────────────────
+
+export interface EmergencyDetail {
+  id: string;
+  requesterName: string | null;
+  isInjured: boolean;
+  cannotMove: boolean;
+  disabilityType: string;
+  communicationMode: string | null;
+  disabilitySubcategory: string | null;
+  extraInfo: string | null;
+  voiceNoteUrl: string | null;
+  voiceNoteDurationSec: number | null;
+  latitude: number;
+  longitude: number;
+  urgency: "low" | "medium" | "high" | "critical";
+  needType: string;
+  description: string;
+  status: string;
+  assignedAt: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getEmergencyById(id: string): Promise<EmergencyDetail> {
+  const res = await fetch(`${API}/api/emergencies/${encodeURIComponent(id)}`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data;
 }

@@ -11,9 +11,19 @@ const { authorize } = require("../../middleware/authorize");
 
 const router = express.Router();
 
-router.get("/", authenticate, authorize("admin", "organization", "volunteer"), controller.listHelpRequests(service, repository, schema));
-router.post("/", authenticate, controller.createHelpRequest(service, schema, repository));
-router.post("/:id/accept", authenticate, authorize("admin", "organization"), controller.acceptHelpRequest(service, schema, repository));
-router.post("/:id/resolve", authenticate, authorize("admin", "organization"), controller.resolveHelpRequest(service, schema, repository));
+router.get("/", 
+    authenticate, authorize("admin", "organization", "volunteer"), 
+    controller.listHelpRequests(service, repository, schema));
+router.get("/:id", 
+    authenticate, authorize("admin", "organization", "volunteer"), 
+    controller.getHelpRequestById(service, schema, repository));
+router.post("/",  
+    controller.createHelpRequest(service, schema, repository));
+router.post("/:id/accept", 
+    authenticate, authorize("admin", "organization"), 
+    controller.acceptHelpRequest(service, schema, repository));
+router.post("/:id/resolve", 
+    authenticate, authorize("admin", "organization"), 
+    controller.resolveHelpRequest(service, schema, repository));
 
 module.exports = router;
