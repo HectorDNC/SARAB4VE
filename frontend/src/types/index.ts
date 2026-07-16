@@ -55,10 +55,12 @@ export interface MapItem {
 // ── LeafletMap ──────────────────────────────────────────────────────────────
 
 export interface LeafletMapProps {
-    shelters: iRefugio[];
+    shelters?: iRefugio[];
     selectedId: string | null;
     onSelect: (id: string | null) => void;
     mapItems?: MapItem[];
+    /** Centro inicial del mapa [lat, lng]. Si no se provee, usa Caracas por defecto. */
+    initialCenter?: [number, number] | null;
 }
 
 // ── Refugio ────────────────────────────────────────────────────────────────

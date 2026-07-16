@@ -108,7 +108,7 @@ function buildShelterIcon(name: string, isSelected: boolean): L.DivIcon {
 
 // ── Componente ──────────────────────────────────────────────────────────────
 
-export default function LeafletMap({ shelters, selectedId, onSelect, mapItems }: LeafletMapProps) {
+export default function LeafletMap({ shelters = [], selectedId, onSelect, mapItems, initialCenter }: LeafletMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [id: string]: L.Marker }>({});
@@ -118,7 +118,10 @@ export default function LeafletMap({ shelters, selectedId, onSelect, mapItems }:
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    const defaultCenter: L.LatLngTuple = [10.48, -66.90];
+    const defaultCenter: L.LatLngTuple =
+      initialCenter && initialCenter[0] != null && initialCenter[1] != null
+        ? (initialCenter as L.LatLngTuple)
+        : [10.48, -66.90];
     const defaultZoom = 13;
 
     const map = L.map(mapContainerRef.current, {
