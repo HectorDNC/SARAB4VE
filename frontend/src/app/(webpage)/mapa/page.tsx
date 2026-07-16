@@ -11,6 +11,7 @@ import { EstadoVacio } from "@/app/(webpage)/mapa/EstadoVacio";
 import { ModalDetalleSolicitud } from "@/app/(webpage)/mapa/ModalDetalleSolicitud";
 import { listEmergencies, EmergencyListItem } from "@/api/emergencies";
 import { listHelpRequests, HelpRequestListItem } from "@/api/helpRequests";
+import { useLocation } from "@/hooks/useLocation";
 
 const LeafletMap = dynamic(() => import("./LeafletMap"), {
   ssr: false,
@@ -109,6 +110,13 @@ export default function MapaPage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // ── Filtros ──
+  const [kindFilter, setKindFilter] = useState<"all" | "emergency" | "help_request">("all");
+  const [statusFilter, setStatusFilter] = useState<"active" | "assigned" | "resolved" | "all">("active");
+
+  // ── Ubicación del usuario ──
+  const { location: userLocation } = useLocation();
+
   const handleRefreshMap = useCallback(() => {
     setRefreshTrigger((prev) => prev + 1);
   }, []);
@@ -121,9 +129,33 @@ export default function MapaPage() {
       setError(null);
 
       try {
+        // Mapear filtro de estado a los valores de API para cada tipo
+        const emergencyStatuses: Record<string, string[]> = {
+          active: ["received"],
+          assigned: ["assigned"],
+          resolved: ["resolved"],
+          all: ["received", "assigned", "resolved"],
+        };
+        const helpRequestStatuses: Record<string, string[]> = {
+          active: ["open"],
+          assigned: ["assigned"],
+          resolved: ["resolved"],
+          all: ["open", "assigned", "resolved"],
+        };
+
+        const emergenciesPromise =
+          kindFilter === "help_request"
+            ? Promise.resolve([] as EmergencyListItem[])
+            : listEmergencies({ status: emergencyStatuses[statusFilter] });
+
+        const helpRequestsPromise =
+          kindFilter === "emergency"
+            ? Promise.resolve([] as HelpRequestListItem[])
+            : listHelpRequests({ status: helpRequestStatuses[statusFilter] });
+
         const [emergencies, helpRequests] = await Promise.all([
-          listEmergencies({ status: ["received", "assigned"] }),
-          listHelpRequests({ status: ["open", "assigned"] }),
+          emergenciesPromise,
+          helpRequestsPromise,
         ]);
 
         if (cancelled) return;
@@ -162,17 +194,20 @@ export default function MapaPage() {
     return () => {
       cancelled = true;
     };
-  }, [refreshTrigger]);
+  }, [refreshTrigger, kindFilter, statusFilter]);
 
-  // Filtrar refugios (mock)
-  const refugiosFiltrados = Refugios.filter((s) => {
-    const coincideBusqueda =
-      query.trim() === "" ||
-      s.name.toLowerCase().includes(query.toLowerCase()) ||
-      s.sector.toLowerCase().includes(query.toLowerCase()) ||
-      s.address.toLowerCase().includes(query.toLowerCase());
-    return coincideBusqueda;
-  });
+  // Filtrar refugios (mock) — solo visibles cuando no hay filtro de tipo activo o es "all"
+  const refugiosFiltrados =
+    kindFilter !== "all"
+      ? []
+      : Refugios.filter((s) => {
+          const coincideBusqueda =
+            query.trim() === "" ||
+            s.name.toLowerCase().includes(query.toLowerCase()) ||
+            s.sector.toLowerCase().includes(query.toLowerCase()) ||
+            s.address.toLowerCase().includes(query.toLowerCase());
+          return coincideBusqueda;
+        });
 
   // Filtrar mapItems (emergencias + solicitudes) por búsqueda de texto
   const mapItemsFiltrados = mapItems.filter((item) => {
@@ -224,7 +259,7 @@ export default function MapaPage() {
         <div className={`pt-4 pb-3 border-b border-outline-variant ${sidebarOpen ? "px-4" : "px-2"}`}>
           <div
             className={`flex items-center ${
-              sidebarOpen ? "justify-between mb-3" : "justify-center mb-1"
+              sidebarOpen ? "justify-between mb-1" : "justify-center mb-1"
             }`}
           >
             {sidebarOpen ? (
@@ -287,6 +322,43 @@ export default function MapaPage() {
             )}
           </div>
         </div>
+
+        {/* Filtros compactos (select) */}
+        {sidebarOpen && (
+          <div className="px-4 py-2 border-b border-outline-variant flex gap-2">
+            <div className="relative flex-1">
+              <select
+                value={kindFilter}
+                onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)}
+                aria-label="Tipo de solicitud"
+                className="w-full appearance-none bg-surface-container text-on-surface text-[11px] font-bold pl-2.5 pr-7 py-1.5 rounded-lg border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                <option value="all">Todas</option>
+                <option value="emergency">Emergencias</option>
+                <option value="help_request">Apoyo</option>
+              </select>
+              <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 material-symbols-rounded text-sm text-on-surface-variant">
+                unfold_more
+              </span>
+            </div>
+            <div className="relative flex-1">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                aria-label="Estado"
+                className="w-full appearance-none bg-surface-container text-on-surface text-[11px] font-bold pl-2.5 pr-7 py-1.5 rounded-lg border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                <option value="all">Todas</option>
+                <option value="active">Activas</option>
+                <option value="assigned">Asignadas</option>
+                <option value="resolved">Resueltas</option>
+              </select>
+              <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 material-symbols-rounded text-sm text-on-surface-variant">
+                unfold_more
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Lista de resultados */}
         {sidebarOpen ? (
@@ -404,6 +476,11 @@ export default function MapaPage() {
           selectedId={selectedId}
           onSelect={handleSeleccionar}
           mapItems={mapItemsFiltrados}
+          initialCenter={
+            userLocation
+              ? ([userLocation.latitude, userLocation.longitude] as [number, number])
+              : null
+          }
         />
 
         {/* ── MOBILE: Buscador flotante ── */}
@@ -476,6 +553,41 @@ export default function MapaPage() {
             >
               <span className="material-symbols-rounded text-base text-on-surface-variant">chevron_left</span>
             </button>
+          </div>
+
+          {/* Filtros compactos (móvil) */}
+          <div className="px-4 py-2 border-b border-outline-variant flex gap-2">
+            <div className="relative flex-1">
+              <select
+                value={kindFilter}
+                onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)}
+                aria-label="Tipo de solicitud"
+                className="w-full appearance-none bg-surface-container text-on-surface text-[11px] font-bold pl-2.5 pr-7 py-1.5 rounded-lg border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                <option value="all">Todas</option>
+                <option value="emergency">Emergencias</option>
+                <option value="help_request">Apoyo</option>
+              </select>
+              <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 material-symbols-rounded text-sm text-on-surface-variant">
+                unfold_more
+              </span>
+            </div>
+            <div className="relative flex-1">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                aria-label="Estado"
+                className="w-full appearance-none bg-surface-container text-on-surface text-[11px] font-bold pl-2.5 pr-7 py-1.5 rounded-lg border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                <option value="all">Todas</option>
+                <option value="active">Activas</option>
+                <option value="assigned">Asignadas</option>
+                <option value="resolved">Resueltas</option>
+              </select>
+              <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 material-symbols-rounded text-sm text-on-surface-variant">
+                unfold_more
+              </span>
+            </div>
           </div>
 
           {/* Lista */}

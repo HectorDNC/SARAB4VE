@@ -55,7 +55,7 @@ export default function Navbar() {
           aria-label="SARA — Ir al inicio"
         >
           <img src="/logo.webp" alt="SARA" className="h-8 w-auto" />
-          <span>SARA</span>
+          <span className="hidden md:inline">SARA</span>
         </Link>
 
         {/* Desktop nav */}
@@ -79,12 +79,15 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           <Link
             href="/sos"
-            className="flex items-center gap-3 bg-error text-on-error px-6 py-2.5 rounded-full font-extrabold text-base shadow-lg shadow-error/25 hover:brightness-110 active:scale-95 transition-all min-h-0 animate-pulse"
+            className="flex items-center gap-3 bg-error text-on-error px-5 py-2.5 rounded-full font-extrabold text-base shadow-lg shadow-error/25 hover:brightness-110 active:scale-95 transition-all min-h-0 animate-pulse"
           >
             <span className="material-symbols-rounded text-2xl" aria-hidden="true">
               crisis_alert
             </span>
-            NECESITO AYUDA - SOS
+            <div>
+              <span className="hidden sm:inline">NECESITO </span>
+              <span>AYUDA - SOS</span>
+            </div>
           </Link>
         </div>
 

@@ -59,6 +59,8 @@ export interface LeafletMapProps {
     selectedId: string | null;
     onSelect: (id: string | null) => void;
     mapItems?: MapItem[];
+    /** Centro inicial del mapa [lat, lng]. Si no se provee, usa Caracas por defecto. */
+    initialCenter?: [number, number] | null;
 }
 
 // ── Refugio ────────────────────────────────────────────────────────────────
