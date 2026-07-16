@@ -29,10 +29,10 @@ router.post(
   controller.registerOrganization(service, schema, repository),
 );
 
-// Registro de administrador (protegido por ADMIN_SECRET)
+// Registro de administrador
 router.post(
   "/register/admin",
-  // authenticate, authorize("admin"),
+  authenticate, authorize("admin"),
   controller.registerAdmin(service, schema, repository),
 );
 
