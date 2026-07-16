@@ -35,7 +35,7 @@ export interface HelpRequestListItem {
 }
 
 interface ListHelpRequestsParams {
-  status?: string;
+  status?: string[];
   latitude?: number;
   longitude?: number;
   radiusKm?: number;
@@ -48,7 +48,9 @@ export async function listHelpRequests(
 ): Promise<HelpRequestListItem[]> {
   const searchParams = new URLSearchParams();
 
-  if (params.status) searchParams.set("status", params.status);
+  if (params.status && params.status.length > 0) {
+    searchParams.set("status", params.status.join(","));
+  }
   if (params.latitude !== undefined) searchParams.set("latitude", String(params.latitude));
   if (params.longitude !== undefined) searchParams.set("longitude", String(params.longitude));
   if (params.radiusKm !== undefined) searchParams.set("radiusKm", String(params.radiusKm));
@@ -121,4 +123,48 @@ export async function getHelpRequestById(id: string): Promise<HelpRequestDetail>
 
   const json = await res.json();
   return json.data;
+}
+
+// ── Attendees ───────────────────────────────────────────────────────────────
+
+export interface HelpRequestAttendee {
+  id: string;
+  helpRequestId?: string;
+  emergencyId?: string;
+  attendedBy: string;
+  attendedAt: string;
+  userName?: string;
+  userEmail?: string;
+  userRole?: string;
+}
+
+/** POST — vincularse como atendiendo una solicitud de ayuda */
+export async function attendHelpRequest(helpRequestId: string): Promise<HelpRequestAttendee> {
+  const res = await fetch(`${API}/api/help-requests/${encodeURIComponent(helpRequestId)}/attendees`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data;
+}
+
+/** GET — listar usuarios que atienden una solicitud */
+export async function listHelpRequestAttendees(helpRequestId: string): Promise<HelpRequestAttendee[]> {
+  const res = await fetch(`${API}/api/help-requests/${encodeURIComponent(helpRequestId)}/attendees`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data ?? [];
 }

@@ -1,9 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MapItem, UrgencyLevel } from "@/types";
-import { getEmergencyById, EmergencyDetail } from "@/api/emergencies";
-import { getHelpRequestById, HelpRequestDetail } from "@/api/helpRequests";
+import {
+  getEmergencyById,
+  EmergencyDetail,
+  attendEmergency,
+  listEmergencyAttendees,
+  Attendee,
+} from "@/api/emergencies";
+import {
+  getHelpRequestById,
+  HelpRequestDetail,
+  attendHelpRequest,
+  listHelpRequestAttendees,
+  HelpRequestAttendee,
+} from "@/api/helpRequests";
+import { alertService } from "@/services/alertService";
 
 // ── Labels ──────────────────────────────────────────────────────────────────
 
@@ -151,15 +164,86 @@ interface Props {
   kind: "emergency" | "help_request" | null;
   open: boolean;
   onClose: () => void;
+  onAttendSuccess?: () => void;
 }
 
-export function ModalDetalleSolicitud({ id, kind, open, onClose }: Props) {
+export function ModalDetalleSolicitud({ id, kind, open, onClose, onAttendSuccess }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const [item, setItem] = useState<MapItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Attendees ──
+  const [attendLoading, setAttendLoading] = useState(false);
+  const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [showAttendeesModal, setShowAttendeesModal] = useState(false);
+  const [showConfirmAttend, setShowConfirmAttend] = useState(false);
+
+  // ── Resetear estado al abrir/cerrar ──
+  useEffect(() => {
+    if (!open) {
+      setAttendees([]);
+      setShowAttendeesModal(false);
+      setShowConfirmAttend(false);
+      setAttendLoading(false);
+    }
+  }, [open]);
+
+  // ── Atender ──
+  const handleAttend = useCallback(async () => {
+    if (!id || !kind) return;
+    setShowConfirmAttend(false);
+    setAttendLoading(true);
+    try {
+      if (kind === "emergency") {
+        await attendEmergency(id);
+      } else {
+        await attendHelpRequest(id);
+      }
+      alertService.success(
+        `Te has vinculado como atendiendo ${kind === "emergency" ? "esta emergencia" : "esta solicitud"}.`,
+      );
+      // Refrescar los datos del item para que se refleje el cambio
+      if (kind === "emergency") {
+        const detail = await getEmergencyById(id);
+        setItem(emergencyDetailToMapItem(detail));
+      } else {
+        const detail = await getHelpRequestById(id);
+        setItem(helpRequestDetailToMapItem(detail));
+      }
+      // Notificar al padre para recargar el listado del mapa
+      onAttendSuccess?.();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al vincularse";
+      if (msg.includes("409") || msg.includes("already exists")) {
+        alertService.warning("Ya estás vinculado a esta solicitud.");
+      } else {
+        alertService.error(msg);
+      }
+    } finally {
+      setAttendLoading(false);
+    }
+  }, [id, kind, onAttendSuccess]);
+  const handleShowAttendees = useCallback(async () => {
+    if (!id || !kind) return;
+    setShowAttendeesModal(true);
+    setAttendLoading(true);
+    try {
+      if (kind === "emergency") {
+        const list = await listEmergencyAttendees(id);
+        setAttendees(list);
+      } else {
+        const list = await listHelpRequestAttendees(id);
+        setAttendees(list);
+      }
+    } catch (err) {
+      setAttendees([]);
+    } finally {
+      setAttendLoading(false);
+    }
+  }, [id, kind]);
 
   // ── Fetch cuando abre o cambia el id ──
   useEffect(() => {
@@ -241,7 +325,7 @@ export function ModalDetalleSolicitud({ id, kind, open, onClose }: Props) {
     >
       <div
         ref={panelRef}
-        className="bg-surface rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col animate-fade-up"
+        className="bg-surface rounded-2xl shadow-2xl w-full max-w-lg min-w-[40vw] max-h-[85vh] overflow-hidden flex flex-col animate-fade-up"
       >
         {/* ── Cabecera ── */}
         <div
@@ -524,13 +608,13 @@ export function ModalDetalleSolicitud({ id, kind, open, onClose }: Props) {
 
         {/* ── Footer ── */}
         {item && !loading && !error && (
-          <div className="px-5 py-3 border-t border-outline-variant shrink-0 flex gap-2">
+          <div className="px-5 py-3 border-t border-outline-variant shrink-0 grid grid-cols-2 gap-2">
             {hasCoords && (
               <a
                 href={`https://www.openstreetmap.org/directions?from=&to=${item.lat},${item.lng}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold shadow-sm transition-colors ${
+                className={`flex items-center justify-center gap-1 rounded-xl py-2.5 text-sm font-bold shadow-sm transition-colors ${
                   isEmergency
                     ? "bg-red-600 hover:bg-red-700 text-white"
                     : "bg-[#0040a1] hover:bg-[#0056d2] text-white"
@@ -541,14 +625,131 @@ export function ModalDetalleSolicitud({ id, kind, open, onClose }: Props) {
               </a>
             )}
             <button
+              onClick={() => setShowConfirmAttend(true)}
+              disabled={attendLoading}
+              className={`flex items-center justify-center gap-1 rounded-xl py-2.5 text-sm font-bold transition-colors ${
+                isEmergency
+                  ? "bg-red-100 text-red-700 hover:bg-red-200 border border-red-300"
+                  : "bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300"
+              } disabled:opacity-50`}
+            >
+              <span className="material-symbols-rounded text-lg">
+                {attendLoading ? "hourglass_top" : "volunteer_activism"}
+              </span>
+              {attendLoading ? "Vinculando…" : "Atender"}
+            </button>
+            <button
+              onClick={handleShowAttendees}
+              disabled={attendLoading}
+              className="flex items-center justify-center gap-1 rounded-xl py-2.5 text-sm font-bold bg-surface-container text-on-surface hover:bg-surface-container-high border border-outline-variant transition-colors disabled:opacity-50"
+            >
+              <span className="material-symbols-rounded text-lg">groups</span>
+              Ver quiénes atienden
+            </button>
+            <button
               onClick={onClose}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold border border-outline-variant text-on-surface hover:bg-surface-container transition-colors"
+              className="flex items-center justify-center gap-1 rounded-xl py-2.5 text-sm font-bold border border-outline-variant text-on-surface hover:bg-surface-container transition-colors"
             >
               Cerrar
             </button>
           </div>
         )}
       </div>
+
+      {/* ── Modal de confirmación "Atender" ── */}
+      {showConfirmAttend && item && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10 rounded-2xl">
+          <div className="bg-surface rounded-xl shadow-xl p-5 mx-4 max-w-xs w-full text-center">
+            <span className="material-symbols-rounded text-4xl text-amber-500 mb-2">warning</span>
+            <p className="text-sm font-semibold text-on-surface mb-1">
+              ¿Confirmar atención?
+            </p>
+            <p className="text-xs text-on-surface-variant mb-4">
+              Te registrarás como persona que atiende{" "}
+              {isEmergency ? "esta emergencia" : "esta solicitud de ayuda"}.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowConfirmAttend(false)}
+                className="flex-1 rounded-xl py-2 text-sm font-bold border border-outline-variant text-on-surface hover:bg-surface-container transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAttend}
+                className={`flex-1 rounded-xl py-2 text-sm font-bold text-white transition-colors ${
+                  isEmergency ? "bg-red-600 hover:bg-red-700" : "bg-[#0040a1] hover:bg-[#0056d2]"
+                }`}
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal de lista de attendees ── */}
+      {showAttendeesModal && (
+        <div
+          className="absolute inset-0 flex items-center justify-center bg-black/40 z-10 rounded-2xl"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAttendeesModal(false);
+          }}
+        >
+          <div className="bg-surface rounded-xl shadow-xl p-5 mx-4 max-w-sm w-full max-h-[60vh] flex flex-col">
+            <div className="flex items-center justify-between mb-3 shrink-0">
+              <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
+                <span className="material-symbols-rounded text-lg">groups</span>
+                Quiénes atienden
+              </h3>
+              <button
+                onClick={() => setShowAttendeesModal(false)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors"
+                aria-label="Cerrar"
+              >
+                <span className="material-symbols-rounded text-sm text-on-surface-variant">close</span>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {attendLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : attendees.length === 0 ? (
+                <p className="text-xs text-on-surface-variant text-center py-6">
+                  Nadie se ha vinculado aún para atender{" "}
+                  {isEmergency ? "esta emergencia" : "esta solicitud"}.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {attendees.map((a) => (
+                    <li
+                      key={a.id}
+                      className="flex items-center gap-3 bg-surface-container rounded-xl p-3"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="material-symbols-rounded text-primary text-lg">person</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-on-surface truncate">
+                          {a.userName ?? "Usuario"}
+                        </p>
+                        <p className="text-xs text-on-surface-variant truncate">
+                          {a.userRole ? `${a.userRole}` : ""}
+                        </p>
+                        <p className="text-[10px] text-on-surface-variant/60">
+                          {formatDate(a.attendedAt)}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Animación */}
       <style jsx>{`

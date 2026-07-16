@@ -42,7 +42,7 @@ export interface EmergencyListItem {
 }
 
 interface ListEmergenciesParams {
-  status?: string;
+  status?: string[];
   latitude?: number;
   longitude?: number;
   radiusKm?: number;
@@ -72,7 +72,7 @@ export async function listEmergencies(
 ): Promise<EmergencyListItem[]> {
   const searchParams = new URLSearchParams();
 
-  if (params.status) searchParams.set("status", params.status);
+  if (params.status) searchParams.set("status", params.status.join(","));
   if (params.latitude !== undefined) searchParams.set("latitude", String(params.latitude));
   if (params.longitude !== undefined) searchParams.set("longitude", String(params.longitude));
   if (params.radiusKm !== undefined) searchParams.set("radiusKm", String(params.radiusKm));
@@ -127,4 +127,48 @@ export async function getEmergencyById(id: string): Promise<EmergencyDetail> {
 
   const json = await res.json();
   return json.data;
+}
+
+// ── Attendees ───────────────────────────────────────────────────────────────
+
+export interface Attendee {
+  id: string;
+  emergencyId?: string;
+  helpRequestId?: string;
+  attendedBy: string;
+  attendedAt: string;
+  userName?: string;
+  userEmail?: string;
+  userRole?: string;
+}
+
+/** POST — vincularse como atendiendo una emergencia */
+export async function attendEmergency(emergencyId: string): Promise<Attendee> {
+  const res = await fetch(`${API}/api/emergencies/${encodeURIComponent(emergencyId)}/attendees`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data;
+}
+
+/** GET — listar usuarios que atienden una emergencia */
+export async function listEmergencyAttendees(emergencyId: string): Promise<Attendee[]> {
+  const res = await fetch(`${API}/api/emergencies/${encodeURIComponent(emergencyId)}/attendees`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data ?? [];
 }

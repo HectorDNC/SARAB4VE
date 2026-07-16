@@ -116,6 +116,46 @@ const EmergencyCreateBody = z.object({
 }).openapi({ description: "Payload para crear una emergencia SOS accesible" });
 
 // ---------------------------------------------------------------------------
+// Schemas para attendees
+// ---------------------------------------------------------------------------
+
+/** Response de un attendee (emergency o help-request) */
+const AttendeeResponse = z.object({
+  id: z.string().uuid().openapi({
+    example: "550e8400-e29b-41d4-a716-446655440000",
+    description: "UUID del registro attendee",
+  }),
+  emergencyId: z.string().uuid().optional().openapi({
+    example: "550e8400-e29b-41d4-a716-446655440000",
+    description: "UUID de la emergencia (solo en emergency attendees)",
+  }),
+  helpRequestId: z.string().uuid().optional().openapi({
+    example: "550e8400-e29b-41d4-a716-446655440000",
+    description: "UUID de la solicitud (solo en help-request attendees)",
+  }),
+  attendedBy: z.string().uuid().openapi({
+    example: "550e8400-e29b-41d4-a716-446655440000",
+    description: "UUID del usuario que atiende",
+  }),
+  attendedAt: z.string().datetime().openapi({
+    example: "2026-07-13T14:30:00.000Z",
+    description: "Fecha/hora en que se vinculó",
+  }),
+  userName: z.string().optional().openapi({
+    example: "María Pérez",
+    description: "Nombre del usuario (incluido en GET /list)",
+  }),
+  userEmail: z.string().email().optional().openapi({
+    example: "maria@example.com",
+    description: "Email del usuario (incluido en GET /list)",
+  }),
+  userRole: z.string().optional().openapi({
+    example: "volunteer",
+    description: "Rol del usuario (incluido en GET /list)",
+  }),
+}).openapi({ description: "Registro de un usuario atendiendo una emergencia o solicitud" });
+
+// ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
 
@@ -824,6 +864,190 @@ registry.registerPath({
     },
     409: {
       description: "El usuario no está en estado pendiente",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+// =========================================================================
+// EMERGENCY ATTENDEES
+// =========================================================================
+
+registry.registerPath({
+  method: "post",
+  path: "/api/emergencies/{emergencyId}/attendees",
+  summary: "Vincularse como atendiendo una emergencia",
+  description: [
+    "El usuario autenticado se vincula como atendiendo una emergencia.",
+    "El `attendedBy` se obtiene automáticamente del token JWT, no se envía en el body.",
+    "Requiere rol admin, organization o volunteer.",
+  ].join(" "),
+  tags: ["Emergency Attendees"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      emergencyId: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID de la emergencia",
+      }),
+    }),
+  },
+  responses: {
+    201: {
+      description: "Usuario vinculado exitosamente",
+      content: { "application/json": { schema: z.object({ data: AttendeeResponse }) } },
+    },
+    400: {
+      description: "ID de emergencia inválido",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Rol no autorizado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    409: {
+      description: "El usuario ya está vinculado a esta emergencia",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/emergencies/{emergencyId}/attendees",
+  summary: "Listar usuarios que atienden una emergencia",
+  description: [
+    "Devuelve la lista de usuarios (con nombre, email y rol) que están vinculados",
+    "como atendiendo una emergencia específica.",
+    "Requiere rol admin, organization o volunteer.",
+  ].join(" "),
+  tags: ["Emergency Attendees"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      emergencyId: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID de la emergencia",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Lista de usuarios que atienden la emergencia",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.array(AttendeeResponse),
+          }),
+        },
+      },
+    },
+    400: {
+      description: "ID de emergencia inválido",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Rol no autorizado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+// =========================================================================
+// HELP REQUEST ATTENDEES
+// =========================================================================
+
+registry.registerPath({
+  method: "post",
+  path: "/api/help-requests/{helpRequestId}/attendees",
+  summary: "Vincularse como atendiendo una solicitud de ayuda",
+  description: [
+    "El usuario autenticado se vincula como atendiendo una solicitud de ayuda.",
+    "El `attendedBy` se obtiene automáticamente del token JWT, no se envía en el body.",
+    "Requiere rol admin, organization o volunteer.",
+  ].join(" "),
+  tags: ["Help Request Attendees"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      helpRequestId: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID de la solicitud de ayuda",
+      }),
+    }),
+  },
+  responses: {
+    201: {
+      description: "Usuario vinculado exitosamente",
+      content: { "application/json": { schema: z.object({ data: AttendeeResponse }) } },
+    },
+    400: {
+      description: "ID de solicitud inválido",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Rol no autorizado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    409: {
+      description: "El usuario ya está vinculado a esta solicitud",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/help-requests/{helpRequestId}/attendees",
+  summary: "Listar usuarios que atienden una solicitud de ayuda",
+  description: [
+    "Devuelve la lista de usuarios (con nombre, email y rol) que están vinculados",
+    "como atendiendo una solicitud de ayuda específica.",
+    "Requiere rol admin, organization o volunteer.",
+  ].join(" "),
+  tags: ["Help Request Attendees"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      helpRequestId: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID de la solicitud de ayuda",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Lista de usuarios que atienden la solicitud",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.array(AttendeeResponse),
+          }),
+        },
+      },
+    },
+    400: {
+      description: "ID de solicitud inválido",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Rol no autorizado",
       content: { "application/json": { schema: ErrorResponse } },
     },
   },

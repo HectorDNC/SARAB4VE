@@ -1,6 +1,7 @@
 /**
  * Repositorio — consultas SQL para el dominio de emergencias.
  */
+const db = require("../../db");
 
 /**
  * Expresión de distancia geográfica mediante la fórmula del haversine.
@@ -35,9 +36,10 @@ function buildListEmergenciesQuery(filters) {
   const values = [];
   const baseConditions = [];
 
-  if (filters.status) {
-    values.push(filters.status);
-    baseConditions.push(`status = $${values.length}`);
+  if (filters.statuses && filters.statuses.length > 0) {
+    const placeholders = filters.statuses.map((_, i) => `$${values.length + i + 1}`).join(", ");
+    values.push(...filters.statuses);
+    baseConditions.push(`status IN (${placeholders})`);
   }
 
   // Solo lo necesario para pintar marcadores en el mapa.
@@ -124,8 +126,31 @@ async function findEmergencyById(id, db) {
   return result.rows[0] || null;
 }
 
+// ---------------------------------------------------------------------------
+// Queries de actualización
+// ---------------------------------------------------------------------------
+
+const UPDATE_STATUS_TO_ASSIGNED = `
+  UPDATE emergencies
+  SET status = 'assigned',
+      assigned_at = NOW()
+  WHERE id = $1 AND status = 'received'
+  RETURNING id, status, assigned_at AS "assignedAt"
+`;
+
+/**
+ * Cambia el estado de una emergencia de "received" a "assigned".
+ * @param {string} id
+ * @returns {Promise<Object|null>}
+ */
+async function updateEmergencyStatusToAssigned(id) {
+  const result = await db.query(UPDATE_STATUS_TO_ASSIGNED, [id]);
+  return result.rows[0] || null;
+}
+
 module.exports = {
   buildDistanceExpression,
   buildListEmergenciesQuery,
   findEmergencyById,
+  updateEmergencyStatusToAssigned,
 };

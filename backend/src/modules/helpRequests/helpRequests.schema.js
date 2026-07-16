@@ -131,8 +131,16 @@ function validateSearchHelpRequests(query) {
   const hasRadius = query.radiusKm !== undefined;
   const hasGeoFilter = hasLatitude || hasLongitude || hasRadius;
 
-  if (query.status && !REQUEST_STATUS_SET.has(query.status)) {
-    errors.push("status is invalid");
+  // Parse status as comma-separated array
+  let statuses = null;
+  if (query.status) {
+    const statusArray = query.status.split(",").map(s => s.trim()).filter(Boolean);
+    const invalid = statusArray.find(s => !REQUEST_STATUS_SET.has(s));
+    if (invalid) {
+      errors.push(`status "${invalid}" is invalid`);
+    } else {
+      statuses = statusArray;
+    }
   }
 
   if (!hasGeoFilter) {
@@ -144,7 +152,7 @@ function validateSearchHelpRequests(query) {
         latitude: null,
         longitude: null,
         radiusKm: null,
-        status: query.status || null,
+        statuses,
       },
     };
   }
@@ -177,7 +185,7 @@ function validateSearchHelpRequests(query) {
       latitude,
       longitude,
       radiusKm,
-      status: query.status || null,
+      statuses,
     },
   };
 }
