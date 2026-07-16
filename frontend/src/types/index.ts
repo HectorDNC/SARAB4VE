@@ -86,7 +86,6 @@ interface BaseUserForm {
     password: string;
     location: { lat: number; lng: number } | null;
     zone: string;
-    acceptedTerms: boolean;
 }
 
 // ----------- Volunteer ------------------------
@@ -115,6 +114,13 @@ export interface iVolunteerForm extends BaseUserForm {
     skills: string[];
     availableHours: number;
     availableDays: string[];
+    acceptedTerms: boolean;
+
+}
+
+export interface iInfoVolunteer extends Omit<iVolunteerForm, "password"> {
+    id: string;
+    status: STATUS_USERS;
 }
 
 
@@ -125,6 +131,7 @@ export interface iOrganizationForm extends BaseUserForm {
     organizationName: string;
     legalDocument: string;
     workArea: string[];
+    acceptedTerms: boolean;
 }
 
 export const WORK_AREAS = [
@@ -136,6 +143,11 @@ export const WORK_AREAS = [
     { value: "psicosocial", label: "Apoyo psicosocial" },
 ];
 
+export interface iInfoOrganization extends Omit<iOrganizationForm, "password"> {
+    id: string;
+    status: STATUS_USERS;
+}
+
 // -------- Login Usuario -----------------
 
 export interface UserLogin {
@@ -143,4 +155,56 @@ export interface UserLogin {
     password: string;
 }
 
-export type ROLES_USER = 'admin' | 'organization' | 'volunteer' | 'user';
+export type ROLES_USER = 'admin' | 'organization' | 'volunteer' | 'citizen';
+
+
+// ----------- Panel Usuarios ---------------
+
+export type STATUS_USERS = 'pending' | 'approved' | 'rejected' | 'suspended';
+
+
+export interface ApiUser {
+    id: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    role: ROLES_USER;
+    status: STATUS_USERS;
+    location: { lat: number; lng: number } | null;
+    zone: string | null;
+    phoneVerified: boolean;
+    emailVerified: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface ListUsersResponse {
+    data: {
+        users: ApiUser[];
+        total: number;
+        limit: number;
+        offset: number;
+    };
+}
+
+export interface ListUsersParams {
+    role?: ROLES_USER;
+    status?: STATUS_USERS;
+    search?: string;
+    limit?: number;
+    offset?: number;
+}
+
+export interface IdParam {
+    id: string;
+}
+
+
+
+// -------- Perfil administrador - Registro ----------------------
+
+export interface iAdmin extends BaseUserForm {
+    adminSecret: string;
+}
+
+export const USE_MOCK=false;

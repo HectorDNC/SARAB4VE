@@ -43,10 +43,10 @@ export default function Login() {
                 password: result.data.password,
             });
 
-            saveSession(response.data.token, response.data.user);
+            saveSession(response.token, response.user);
 
-            alertService.success(`Bienvenida , ${response.data.user.fullName}`);
-            router.push('/');
+            alertService.success(`Bienvenida , ${response.user.fullName}`);
+            router.push('/dashboard');
         } catch (error) {
             const message = error instanceof Error ? error.message : 'No se pudo iniciar sesión';
             alertService.error(message);
