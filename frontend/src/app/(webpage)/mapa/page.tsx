@@ -117,8 +117,8 @@ export default function MapaPage() {
 
       try {
         const [emergencies, helpRequests] = await Promise.all([
-          listEmergencies({ status: "received" }),
-          listHelpRequests({ status: "open" }),
+          listEmergencies({ status: ["received", "assigned"] }),
+          listHelpRequests({ status: ["open", "assigned"] }),
         ]);
 
         if (cancelled) return;

@@ -2,8 +2,11 @@
  * Servicio — lógica de negocio para emergency-attendees.
  */
 
+const emergenciesRepository = require("../emergencies/emergencies.repository");
+
 /**
  * Vincula al usuario autenticado como atendiendo una emergencia.
+ * Si la emergencia está en estado "received", la transiciona a "assigned".
  * @param {string} emergencyId
  * @param {string} attendedBy — userId del token JWT
  * @param {Object} repository
@@ -15,6 +18,9 @@ async function createEmergencyAttendee(emergencyId, attendedBy, repository) {
   if (!row) {
     return { errors: ["attendee already exists for this emergency"], status: 409 };
   }
+
+  // Transicionar la emergencia de "received" → "assigned"
+  await emergenciesRepository.updateEmergencyStatusToAssigned(emergencyId);
 
   return { data: row, status: 201 };
 }

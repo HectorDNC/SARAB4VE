@@ -40,9 +40,10 @@ function buildListHelpRequestsQuery(filters) {
   const values = [];
   const baseConditions = [];
 
-  if (filters.status) {
-    values.push(filters.status);
-    baseConditions.push(`status = $${values.length}`);
+  if (filters.statuses && filters.statuses.length > 0) {
+    const placeholders = filters.statuses.map((_, i) => `$${values.length + i + 1}`).join(", ");
+    values.push(...filters.statuses);
+    baseConditions.push(`status IN (${placeholders})`);
   }
 
   if (!filters.hasGeoFilter) {
@@ -260,6 +261,37 @@ async function findHelpRequestById(id) {
   return result.rows[0] || null;
 }
 
+const UPDATE_STATUS_TO_ASSIGNED = `
+  UPDATE help_requests hr
+  SET status = 'assigned',
+      assigned_at = NOW(),
+      volunteer_name = u.full_name,
+      volunteer_contact_method = CASE 
+        WHEN u.phone IS NOT NULL AND u.phone != '' THEN 'phone'
+        ELSE 'email'
+      END,
+      volunteer_contact_value = COALESCE(u.phone, u.email)
+  FROM users u
+  WHERE hr.id = $1 
+    AND hr.status = 'open'
+    AND u.id = $2
+  RETURNING hr.id, hr.status, hr.assigned_at AS "assignedAt",
+            hr.volunteer_name AS "volunteerName",
+            hr.volunteer_contact_method AS "volunteerContactMethod",
+            hr.volunteer_contact_value AS "volunteerContactValue"
+`;
+
+/**
+ * Cambia el estado de un help request de "open" a "assigned" y llena los datos del voluntario.
+ * @param {string} id - ID del help request
+ * @param {string} volunteerId - ID del voluntario que atiende
+ * @returns {Promise<Object|null>}
+ */
+async function updateHelpRequestStatusToAssigned(id, volunteerId) {
+  const result = await db.query(UPDATE_STATUS_TO_ASSIGNED, [id, volunteerId]);
+  return result.rows[0] || null;
+}
+
 module.exports = {
   // queries de lectura
   buildListHelpRequestsQuery,
@@ -269,4 +301,5 @@ module.exports = {
   resolveHelpRequestById,
   findHelpRequestStatusById,
   findHelpRequestById,
+  updateHelpRequestStatusToAssigned,
 };

@@ -35,7 +35,7 @@ export interface HelpRequestListItem {
 }
 
 interface ListHelpRequestsParams {
-  status?: string;
+  status?: string[];
   latitude?: number;
   longitude?: number;
   radiusKm?: number;
@@ -48,7 +48,9 @@ export async function listHelpRequests(
 ): Promise<HelpRequestListItem[]> {
   const searchParams = new URLSearchParams();
 
-  if (params.status) searchParams.set("status", params.status);
+  if (params.status && params.status.length > 0) {
+    searchParams.set("status", params.status.join(","));
+  }
   if (params.latitude !== undefined) searchParams.set("latitude", String(params.latitude));
   if (params.longitude !== undefined) searchParams.set("longitude", String(params.longitude));
   if (params.radiusKm !== undefined) searchParams.set("radiusKm", String(params.radiusKm));

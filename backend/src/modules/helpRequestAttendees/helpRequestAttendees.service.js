@@ -2,8 +2,11 @@
  * Servicio — lógica de negocio para help-request-attendees.
  */
 
+const helpRequestsRepository = require("../helpRequests/helpRequests.repository");
+
 /**
  * Vincula al usuario autenticado como atendiendo un help request.
+ * Si el help request está en estado "open", lo transiciona a "assigned".
  * @param {string} helpRequestId
  * @param {string} attendedBy — userId del token JWT
  * @param {Object} repository
@@ -15,6 +18,9 @@ async function createHelpRequestAttendee(helpRequestId, attendedBy, repository) 
   if (!row) {
     return { errors: ["attendee already exists for this help request"], status: 409 };
   }
+
+  // Transicionar el help request de "open" → "assigned"
+  await helpRequestsRepository.updateHelpRequestStatusToAssigned(helpRequestId, attendedBy);
 
   return { data: row, status: 201 };
 }
