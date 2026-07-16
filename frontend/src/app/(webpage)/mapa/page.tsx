@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { MapItem, UrgencyLevel } from "@/types";
 import { Refugios, CONFIGURACION_SERVICIOS } from "@/mocks/refugios";
@@ -107,6 +107,11 @@ export default function MapaPage() {
   const [mapItems, setMapItems] = useState<MapItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handleRefreshMap = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -157,7 +162,7 @@ export default function MapaPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshTrigger]);
 
   // Filtrar refugios (mock)
   const refugiosFiltrados = Refugios.filter((s) => {
@@ -618,6 +623,7 @@ export default function MapaPage() {
         kind={modalKind}
         open={modalId !== null}
         onClose={() => { setModalId(null); setModalKind(null); }}
+        onAttendSuccess={handleRefreshMap}
       />
     </div>
   );

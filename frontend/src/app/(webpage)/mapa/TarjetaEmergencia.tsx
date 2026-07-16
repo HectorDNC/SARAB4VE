@@ -100,6 +100,22 @@ export function TarjetaEmergencia({ item, isSelected, onClick }: Props) {
             )}
           </div>
 
+          {item.createdAt && (
+            <p className="text-[11px] text-on-surface-variant/70 mt-1 flex items-center gap-1">
+              <span className="material-symbols-rounded text-[10px]">calendar_today</span>
+              {new Date(item.createdAt).toLocaleDateString("es-VE", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })}{" "}
+              ·{" "}
+              {new Date(item.createdAt).toLocaleTimeString("es-VE", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+          )}
+
           {item.description && (
             <p className="text-xs text-on-surface-variant mt-1.5 line-clamp-2">{item.description}</p>
           )}

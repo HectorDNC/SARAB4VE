@@ -164,9 +164,10 @@ interface Props {
   kind: "emergency" | "help_request" | null;
   open: boolean;
   onClose: () => void;
+  onAttendSuccess?: () => void;
 }
 
-export function ModalDetalleSolicitud({ id, kind, open, onClose }: Props) {
+export function ModalDetalleSolicitud({ id, kind, open, onClose, onAttendSuccess }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -212,6 +213,8 @@ export function ModalDetalleSolicitud({ id, kind, open, onClose }: Props) {
         const detail = await getHelpRequestById(id);
         setItem(helpRequestDetailToMapItem(detail));
       }
+      // Notificar al padre para recargar el listado del mapa
+      onAttendSuccess?.();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al vincularse";
       if (msg.includes("409") || msg.includes("already exists")) {
@@ -222,9 +225,7 @@ export function ModalDetalleSolicitud({ id, kind, open, onClose }: Props) {
     } finally {
       setAttendLoading(false);
     }
-  }, [id, kind]);
-
-  // ── Cargar lista de attendees ──
+  }, [id, kind, onAttendSuccess]);
   const handleShowAttendees = useCallback(async () => {
     if (!id || !kind) return;
     setShowAttendeesModal(true);
