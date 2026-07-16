@@ -205,7 +205,7 @@ function FilterSelect<V extends string>({
 export default function MapaPage() {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showBanner, setShowBanner] = useState(true);
+  const [showBanner, setShowBanner] = useState(false);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -565,7 +565,6 @@ export default function MapaPage() {
       ══════════════════════════════════════════════════ */}
       <div className="flex-1 relative">
         <LeafletMap
-          shelters={refugiosFiltrados}
           selectedId={selectedId}
           onSelect={handleSeleccionar}
           mapItems={mapItemsFiltrados}

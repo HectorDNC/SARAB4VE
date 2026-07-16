@@ -55,7 +55,7 @@ export interface MapItem {
 // ── LeafletMap ──────────────────────────────────────────────────────────────
 
 export interface LeafletMapProps {
-    shelters: iRefugio[];
+    shelters?: iRefugio[];
     selectedId: string | null;
     onSelect: (id: string | null) => void;
     mapItems?: MapItem[];
