@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { MapItem, UrgencyLevel } from "@/types";
 import { Refugios, CONFIGURACION_SERVICIOS } from "@/mocks/refugios";
@@ -90,6 +90,116 @@ function helpRequestToMapItem(h: HelpRequestListItem): MapItem | null {
   };
 }
 
+// ── Componente FilterSelect ──────────────────────────────────────────────────
+
+interface FilterOption<V extends string> {
+  value: V;
+  label: string;
+  icon: string;
+}
+
+function FilterSelect<V extends string>({
+  value,
+  options,
+  onChange,
+  triggerIcon,
+  ariaLabel,
+}: {
+  value: V;
+  options: FilterOption<V>[];
+  onChange: (v: V) => void;
+  triggerIcon: string;
+  ariaLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selected = options.find((o) => o.value === value);
+
+  // Cerrar al hacer clic fuera
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div className="relative flex-1" ref={containerRef}>
+      {/* ── Trigger ── */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className="w-full flex items-center gap-2 bg-surface-container-low text-on-surface text-[12px] font-semibold pl-2.5 pr-1.5 py-2 rounded-xl border border-outline-variant/60 hover:border-outline focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer transition-colors"
+      >
+        <span className="material-symbols-rounded text-sm text-primary shrink-0" aria-hidden="true">
+          {triggerIcon}
+        </span>
+        <span className="flex-1 text-left truncate">{selected?.label ?? value}</span>
+        <span
+          className={`material-symbols-rounded text-base text-on-surface-variant shrink-0 transition-transform duration-200 ${
+            open ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+        >
+          expand_more
+        </span>
+      </button>
+
+      {/* ── Dropdown ── */}
+      {open && (
+        <div
+          role="listbox"
+          aria-label={ariaLabel}
+          className="absolute left-0 right-0 top-full mt-1 z-50 bg-surface rounded-xl border border-outline-variant shadow-lg py-1 overflow-hidden animate-fade-in"
+        >
+          {options.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-[12px] font-semibold text-left transition-colors ${
+                  isSelected
+                    ? "bg-primary/8 text-primary"
+                    : "text-on-surface hover:bg-surface-container"
+                }`}
+              >
+                <span
+                  className={`material-symbols-rounded text-sm shrink-0 ${
+                    isSelected ? "text-primary" : "text-on-surface-variant"
+                  }`}
+                  aria-hidden="true"
+                >
+                  {opt.icon}
+                </span>
+                <span className="flex-1">{opt.label}</span>
+                {isSelected && (
+                  <span className="material-symbols-rounded text-base text-primary shrink-0" aria-hidden="true">
+                    check
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Página ──────────────────────────────────────────────────────────────────
 
 export default function MapaPage() {
@@ -122,6 +232,7 @@ export default function MapaPage() {
   }, []);
 
   useEffect(() => {
+    console.log(location);
     let cancelled = false;
 
     async function fetchData() {
@@ -323,40 +434,32 @@ export default function MapaPage() {
           </div>
         </div>
 
-        {/* Filtros compactos (select) */}
+        {/* Filtros compactos */}
         {sidebarOpen && (
-          <div className="px-4 py-2 border-b border-outline-variant flex gap-2">
-            <div className="relative flex-1">
-              <select
-                value={kindFilter}
-                onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)}
-                aria-label="Tipo de solicitud"
-                className="w-full appearance-none bg-surface-container text-on-surface text-[11px] font-bold pl-2.5 pr-7 py-1.5 rounded-lg border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer"
-              >
-                <option value="all">Todas</option>
-                <option value="emergency">Emergencias</option>
-                <option value="help_request">Apoyo</option>
-              </select>
-              <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 material-symbols-rounded text-sm text-on-surface-variant">
-                unfold_more
-              </span>
-            </div>
-            <div className="relative flex-1">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-                aria-label="Estado"
-                className="w-full appearance-none bg-surface-container text-on-surface text-[11px] font-bold pl-2.5 pr-7 py-1.5 rounded-lg border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer"
-              >
-                <option value="all">Todas</option>
-                <option value="active">Activas</option>
-                <option value="assigned">Asignadas</option>
-                <option value="resolved">Resueltas</option>
-              </select>
-              <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 material-symbols-rounded text-sm text-on-surface-variant">
-                unfold_more
-              </span>
-            </div>
+          <div className="px-4 py-2.5 border-b border-outline-variant flex gap-2">
+            <FilterSelect
+              value={kindFilter}
+              onChange={setKindFilter}
+              triggerIcon="category"
+              ariaLabel="Tipo de solicitud"
+              options={[
+                { value: "all", label: "Todas", icon: "layers" },
+                { value: "emergency", label: "Emergencias", icon: "emergency" },
+                { value: "help_request", label: "Apoyo", icon: "handshake" },
+              ]}
+            />
+            <FilterSelect
+              value={statusFilter}
+              onChange={setStatusFilter}
+              triggerIcon="filter_alt"
+              ariaLabel="Estado"
+              options={[
+                { value: "active", label: "Activas", icon: "fiber_manual_record" },
+                { value: "assigned", label: "Asignadas", icon: "volunteer_activism" },
+                { value: "resolved", label: "Resueltas", icon: "check_circle" },
+                { value: "all", label: "Todas", icon: "format_list_bulleted" },
+              ]}
+            />
           </div>
         )}
 
@@ -451,16 +554,6 @@ export default function MapaPage() {
                     </div>
                   ))}
 
-                {/* ── Refugios (mock) ── */}
-                {refugiosFiltrados.map((s) => (
-                  <div key={s.id} role="listitem">
-                    <TarjetaRefugio
-                      shelter={s}
-                      isSelected={selectedId === s.id}
-                      onClick={() => handleSeleccionar(s.id)}
-                    />
-                  </div>
-                ))}
               </>
             ) : null}
           </div>
@@ -556,38 +649,30 @@ export default function MapaPage() {
           </div>
 
           {/* Filtros compactos (móvil) */}
-          <div className="px-4 py-2 border-b border-outline-variant flex gap-2">
-            <div className="relative flex-1">
-              <select
-                value={kindFilter}
-                onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)}
-                aria-label="Tipo de solicitud"
-                className="w-full appearance-none bg-surface-container text-on-surface text-[11px] font-bold pl-2.5 pr-7 py-1.5 rounded-lg border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer"
-              >
-                <option value="all">Todas</option>
-                <option value="emergency">Emergencias</option>
-                <option value="help_request">Apoyo</option>
-              </select>
-              <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 material-symbols-rounded text-sm text-on-surface-variant">
-                unfold_more
-              </span>
-            </div>
-            <div className="relative flex-1">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-                aria-label="Estado"
-                className="w-full appearance-none bg-surface-container text-on-surface text-[11px] font-bold pl-2.5 pr-7 py-1.5 rounded-lg border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer"
-              >
-                <option value="all">Todas</option>
-                <option value="active">Activas</option>
-                <option value="assigned">Asignadas</option>
-                <option value="resolved">Resueltas</option>
-              </select>
-              <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 material-symbols-rounded text-sm text-on-surface-variant">
-                unfold_more
-              </span>
-            </div>
+          <div className="px-4 py-2.5 border-b border-outline-variant flex gap-2">
+            <FilterSelect
+              value={kindFilter}
+              onChange={setKindFilter}
+              triggerIcon="category"
+              ariaLabel="Tipo de solicitud"
+              options={[
+                { value: "all", label: "Todas", icon: "layers" },
+                { value: "emergency", label: "Emergencias", icon: "emergency" },
+                { value: "help_request", label: "Apoyo", icon: "handshake" },
+              ]}
+            />
+            <FilterSelect
+              value={statusFilter}
+              onChange={setStatusFilter}
+              triggerIcon="filter_alt"
+              ariaLabel="Estado"
+              options={[
+                { value: "active", label: "Activas", icon: "fiber_manual_record" },
+                { value: "assigned", label: "Asignadas", icon: "volunteer_activism" },
+                { value: "resolved", label: "Resueltas", icon: "check_circle" },
+                { value: "all", label: "Todas", icon: "format_list_bulleted" },
+              ]}
+            />
           </div>
 
           {/* Lista */}
@@ -718,7 +803,7 @@ export default function MapaPage() {
         )}
       </div>
 
-      {/* Animación slide-up */}
+      {/* Animaciones */}
       <style jsx global>{`
         @keyframes slide-up {
           from { transform: translateY(100%); }
@@ -726,6 +811,13 @@ export default function MapaPage() {
         }
         .animate-slide-up {
           animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.15s ease-out forwards;
         }
       `}</style>
 
