@@ -8,6 +8,7 @@ import { useLocation } from "@/hooks/useLocation";
 import StepDisabilityType from "./components/StepDisabilityType";
 import StepInitialStatus from "./components/StepInitialStatus";
 import StepNameAndLocation from "./components/StepNameAndLocation";
+import AccessibilityToolbar from "@/components/layout/AccessibilityToolbar";
 import {
   type CommunicationMode,
   type DisabilityType,
@@ -299,6 +300,10 @@ export default function SOSFlowPage() {
               <h1 id="sos-title" className="mt-1.5 sm:mt-2 text-xl sm:text-2xl lg:text-3xl font-black text-on-surface leading-tight">Solicitud SOS Emergencia</h1>
             </div>
             <p className="text-xs sm:text-sm font-semibold text-on-surface-variant shrink-0">Paso {currentStep}/{TOTAL_STEPS}</p>
+            {/* Botón de accesibilidad grande y fijo en SOS */}
+            <div className="shrink-0">
+              <AccessibilityToolbar />
+            </div>
           </div>
           <div className="mt-2 sm:mt-3 h-1.5 sm:h-2 rounded-full bg-surface-container-high overflow-hidden" aria-label="Progreso">
             <div className="h-full bg-primary transition-all duration-200" style={{ width: `${progress}%` }} />

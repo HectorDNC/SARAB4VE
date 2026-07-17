@@ -146,3 +146,371 @@ a, button {
     width: 0%;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCESIBILIDAD — WCAG 2.1 AA
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Escala de fuente ── */
+:root {
+  --a11y-font-scale: 1;
+}
+
+html.a11y-font-normal {
+  --a11y-font-scale: 1;
+}
+
+html.a11y-font-large {
+  --a11y-font-scale: 1.2;
+}
+
+html.a11y-font-x-large {
+  --a11y-font-scale: 1.45;
+}
+
+/* Aplica la escala a todos los elementos de texto */
+html.a11y-font-large body,
+html.a11y-font-x-large body {
+  font-size: calc(1rem * var(--a11y-font-scale));
+}
+
+html.a11y-font-large h1,
+html.a11y-font-x-large h1 { font-size: calc(1.875rem * var(--a11y-font-scale)); }
+html.a11y-font-large h2,
+html.a11y-font-x-large h2 { font-size: calc(1.5rem * var(--a11y-font-scale)); }
+html.a11y-font-large h3,
+html.a11y-font-x-large h3 { font-size: calc(1.25rem * var(--a11y-font-scale)); }
+
+/* Ajustar altura de línea proporcionalmente */
+html.a11y-font-large body,
+html.a11y-font-x-large body {
+  line-height: 1.6;
+}
+
+/* ── Alto Contraste ── */
+html.a11y-high-contrast {
+  /* Fondo negro, texto amarillo/blanco */
+  --color-background:                 #000000;
+  --color-on-background:              #FFFF00;
+  --color-surface:                    #000000;
+  --color-surface-dim:                #1a1a1a;
+  --color-surface-bright:             #0d0d0d;
+  --color-surface-container-lowest:   #000000;
+  --color-surface-container-low:      #0a0a0a;
+  --color-surface-container:          #111111;
+  --color-surface-container-high:     #1a1a1a;
+  --color-surface-container-highest:  #222222;
+  --color-on-surface:                 #FFFF00;
+  --color-on-surface-variant:         #FFFFFF;
+  --color-inverse-surface:            #FFFF00;
+  --color-inverse-on-surface:         #000000;
+  --color-surface-variant:            #222222;
+  --color-surface-tint:               #FFFF00;
+  --color-outline:                    #FFFFFF;
+  --color-outline-variant:            #CCCCCC;
+
+  /* Primario en amarillo */
+  --color-primary:                    #FFFF00;
+  --color-primary-container:          #333300;
+  --color-on-primary:                 #000000;
+  --color-on-primary-container:       #FFFF00;
+  --color-primary-fixed:              #FFFF00;
+  --color-primary-fixed-dim:          #CCCC00;
+  --color-inverse-primary:            #000000;
+
+  /* Secundario y terciario */
+  --color-secondary:                  #FFFF00;
+  --color-secondary-container:        #333300;
+  --color-on-secondary:               #000000;
+  --color-on-secondary-container:     #FFFF00;
+  --color-secondary-fixed:            #FFFF00;
+  --color-secondary-fixed-dim:        #CCCC00;
+
+  --color-tertiary:                   #FFFF00;
+  --color-tertiary-container:         #333300;
+  --color-on-tertiary:                #000000;
+  --color-on-tertiary-container:      #FFFF00;
+
+  /* Estados */
+  --color-error:                      #FF4444;
+  --color-error-container:            #330000;
+  --color-on-error:                   #000000;
+  --color-on-error-container:         #FFAAAA;
+
+  --color-warning:                    #FFAA00;
+  --color-warning-container:          #332200;
+  --color-on-warning-container:       #FFDDAA;
+
+  --color-success:                    #44FF44;
+  --color-success-container:          #003300;
+  --color-on-success-container:       #AAFFAA;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ALTO CONTRASTE — Refuerzos agresivos (WCAG 2.1 AA)
+   Sobrescribe gradientes, colores inline, opacidades y utility classes
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+html.a11y-high-contrast body {
+  background-color: #000000 !important;
+  color: #FFFF00 !important;
+}
+
+/* ── Eliminar gradientes ─ */
+html.a11y-high-contrast [class*="bg-gradient"],
+html.a11y-high-contrast [style*="gradient"] {
+  background: #000000 !important;
+  background-image: none !important;
+}
+
+/* ── Enlaces ── */
+html.a11y-high-contrast a {
+  color: #FFFF00 !important;
+  text-decoration: underline;
+  text-decoration-color: #FFFF00;
+}
+html.a11y-high-contrast a:hover {
+  color: #FFFFFF !important;
+  text-decoration-color: #FFFFFF;
+}
+
+/* ── Botones: fondo negro, texto amarillo, borde blanco ── */
+html.a11y-high-contrast button,
+html.a11y-high-contrast [role="button"] {
+  background-color: #000000 !important;
+  color: #FFFF00 !important;
+  border-color: #FFFFFF !important;
+  background-image: none !important;
+}
+
+/* Botones primarios (acciones principales) */
+html.a11y-high-contrast button[class*="bg-primary"],
+html.a11y-high-contrast [role="button"][class*="bg-primary"] {
+  background-color: #FFFF00 !important;
+  color: #000000 !important;
+  border-color: #FFFFFF !important;
+}
+
+/* Botones de error (peligro) */
+html.a11y-high-contrast button[class*="bg-error"],
+html.a11y-high-contrast [role="button"][class*="bg-error"] {
+  background-color: #FF4444 !important;
+  color: #000000 !important;
+  border-color: #FFFFFF !important;
+}
+
+/* Botones de éxito */
+html.a11y-high-contrast button[class*="bg-success"],
+html.a11y-high-contrast [role="button"][class*="bg-success"] {
+  background-color: #44FF44 !important;
+  color: #000000 !important;
+  border-color: #FFFFFF !important;
+}
+
+/* Botones con opacidad (ej: hover:bg-primary/90, bg-primary/10) */
+html.a11y-high-contrast [class*="bg-primary/"],
+html.a11y-high-contrast [class*="bg-error/"],
+html.a11y-high-contrast [class*="bg-success/"],
+html.a11y-high-contrast [class*="bg-warning/"] {
+  background-color: #000000 !important;
+}
+
+/* ── Tarjetas y contenedores ── */
+html.a11y-high-contrast [class*="bg-surface"],
+html.a11y-high-contrast [class*="bg-background"],
+html.a11y-high-contrast [class*="bg-primary-fixed"],
+html.a11y-high-contrast [class*="bg-primary-container"],
+html.a11y-high-contrast [class*="bg-secondary-container"] {
+  background-color: #000000 !important;
+}
+
+html.a11y-high-contrast [class*="border-primary/"],
+html.a11y-high-contrast [class*="border-error/"],
+html.a11y-high-contrast [class*="border-outline-variant"] {
+  border-color: #FFFFFF !important;
+}
+
+/* ── Textos con opacidad ── */
+html.a11y-high-contrast [class*="text-on-surface-variant"] {
+  color: #FFFFFF !important;
+}
+
+html.a11y-high-contrast [class*="text-primary/"],
+html.a11y-high-contrast [class*="text-error/"],
+html.a11y-high-contrast [class*="text-success/"],
+html.a11y-high-contrast [class*="text-warning/"],
+html.a11y-high-contrast [class*="opacity-"] {
+  opacity: 1 !important;
+}
+
+/* ── Textos específicos con colores problemáticos ── */
+html.a11y-high-contrast [class*="text-blue-"],
+html.a11y-high-contrast [class*="text-red-"],
+html.a11y-high-contrast [class*="text-gray-"],
+html.a11y-high-contrast [class*="text-slate-"],
+html.a11y-high-contrast [class*="text-zinc-"] {
+  color: #FFFF00 !important;
+}
+
+/* ─ Placeholders ── */
+html.a11y-high-contrast input::placeholder,
+html.a11y-high-contrast textarea::placeholder {
+  color: #FFFF00 !important;
+  opacity: 0.7 !important;
+}
+
+/* ── Imágenes y video ── */
+html.a11y-high-contrast img,
+html.a11y-high-contrast video {
+  outline: 2px solid #FFFFFF;
+  filter: contrast(1.1);
+}
+
+/* ── Inputs, textarea, select ── */
+html.a11y-high-contrast input,
+html.a11y-high-contrast textarea,
+html.a11y-high-contrast select {
+  background-color: #000000 !important;
+  color: #FFFF00 !important;
+  border-color: #FFFFFF !important;
+}
+
+html.a11y-high-contrast input::placeholder,
+html.a11y-high-contrast textarea::placeholder {
+  color: #CCCC00 !important;
+}
+
+/* ── Focus ── */
+html.a11y-high-contrast :focus-visible {
+  outline: 3px solid #FFFF00 !important;
+  outline-offset: 2px;
+}
+
+/* ── Sombras: convertirlas en bordes visibles ── */
+html.a11y-high-contrast [class*="shadow-"] {
+  box-shadow: none !important;
+}
+
+/* ── Ring ── */
+html.a11y-high-contrast [class*="ring-primary/"],
+html.a11y-high-contrast [class*="ring-secondary/"] {
+  --tw-ring-color: #FFFFFF !important;
+}
+
+/* ── Cards con fondo amarillo: texto debe ser NEGRO ── */
+html.a11y-high-contrast [class*="bg-primary-fixed"],
+html.a11y-high-contrast [class*="bg-yellow"],
+html.a11y-high-contrast [style*="background: #FFFF00"],
+html.a11y-high-contrast [style*="background-color: #FFFF00"] {
+  color: #000000 !important;
+}
+
+html.a11y-high-contrast [class*="bg-primary-fixed"] *,
+html.a11y-high-contrast [class*="bg-yellow"] *,
+html.a11y-high-contrast [style*="background: #FFFF00"] *,
+html.a11y-high-contrast [style*="background-color: #FFFF00"] * {
+  color: #000000 !important;
+}
+
+/* ── Iconos Material Symbols en alto contraste ── */
+html.a11y-high-contrast .material-symbols-rounded {
+  color: #FFFF00 !important;
+}
+
+html.a11y-high-contrast [class*="bg-primary-fixed"] .material-symbols-rounded,
+html.a11y-high-contrast [class*="bg-yellow"] .material-symbols-rounded,
+html.a11y-high-contrast [style*="background: #FFFF00"] .material-symbols-rounded {
+  color: #000000 !important;
+}
+
+/* ── Enlaces: subrayar siempre para identificarlos ── */
+html.a11y-high-contrast a {
+  text-decoration: underline !important;
+  text-underline-offset: 2px;
+}
+
+html.a11y-high-contrast a:hover {
+  text-decoration-thickness: 3px;
+}
+
+/* ── Headings: siempre blancos o amarillos brillantes ── */
+html.a11y-high-contrast h1,
+html.a11y-high-contrast h2,
+html.a11y-high-contrast h3,
+html.a11y-high-contrast h4,
+html.a11y-high-contrast h5,
+html.a11y-high-contrast h6 {
+  color: #FFFF00 !important;
+  font-weight: 700 !important;
+}
+
+/* ── Textos pequeños: aumentar tamaño mínimo ── */
+html.a11y-high-contrast .text-xs {
+  font-size: 0.875rem !important; /* 14px mínimo */
+}
+
+html.a11y-high-contrast .text-[11px] {
+  font-size: 0.8125rem !important; /* 13px mínimo */
+}
+
+/* ── Asegurar que TODOS los textos sean legibles ── */
+html.a11y-high-contrast * {
+  text-shadow: none !important;
+}
+
+/* Excepción para iconos decorativos */
+html.a11y-high-contrast .material-symbols-rounded {
+  text-shadow: none !important;
+}
+
+/* ── Focus visible muy pronunciado ── */
+html.a11y-high-contrast :focus-visible {
+  outline: 4px solid #FFFF00 !important;
+  outline-offset: 3px !important;
+}
+
+/* ── Botones: alto contraste extremo ── */
+html.a11y-high-contrast button {
+  border-width: 2px !important;
+  border-style: solid !important;
+}
+
+html.a11y-high-contrast button:hover {
+  border-width: 3px !important;
+}
+
+/* ── Inputs: bordes gruesos ── */
+html.a11y-high-contrast input,
+html.a11y-high-contrast textarea,
+html.a11y-high-contrast select {
+  border-width: 2px !important;
+  border-style: solid !important;
+}
+
+/* ── Destello visual (flash) ── */
+@keyframes a11y-flash-element {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 255, 0, 0.7); }
+  50%  { box-shadow: 0 0 0 8px rgba(255, 255, 0, 0.3); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 255, 0, 0); }
+}
+
+.a11y-flash {
+  animation: a11y-flash-element 600ms ease-out;
+}
+
+/* En alto contraste, usar blanco */
+html.a11y-high-contrast .a11y-flash {
+  animation-name: a11y-flash-element-hc;
+}
+
+@keyframes a11y-flash-element-hc {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.8); }
+  50%  { box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.4); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+
+/* ── Animación de entrada para diálogos ── */
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

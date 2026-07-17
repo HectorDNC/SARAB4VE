@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { alertService } from "@/services/alertService";
+import AccessibilityToolbar from "@/components/layout/AccessibilityToolbar";
 
 const navLinks = [
   { href: "/", label: "Inicio" },
@@ -47,7 +48,7 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 bg-surface-container-low border-b border-outline-variant shadow-card">
-      <div className="max-w-7xl mx-auto px-5 lg:px-10 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-5 lg:px-10 h-16 flex items-center justify-between gap-1 lg:gap-3">
         {/* Logo */}
         <Link
           href="/"
@@ -91,17 +92,20 @@ export default function Navbar() {
           </Link>
         </div>
 
+        {/* Accessibility Toolbar */}
+        <AccessibilityToolbar compact />
+
         {/* Botón de usuario: sesión iniciada vs no iniciada */}
         {user ? (
           <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setUserMenuOpen((v) => !v)}
-              className="flex items-center gap-2 group"
+              className="flex items-center gap-1 px-1 group"
               aria-label="Menú de usuario"
               aria-expanded={userMenuOpen}
             >
               {/* Avatar */}
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary/80 text-on-primary font-bold text-sm flex items-center justify-center ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all shadow-sm">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-surface-container-highest to-surface-container-high text-on-surface-variant font-bold text-sm flex items-center justify-center ring-2 ring-outline-variant/40 group-hover:ring-outline/60 transition-all shadow-sm">
                 {userInitial}
               </div>
             </button>
@@ -111,7 +115,7 @@ export default function Navbar() {
                 {/* Cabecera */}
                 <div className="px-4 py-3 border-b border-outline-variant/50">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/80 text-on-primary font-bold flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-surface-container-highest to-surface-container-high text-on-surface-variant font-bold flex items-center justify-center shrink-0">
                       {userInitial}
                     </div>
                     <div className="min-w-0">
@@ -154,9 +158,9 @@ export default function Navbar() {
         ) : (
           <Link
             href="/login"
-            className="px-4 py-2 flex items-center rounded-lg text-blue-800 font-bold gap-2 hover:bg-surface-container transition-colors"
+            className="hidden lg:flex px-4 py-2 flex items-center rounded-lg text-primary font-bold gap-2 hover:bg-surface-container transition-colors"
           >
-            <span className="material-symbols-rounded text-blue-800" aria-hidden="true">
+            <span className="material-symbols-rounded text-primary" aria-hidden="true">
               contacts_product
             </span>
             Iniciar sesión
@@ -237,9 +241,9 @@ export default function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-3 px-5 py-4 text-base font-medium text-blue-800 hover:bg-surface-container transition-colors"
+                  className="flex items-center gap-3 px-5 py-4 text-base font-medium text-primary hover:bg-surface-container transition-colors"
                 >
-                  <span className="material-symbols-rounded" aria-hidden="true">contacts_product</span>
+                  <span className="material-symbols-rounded text-primary" aria-hidden="true">contacts_product</span>
                   Iniciar sesión
                 </Link>
               </li>
