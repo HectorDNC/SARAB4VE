@@ -224,25 +224,6 @@ export default function StepNameAndLocation({
           </button>
         )}
       </div>
-      {/* Opciones de alerta háptica/visual para usuarios con discapacidad auditiva o visual */}
-      {(disabilityType === "auditiva" || disabilityType === "visual") && (
-        <div className="mt-3 sm:mt-4 rounded-2xl border-2 border-outline p-3 sm:p-4">
-          <p className="text-sm sm:text-base font-semibold text-on-surface mb-2 sm:mb-3 text-center">Alertas</p>
-
-          <label className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs sm:text-sm font-semibold">Alerta "En camino"</p>
-              <p className="text-[11px] text-on-surface-variant">Vibración + destello cuando un voluntario está en camino</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={enableEnCaminoAlerts}
-              onChange={(e) => onToggleEnCamino?.(e.target.checked)}
-              aria-label="Activar alerta háptica y visual cuando un voluntario esté en camino"
-            />
-          </label>
-        </div>
-      )}
 
       {/* ── Mini mapa + Estado de ubicación ── */}
       <div className="mt-3 sm:mt-4">
