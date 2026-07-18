@@ -129,3 +129,16 @@ CREATE TABLE IF NOT EXISTS help_request_attendees (
 
 CREATE INDEX IF NOT EXISTS help_request_attendees_help_request_id_idx
   ON help_request_attendees (help_request_id);
+
+-- ---------------------------------------------------------------------------
+-- Voice emergency reporting — columnas para reportes por voz
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE emergencies
+  ADD COLUMN IF NOT EXISTS report_origin TEXT NOT NULL DEFAULT 'form';
+
+ALTER TABLE emergencies
+  ADD COLUMN IF NOT EXISTS voice_note_url TEXT;
+
+ALTER TABLE emergencies
+  ADD COLUMN IF NOT EXISTS transcript TEXT;

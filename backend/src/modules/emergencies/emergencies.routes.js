@@ -9,6 +9,13 @@ const schema = require("./emergencies.schema");
 const { authenticate } = require("../../middleware/authenticate");
 const { authorize } = require("../../middleware/authorize");
 
+// ── Voz ──
+const {
+  EmergenciaVozSchema,
+  createEmergencyVoiceHandler,
+  handleMulterUpload,
+} = require("./emergencies.voice");
+
 const router = express.Router();
 
 router.get("/", 
@@ -18,5 +25,10 @@ router.get("/:id",
     authenticate, authorize("admin", "organization", "volunteer"), 
     controller.getEmergencyById(service, schema, repository));
 router.post("/", controller.createEmergency(service, schema));
+
+// ── Voz: reporte con audio + transcripción (autenticado, cualquier rol) ──
+router.post("/voice",
+    handleMulterUpload,
+    createEmergencyVoiceHandler(EmergenciaVozSchema));
 
 module.exports = router;

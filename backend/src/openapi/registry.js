@@ -40,6 +40,11 @@ const {
 } = require("../modules/users/users.schema");
 
 // ---------------------------------------------------------------------------
+// Schemas del módulo emergencies/voice (Zod con .openapi())
+// ---------------------------------------------------------------------------
+const { EmergenciaVozSchema } = require("../modules/emergencies/emergencies.voice");
+
+// ---------------------------------------------------------------------------
 // Schemas para módulos que aún no están migrados a Zod
 // (solo se usan para documentación OpenAPI, no para validación en runtime)
 // ---------------------------------------------------------------------------
@@ -612,6 +617,57 @@ registry.registerPath({
     201: { description: "Emergencia creada exitosamente" },
     400: {
       description: "Error de validación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+// ── Voz: reporte con audio + transcripción ──
+
+registry.registerPath({
+  method: "post",
+  path: "/api/emergencies/voice",
+  summary: "Reportar emergencia por voz",
+  description: [
+    "Crea una emergencia a partir de un archivo de audio y su transcripción.",
+    "El audio se sube a R2 y el registro se guarda con `report_origin='voz'`.",
+    "",
+    "**Requiere autenticación.** Cualquier rol autenticado puede reportar.",
+    "",
+    "**Formato:** `multipart/form-data` con los siguientes campos:",
+    "- `audio` (file, opcional): archivo de audio (webm, mp4, mpeg, wav, ogg)",
+    "- `transcript` (string, requerido): texto transcrito del audio",
+    "- `tipo_emergencia` (string, opcional): tipo detectado (vacío si no se detectó)",
+    "- `latitude` (string, requerido): latitud en grados decimales",
+    "- `longitude` (string, requerido): longitud en grados decimales",
+    "- `disabilityType`, `needType`, `description`, `urgency`, `requesterName`, etc.",
+    "",
+    "**Fallback:** Si el archivo de audio no se envía o falla la subida a R2,",
+    "el registro se crea igual con `voice_note_url=null`, conservando la transcripción.",
+  ].join("\n"),
+  tags: ["Emergencies"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "multipart/form-data": {
+          schema: EmergenciaVozSchema,
+        },
+      },
+      description: "Form-data con archivo de audio + campos de la emergencia",
+      required: true,
+    },
+  },
+  responses: {
+    201: {
+      description: "Emergencia por voz creada exitosamente",
+    },
+    400: {
+      description: "Error de validación (transcript faltante, coordenadas inválidas, etc.)",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado — token faltante, expirado o inválido",
       content: { "application/json": { schema: ErrorResponse } },
     },
   },
