@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API = process.env.NEXT_PUBLIC_API_URL || "https://sarab4ve-back.vercel.app";
 
 /**
  * Retorna los headers base para peticiones HTTP.

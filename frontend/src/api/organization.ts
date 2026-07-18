@@ -22,7 +22,10 @@ export async function sendOrganization(payload: OrganizationPayload) {
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    const message = body?.error ?? body?.errors?.join(", ") ?? `HTTP ${res.status}`;
+    const message = body?.errors?.join(", ") ?? `HTTP ${res.status}`;
+
+    if (res.status === 400) throw new Error("Error en la validación.");
+    if (res.status === 409) throw new Error("El correo electrónico o el teléfono ya se encuentran registrados.");
     throw new Error(message);
   }
 
