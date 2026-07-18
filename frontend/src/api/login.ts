@@ -1,4 +1,6 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { normalizeUser } from "@/lib/normalizeUser";
+import { API, getAuthHeaders } from "./client";
+import { ApiUser } from "@/types";
 
 export type LoginPayload = {
   email: string;
@@ -27,10 +29,10 @@ export type LoginResponse = {
   };
 };
 
-export async function login(payload: LoginPayload): Promise<LoginResponse> {
+export async function login(payload: LoginPayload): Promise<{ token: string; user: ApiUser }> {
   const res = await fetch(`${API}/api/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
 
@@ -47,5 +49,10 @@ export async function login(payload: LoginPayload): Promise<LoginResponse> {
     throw new Error(rawMessage);
   }
 
-  return res.json();
+  const rawData = await res.json();
+
+  return {
+    token: rawData.data.token,
+    user: normalizeUser(rawData.data.user),
+  };
 }

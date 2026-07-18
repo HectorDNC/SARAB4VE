@@ -76,7 +76,7 @@ export default function Navbar() {
         </nav>
 
         {/* Desktop SOS CTA */}
-        <div className="flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3">
           <Link
             href="/sos"
             className="flex items-center gap-3 bg-error text-on-error px-5 py-2.5 rounded-full font-extrabold text-base shadow-lg shadow-error/25 hover:brightness-110 active:scale-95 transition-all min-h-0 animate-pulse"
@@ -91,77 +91,79 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Botón de usuario: sesión iniciada vs no iniciada */}
-        {user ? (
-          <div className="relative" ref={userMenuRef}>
-            <button
-              onClick={() => setUserMenuOpen((v) => !v)}
-              className="flex items-center gap-2 group"
-              aria-label="Menú de usuario"
-              aria-expanded={userMenuOpen}
-            >
-              {/* Avatar */}
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary/80 text-on-primary font-bold text-sm flex items-center justify-center ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all shadow-sm">
-                {userInitial}
-              </div>
-            </button>
+        <div className="hidden lg:flex items-center">
+          {/* Botón de usuario: sesión iniciada vs no iniciada */}
+          {user ? (
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="flex items-center gap-2 group"
+                aria-label="Menú de usuario"
+                aria-expanded={userMenuOpen}
+              >
+                {/* Avatar */}
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary/80 text-on-primary font-bold text-sm flex items-center justify-center ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all shadow-sm">
+                  {userInitial}
+                </div>
+              </button>
 
-            {userMenuOpen && (
-              <div className="absolute right-0 top-full mt-3 w-56 rounded-2xl border border-outline-variant/60 bg-surface-container-low shadow-xl shadow-black/10 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                {/* Cabecera */}
-                <div className="px-4 py-3 border-b border-outline-variant/50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/80 text-on-primary font-bold flex items-center justify-center shrink-0">
-                      {userInitial}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-on-surface truncate">
-                        {user.fullName}
-                      </p>
-                      <p className="text-xs text-on-surface-variant truncate">
-                        {user.email}
-                      </p>
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-3 w-56 rounded-2xl border border-outline-variant/60 bg-surface-container-low shadow-xl shadow-black/10 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                  {/* Cabecera */}
+                  <div className="px-4 py-3 border-b border-outline-variant/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/80 text-on-primary font-bold flex items-center justify-center shrink-0">
+                        {userInitial}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-on-surface truncate">
+                          {user.fullName}
+                        </p>
+                        <p className="text-xs text-on-surface-variant truncate">
+                          {user.email}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Opciones */}
-                <div className="py-1">
-                  <Link
-                    href="/perfil"
-                    onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-3 mx-2 px-3 py-2.5 rounded-xl text-sm text-on-surface hover:bg-surface-container-high transition-colors"
-                  >
-                    <span className="material-symbols-rounded text-xl text-on-surface-variant" aria-hidden="true">
-                      person
-                    </span>
-                    Mi perfil
-                  </Link>
+                  {/* Opciones */}
+                  <div className="py-1">
+                    <Link
+                      href="/perfil"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-on-surface hover:bg-surface-container-high transition-colors"
+                    >
+                      <span className="material-symbols-rounded text-xl text-on-surface-variant" aria-hidden="true">
+                        person
+                      </span>
+                      Mi perfil
+                    </Link>
 
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 w-full mx-2 px-3 py-2.5 rounded-xl text-sm text-error hover:bg-error/10 transition-colors"
-                  >
-                    <span className="material-symbols-rounded text-xl" aria-hidden="true">
-                      logout
-                    </span>
-                    Cerrar sesión
-                  </button>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-error hover:bg-error/10 transition-colors"
+                    >
+                      <span className="material-symbols-rounded text-xl" aria-hidden="true">
+                        logout
+                      </span>
+                      Cerrar sesión
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <Link
-            href="/login"
-            className="px-4 py-2 flex items-center rounded-lg text-blue-800 font-bold gap-2 hover:bg-surface-container transition-colors"
-          >
-            <span className="material-symbols-rounded text-blue-800" aria-hidden="true">
-              contacts_product
-            </span>
-            Iniciar sesión
-          </Link>
-        )}
+              )}
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="px-4 py-2 flex items-center rounded-lg text-blue-800 font-bold gap-2 hover:bg-surface-container transition-colors"
+            >
+              <span className="material-symbols-rounded text-blue-800" aria-hidden="true">
+                contacts_product
+              </span>
+              Iniciar sesión
+            </Link>
+          )}
+        </div>
 
         {/* Mobile menu button */}
         <button
@@ -223,13 +225,15 @@ export default function Navbar() {
                   </Link>
                 </li>
                 <li>
-                  <button
-                    onClick={() => { handleLogout(); setMenuOpen(false); }}
-                    className="flex items-center gap-3 w-full px-5 py-4 text-base font-medium text-error hover:bg-surface-container transition-colors"
-                  >
-                    <span className="material-symbols-rounded" aria-hidden="true">logout</span>
-                    Cerrar sesión
-                  </button>
+                  {user && (
+                    <button
+                      onClick={() => { handleLogout(); setMenuOpen(false); }}
+                      className="flex items-center gap-3 w-full px-5 py-4 text-base font-medium text-error hover:bg-surface-container transition-colors"
+                    >
+                      <span className="material-symbols-rounded" aria-hidden="true">logout</span>
+                      Cerrar sesión
+                    </button>
+                  )}
                 </li>
               </>
             ) : (
