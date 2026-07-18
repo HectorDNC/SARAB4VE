@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { alertService } from "@/services/alertService";
+import AccessibilityToolbar from "@/components/layout/AccessibilityToolbar";
 
 const navLinks = [
   { href: "/", label: "Inicio" },
@@ -47,7 +48,7 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 bg-surface-container-low border-b border-outline-variant shadow-card">
-      <div className="max-w-7xl mx-auto px-5 lg:px-10 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-5 lg:px-10 h-16 flex items-center justify-between gap-1 lg:gap-3">
         {/* Logo */}
         <Link
           href="/"
@@ -241,9 +242,9 @@ export default function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-3 px-5 py-4 text-base font-medium text-blue-800 hover:bg-surface-container transition-colors"
+                  className="flex items-center gap-3 px-5 py-4 text-base font-medium text-primary hover:bg-surface-container transition-colors"
                 >
-                  <span className="material-symbols-rounded" aria-hidden="true">contacts_product</span>
+                  <span className="material-symbols-rounded text-primary" aria-hidden="true">contacts_product</span>
                   Iniciar sesión
                 </Link>
               </li>

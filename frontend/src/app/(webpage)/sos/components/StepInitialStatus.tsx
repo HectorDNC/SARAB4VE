@@ -66,11 +66,14 @@ export default function StepInitialStatus({
       </div>
 
       {/* ── ¿Herida? ── */}
-      <div className="mt-4 sm:mt-5 rounded-2xl border border-outline p-3 sm:p-4">
-        <p className="text-sm sm:text-base font-semibold text-on-surface mb-3 sm:mb-4 text-center">¿Tienes alguna herida?</p>
+      <div className="mt-4 sm:mt-5 rounded-2xl border border-outline p-3 sm:p-4" role="radiogroup" aria-label="¿Tienes alguna herida?" aria-required="true">
+        <p className="text-sm sm:text-base font-semibold text-on-surface mb-3 sm:mb-4 text-center" id="injury-label">¿Tienes alguna herida?</p>
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <button
             type="button"
+            role="radio"
+            aria-checked={isInjured === true}
+            aria-labelledby="injury-label injury-yes"
             onClick={() => onInjuredChange(true)}
             className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 p-4 sm:p-5 transition-all active:scale-95 ${
               isInjured === true
@@ -79,11 +82,14 @@ export default function StepInitialStatus({
             }`}
           >
             <span className="material-symbols-rounded text-4xl sm:text-5xl" aria-hidden="true">emergency</span>
-            <span className="text-sm sm:text-base font-extrabold">Sí, estoy herido/a</span>
+            <span id="injury-yes" className="text-sm sm:text-base font-extrabold">Sí, estoy herido/a</span>
           </button>
 
           <button
             type="button"
+            role="radio"
+            aria-checked={isInjured === false}
+            aria-labelledby="injury-label injury-no"
             onClick={() => onInjuredChange(false)}
             className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 p-4 sm:p-5 transition-all active:scale-95 ${
               isInjured === false
@@ -92,17 +98,20 @@ export default function StepInitialStatus({
             }`}
           >
             <span className="material-symbols-rounded text-4xl sm:text-5xl" aria-hidden="true">check_circle</span>
-            <span className="text-sm sm:text-base font-extrabold">No, estoy bien</span>
+            <span id="injury-no" className="text-sm sm:text-base font-extrabold">No, estoy bien</span>
           </button>
         </div>
       </div>
 
       {/* ── ¿Movilidad? ── */}
-      <div className="mt-3 sm:mt-4 rounded-2xl border border-outline p-3 sm:p-4">
-        <p className="text-sm sm:text-base font-semibold text-on-surface mb-3 sm:mb-4 text-center">¿Puedes moverte por tu cuenta?</p>
+      <div className="mt-3 sm:mt-4 rounded-2xl border border-outline p-3 sm:p-4" role="radiogroup" aria-label="¿Puedes moverte por tu cuenta?" aria-required="true">
+        <p className="text-sm sm:text-base font-semibold text-on-surface mb-3 sm:mb-4 text-center" id="mobility-label">¿Puedes moverte por tu cuenta?</p>
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <button
             type="button"
+            role="radio"
+            aria-checked={cannotMove === false}
+            aria-labelledby="mobility-label mobility-yes"
             onClick={() => onCannotMoveChange(false)}
             className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 p-4 sm:p-5 transition-all active:scale-95 ${
               cannotMove === false
@@ -111,11 +120,14 @@ export default function StepInitialStatus({
             }`}
           >
             <span className="material-symbols-rounded text-4xl sm:text-5xl" aria-hidden="true">directions_walk</span>
-            <span className="text-sm sm:text-base font-extrabold">Sí, puedo moverme</span>
+            <span id="mobility-yes" className="text-sm sm:text-base font-extrabold">Sí, puedo moverme</span>
           </button>
 
           <button
             type="button"
+            role="radio"
+            aria-checked={cannotMove === true}
+            aria-labelledby="mobility-label mobility-no"
             onClick={() => onCannotMoveChange(true)}
             className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 p-4 sm:p-5 transition-all active:scale-95 ${
               cannotMove === true
@@ -124,7 +136,7 @@ export default function StepInitialStatus({
             }`}
           >
             <span className="material-symbols-rounded text-4xl sm:text-5xl" aria-hidden="true">accessible</span>
-            <span className="text-sm sm:text-base font-extrabold">No, necesito ayuda</span>
+            <span id="mobility-no" className="text-sm sm:text-base font-extrabold">No, necesito ayuda</span>
           </button>
         </div>
       </div>

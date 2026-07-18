@@ -8,6 +8,7 @@ import { useLocation } from "@/hooks/useLocation";
 import StepDisabilityType from "./components/StepDisabilityType";
 import StepInitialStatus from "./components/StepInitialStatus";
 import StepNameAndLocation from "./components/StepNameAndLocation";
+import AccessibilityToolbar from "@/components/layout/AccessibilityToolbar";
 import {
   type CommunicationMode,
   type DisabilityType,
@@ -70,6 +71,7 @@ export default function SOSFlowPage() {
   const [requesterName, setRequesterName] = useState("");
   const [extraInfo, setExtraInfo] = useState("");
   const [voiceNote, setVoiceNote] = useState<VoiceNote | null>(null);
+  const [enableEnCaminoAlerts, setEnableEnCaminoAlerts] = useState(true);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>(globalLocationStatus);
   const [locationError, setLocationError] = useState(globalLocationError);
   const [currentStep, setCurrentStep] = useState(1);
@@ -243,12 +245,73 @@ export default function SOSFlowPage() {
       });
 
       setSent(true);
+      performFeedback("confirm");
       alertService.success("SOS enviado. Mantente en un lugar seguro.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudo enviar el SOS.";
       alertService.error(message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Retroalimentación háptica + destellos visuales (para dispositivos que lo soportan)
+  const performFeedback = (type: "confirm" | "encamino") => {
+    const patterns: Record<string, number[]> = {
+      confirm: [200, 100, 200],
+      encamino: [400, 200, 400, 200, 400],
+    };
+
+    const pattern = patterns[type] ?? patterns.confirm;
+
+    try {
+      if (navigator && "vibrate" in navigator) {
+        // @ts-ignore
+        navigator.vibrate(pattern);
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // Crear un overlay temporal para el destello visual
+    try {
+      const overlay = document.createElement("div");
+      overlay.setAttribute("role", "presentation");
+      overlay.style.position = "fixed";
+      overlay.style.inset = "0";
+      overlay.style.pointerEvents = "none";
+      overlay.style.background = "rgba(255,255,224,0.9)";
+      overlay.style.mixBlendMode = "screen";
+      overlay.style.opacity = "0";
+      overlay.style.transition = "opacity 80ms linear";
+      document.body.appendChild(overlay);
+
+      let elapsed = 0;
+      const timeouts: number[] = [];
+      for (let i = 0; i < pattern.length; i++) {
+        const on = i % 2 === 0;
+        const duration = pattern[i];
+        const t = window.setTimeout(() => {
+          overlay.style.opacity = on ? "1" : "0";
+        }, elapsed);
+        timeouts.push(t as unknown as number);
+        elapsed += duration;
+      }
+
+      const cleanup = window.setTimeout(() => {
+        timeouts.forEach((id) => window.clearTimeout(id));
+        overlay.remove();
+      }, elapsed + 100);
+
+      // Safety: cleanup after 4s
+      window.setTimeout(() => {
+        try {
+          overlay.remove();
+        } catch {}
+        window.clearTimeout(cleanup);
+      }, 4000);
+    } catch (e) {
+      // ignore visual feedback failures
     }
   };
 
@@ -299,6 +362,10 @@ export default function SOSFlowPage() {
               <h1 id="sos-title" className="mt-1.5 sm:mt-2 text-xl sm:text-2xl lg:text-3xl font-black text-on-surface leading-tight">Solicitud SOS Emergencia</h1>
             </div>
             <p className="text-xs sm:text-sm font-semibold text-on-surface-variant shrink-0">Paso {currentStep}/{TOTAL_STEPS}</p>
+            {/* Botón de accesibilidad grande y fijo en SOS */}
+            <div className="shrink-0">
+              <AccessibilityToolbar />
+            </div>
           </div>
           <div className="mt-2 sm:mt-3 h-1.5 sm:h-2 rounded-full bg-surface-container-high overflow-hidden" aria-label="Progreso">
             <div className="h-full bg-primary transition-all duration-200" style={{ width: `${progress}%` }} />
@@ -347,6 +414,10 @@ export default function SOSFlowPage() {
               onExtraInfoChange={setExtraInfo}
               onVoiceNoteChange={setVoiceNote}
               onRetryLocation={requestLocation}
+              disabilityType={disabilityType}
+              enableEnCaminoAlerts={enableEnCaminoAlerts}
+              onToggleEnCamino={setEnableEnCaminoAlerts}
+              onPreviewFeedback={(t) => performFeedback(t)}
             />
           )}
 

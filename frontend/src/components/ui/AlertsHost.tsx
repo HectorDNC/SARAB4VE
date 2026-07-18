@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { alertService, type AlertMessage, type AlertType } from "@/services/alertService";
+import { useAccessibleFeedback } from "@/hooks/useAccessibleFeedback";
 
 type AlertViewConfig = {
   icon: string;
@@ -52,12 +53,17 @@ const alertStyles: Record<AlertType, AlertViewConfig> = {
 export default function AlertsHost() {
   const [alerts, setAlerts] = useState<AlertMessage[]>([]);
   const timersRef = useRef<Map<string, number>>(new Map());
+  const { flashGlobal } = useAccessibleFeedback();
 
   useEffect(() => {
     const timers = timersRef.current;
 
     const unsubscribe = alertService.subscribe((alert) => {
       setAlerts((current) => [...current, alert]);
+
+      // Destello visual para discapacidad auditiva (WCAG 2.1 AA)
+      flashGlobal();
+
       const durationMs = alert.durationMs ?? 4000;
       const timeout = window.setTimeout(() => {
         setAlerts((current) => current.filter((item) => item.id !== alert.id));
@@ -72,7 +78,7 @@ export default function AlertsHost() {
       timers.forEach((timeout) => window.clearTimeout(timeout));
       timers.clear();
     };
-  }, []);
+  }, [flashGlobal]);
 
   const visibleAlerts = useMemo(() => alerts.slice(-4).reverse(), [alerts]);
 

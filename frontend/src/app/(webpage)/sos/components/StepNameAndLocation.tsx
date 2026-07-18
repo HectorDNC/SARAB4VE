@@ -23,6 +23,13 @@ interface StepNameAndLocationProps {
   onExtraInfoChange: (value: string) => void;
   onVoiceNoteChange: (note: VoiceNote | null) => void;
   onRetryLocation: () => void;
+  // Accessibility feedback controls
+  disabilityType?: "visual" | "auditiva" | "neuro" | "motriz" | null;
+  enableConfirmOnSend?: boolean;
+  enableEnCaminoAlerts?: boolean;
+  onToggleConfirm?: (v: boolean) => void;
+  onToggleEnCamino?: (v: boolean) => void;
+  onPreviewFeedback?: (type: "confirm" | "encamino") => void;
 }
 
 export default function StepNameAndLocation({
@@ -37,6 +44,12 @@ export default function StepNameAndLocation({
   onExtraInfoChange,
   onVoiceNoteChange,
   onRetryLocation,
+  disabilityType = null,
+  enableConfirmOnSend = false,
+  enableEnCaminoAlerts = false,
+  onToggleConfirm,
+  onToggleEnCamino,
+  onPreviewFeedback,
 }: StepNameAndLocationProps) {
   const [recording, setRecording] = useState(false);
   const [recordingSec, setRecordingSec] = useState(0);
