@@ -153,7 +153,7 @@ export interface VoiceEmergencyPayload {
   /** Blob de audio grabado (WebM). */
   audioBlob: Blob;
   /** Texto transcrito (puede ser placeholder si no hay reconocimiento). */
-  transcript: string;
+  transcript?: string | null;
   /** Latitud en grados decimales. */
   latitude: number;
   /** Longitud en grados decimales. */
@@ -175,7 +175,7 @@ export async function sendEmergencyVoice(
   const formData = new FormData();
 
   formData.append("audio", payload.audioBlob, "audio.webm");
-  formData.append("transcript", payload.transcript);
+  formData.append("transcript", payload.transcript || "");
   formData.append("latitude", String(payload.latitude));
   formData.append("longitude", String(payload.longitude));
 

@@ -25,6 +25,36 @@ const COMMUNICATION_MODES = [
 ];
 const URGENCY_LEVELS = ["low", "medium", "high", "critical"];
 
+/**
+ * Indica si el JSON crudo devuelto por Gemini (junto con la transcripción
+ * del audio) trae suficiente información estructurada como para
+ * saltarse la cascada de clasificación `extraerInformacionEmergencia`.
+ *
+ * Consideramos "útil" si al menos uno de los campos clave está
+ * presente (no null) o si la transcripción tiene contenido
+ * significativo. Esto evita el caso degenerado en que Gemini devuelve
+ * `{ "transcripcion": "", "tipo": null, ... }` y aún así se
+ * reutilizaría como "infoExtraida vacía", perdiendo los beneficios
+ * del fallback por diccionario.
+ *
+ * @param {Object|null} infoGemini
+ * @returns {boolean}
+ */
+function infoGeminiEsUtil(infoGemini) {
+  if (!infoGemini || typeof infoGemini !== "object") return false;
+  if (infoGemini.tipo) return true;
+  if (infoGemini.severidad) return true;
+  if (infoGemini.disabilityType) return true;
+  if (infoGemini.name) return true;
+  if (typeof infoGemini.transcripcion === "string" && infoGemini.transcripcion.trim().length > 0) {
+    // Gemini transcribió algo pero no clasificó — aún así es útil
+    // porque la cascada de clasificación re-evaluaría el mismo texto.
+    // Devolvemos true para que al menos no se llame dos veces a la IA.
+    return true;
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Schema Zod para validación del body (multipart/form-data)
 // ---------------------------------------------------------------------------
@@ -39,7 +69,7 @@ const EmergenciaVozSchema = z.object({
   // ── Campos de voz ──
   transcript: z
     .string()
-    .min(1, "transcript es requerido (texto transcrito del audio)")
+    .optional()
     .openapi({
       example: "Hay una persona atrapada necesito ayuda urgente",
       description: "Texto transcrito del audio enviado por el usuario",
@@ -216,6 +246,7 @@ const EmergenciaVozSchema = z.object({
 const db = require("../../db");
 const { uploadAudio } = require("../../services/storage");
 const { extraerInformacionEmergencia } = require("./extractorEmergencia");
+const { obtenerTranscript } = require("./transcriptorEmergencia");
 
 /**
  * Inserta una emergencia por voz en la base de datos.
@@ -225,11 +256,63 @@ const { extraerInformacionEmergencia } = require("./extractorEmergencia");
  * @returns {Promise<Object>} fila insertada
  */
 async function createEmergencyFromVoice(payload, audioFile) {
-  const transcript = payload.transcript.trim();
+  // ── Determinar el transcript y el método de transcripción ──
+  // Precedencia:
+  //   1. Si el cliente ya envió transcript (Web Speech API → "cliente-webspeech"),
+  //      lo respetamos.
+  //   2. Si no, y hay audio adjunto, intentamos la cascada del backend
+  //      (Gemini) para transcribirlo.
+  //   3. Si no hay transcript ni audio, dejamos null y el registro se
+  //      guarda igual para revisión manual.
+  let transcript = payload.transcript ? payload.transcript.trim() : "";
+  let metodoTranscripcion = "cliente-webspeech";
+  /** Cuando Gemini transcribe el audio, ya devuelve junto al transcript un
+   *  objeto JSON con tipo, severidad, discapacidad, etc. Si lo tenemos
+   *  válido, lo reutilizamos y nos ahorramos una llamada extra a
+   *  `extraerInformacionEmergencia` (Groq + clasificación). */
+  let infoExtraidaDeGemini = null;
 
-  // ── Extraer información estructurada del transcript (Groq + fallback) ──
-  const infoExtraida = await extraerInformacionEmergencia(transcript);
-  console.log("[createEmergencyFromVoice] Información extraída:", infoExtraida);
+  if (!transcript && audioFile && audioFile.buffer && audioFile.buffer.length > 0) {
+    console.log(
+      "[createEmergencyFromVoice] No se recibió transcript del cliente; transcribiendo audio en backend…",
+    );
+    const transcripcion = await obtenerTranscript(
+      audioFile.buffer,
+      audioFile.mimetype || "audio/webm",
+    );
+    transcript = transcripcion.transcript || "";
+    metodoTranscripcion = transcripcion.metodoTranscripcion;
+    infoExtraidaDeGemini = transcripcion.rawInfo || null;
+    console.log(
+      `[createEmergencyFromVoice] Transcripción de backend: método=${metodoTranscripcion}, ${transcript.length} chars`,
+    );
+  } else if (!transcript) {
+    metodoTranscripcion = "ninguno";
+  }
+
+  // ── Determinar la información estructurada de la emergencia ──
+  // Precedencia:
+  //   A) Si el transcript vino de Gemini y el JSON crudo trae campos
+  //      válidos (tipo/severidad/etc.), los reutilizamos directamente.
+  //   B) Si no, corremos la cascada de clasificación sobre el texto
+  //      (Gemini-texto → Groq → diccionario).
+  let infoExtraida;
+  if (infoExtraidaDeGemini && infoGeminiEsUtil(infoExtraidaDeGemini)) {
+    console.log(
+      "[createEmergencyFromVoice] Reutilizando infoExtraida de Gemini (saltando cascada de clasificación)",
+    );
+    infoExtraida = infoExtraidaDeGemini;
+  } else {
+    // Si después de la cascada seguimos sin transcript, podemos igual
+    // extraer keywords mínimas del propio payload (description, needType).
+    const textoParaClasificar = transcript
+      || (payload.description && payload.description !== payload.transcript ? payload.description : "")
+      || payload.needType
+      || "";
+
+    infoExtraida = await extraerInformacionEmergencia(textoParaClasificar);
+    console.log("[createEmergencyFromVoice] Información extraída:", infoExtraida);
+  }
   // ── Subir audio a R2 si está presente ──
   let voiceNoteUrl = null;
 
@@ -263,14 +346,14 @@ async function createEmergencyFromVoice(payload, audioFile) {
 
   // description: si no se envió explícitamente, usar el resumen del extractor o el transcript
   const description =
-    payload.description && payload.description !== transcript
+    payload.description && payload.description !== payload.transcript && payload.description !== transcript
       ? payload.description.trim()
-      : (infoExtraida.resumen || transcript);
+      : (infoExtraida.resumen || transcript || payload.description || "Emergencia reportada por voz");
 
   // needType: usar tipo_emergencia del payload, sino el tipo del extractor, sino transcript
   const needType = payload.tipo_emergencia?.trim()
     ? payload.tipo_emergencia.trim()
-    : (infoExtraida.tipo || payload.needType?.trim() || transcript.slice(0, 50));
+    : (infoExtraida.tipo || payload.needType?.trim() || (transcript ? transcript.slice(0, 50) : "Emergencia"));
 
   const latitude = Number(payload.latitude);
   const longitude = Number(payload.longitude);
@@ -301,9 +384,9 @@ async function createEmergencyFromVoice(payload, audioFile) {
         communication_mode, disability_subcategory, extra_info,
         voice_note_url, voice_note_duration_sec,
         latitude, longitude, urgency, need_type, description,
-        report_origin, transcript
+        report_origin, transcript, transcript_method
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING
         id, requester_name AS "requesterName", is_injured AS "isInjured",
         cannot_move AS "cannotMove", disability_type AS "disabilityType",
@@ -315,6 +398,7 @@ async function createEmergencyFromVoice(payload, audioFile) {
         description, status,
         report_origin AS "reportOrigin",
         transcript,
+        transcript_method AS "transcriptMethod",
         assigned_at AS "assignedAt", resolved_at AS "resolvedAt",
         created_at AS "createdAt", updated_at AS "updatedAt"
     `,
@@ -334,13 +418,16 @@ async function createEmergencyFromVoice(payload, audioFile) {
       needType,
       description,
       "voz", // report_origin
-      transcript,
+      transcript || null,
+      metodoTranscripcion,
     ],
   );
 
   return {
     emergency: result.rows[0],
     infoEmergencia: infoExtraida,
+    metodoTranscripcion,
+    transcript,
   };
 }
 

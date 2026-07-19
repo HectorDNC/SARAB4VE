@@ -142,3 +142,14 @@ ALTER TABLE emergencies
 
 ALTER TABLE emergencies
   ADD COLUMN IF NOT EXISTS transcript TEXT;
+
+-- Método de transcripción del audio (cascada backend).
+-- Valores posibles:
+--   'cliente-webspeech'    → transcript vino del navegador (Web Speech API)
+--   'gemini'               → transcript vía Google AI Studio / Gemini
+--   'transformers-local'   → transcript vía Whisper local (HF Transformers)
+--   'ninguno'              → no se pudo transcribir (registro guardado para
+--                            revisión manual)
+ALTER TABLE emergencies
+  ADD COLUMN IF NOT EXISTS transcript_method TEXT
+    CHECK (transcript_method IN ('cliente-webspeech', 'gemini', 'transformers-local', 'ninguno'));

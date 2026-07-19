@@ -176,7 +176,7 @@ export default function ButtonEmergencyVoice() {
       // El backend requiere transcript con al menos 1 carácter.
       // Si no hay transcripción, enviamos un placeholder descriptivo.
       const transcript = preview.transcript
-        || "Audio de emergencia — sin transcripción automática disponible";
+        || null;
 
       const response = await sendEmergencyVoice({
         audioBlob: blob,
