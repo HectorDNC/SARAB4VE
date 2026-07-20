@@ -6,6 +6,7 @@ import { useLocation } from "@/hooks/useLocation";
 import ConsentModal from "./ConsentModal";
 import { sendEmergencyVoice, type VoiceEmergencyResponse } from "@/api/emergencies";
 import { alertService } from "@/services/alertService";
+import { useEmergencyProcessing, type ProcessingUpdate } from "@/hooks/useEmergencyProcessing";
 
 type ButtonState = "idle" | "listening" | "processing" | "success";
 
@@ -26,10 +27,56 @@ export default function ButtonEmergencyVoice() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Respuesta del backend tras enviar — para mostrar pantalla de éxito con clasificación
   const [serverResponse, setServerResponse] = useState<VoiceEmergencyResponse | null>(null);
+  // Emergency ID para suscribirse a WebSocket
+  const [activeEmergencyId, setActiveEmergencyId] = useState<string | null>(null);
+  // Actualizaciones de procesamiento en tiempo real
+  const [processingUpdates, setProcessingUpdates] = useState<ProcessingUpdate[]>([]);
 
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTranscriptRef = useRef<string>("");
   const recordingStartRef = useRef<number>(0);
+
+  // Hook para procesamiento asíncrono vía WebSocket
+  const { currentUpdate, isConnected } = useEmergencyProcessing({
+    emergencyId: activeEmergencyId,
+    onUpdate: (update) => {
+      console.log('[EmergencyProcessing] Update:', update);
+      setProcessingUpdates(prev => [...prev, update]);
+      
+      // Mostrar notificación de progreso
+      if (update.message) {
+        alertService.info(update.message, 3000);
+      }
+    },
+    onComplete: (update) => {
+      console.log('[EmergencyProcessing] Complete:', update);
+      alertService.success('Emergencia procesada completamente', 5000);
+      
+      // Actualizar serverResponse con los datos finales del procesamiento
+      if (serverResponse && update.infoEmergencia) {
+        const info = update.infoEmergencia as Record<string, unknown>;
+        setServerResponse({
+          ...serverResponse,
+          infoEmergencia: {
+            ...serverResponse.infoEmergencia,
+            tipo: (info.tipo as string) || serverResponse.infoEmergencia.tipo,
+            severidad: (info.severidad as "baja" | "media" | "alta") || serverResponse.infoEmergencia.severidad,
+            palabrasClaveDetectadas: (info.palabrasClaveDetectadas as string[]) || serverResponse.infoEmergencia.palabrasClaveDetectadas,
+            disabilityType: (info.disabilityType as string) || serverResponse.infoEmergencia?.disabilityType,
+            disabilitySubcategory: (info.disabilitySubcategory as string) || serverResponse.infoEmergencia.disabilitySubcategory,
+            communicationMode: (info.communicationMode as string) || serverResponse.infoEmergencia.communicationMode,
+            cannotMove: (info.cannotMove as boolean) ?? serverResponse.infoEmergencia.cannotMove,
+            isInjured: (info.isInjured as boolean) ?? serverResponse.infoEmergencia.isInjured,
+            resumen: (info.resumen as string) || serverResponse.infoEmergencia.resumen,
+          }
+        });
+      }
+    },
+    onError: (error) => {
+      console.error('[EmergencyProcessing] Error:', error);
+      alertService.error(`Error en el procesamiento: ${error}`, 6000);
+    }
+  });
 
   const {
     isListening,
@@ -173,10 +220,7 @@ export default function ButtonEmergencyVoice() {
     setIsSubmitting(true);
 
     try {
-      // El backend requiere transcript con al menos 1 carácter.
-      // Si no hay transcripción, enviamos un placeholder descriptivo.
-      const transcript = preview.transcript
-        || null;
+      const transcript = preview.transcript || null;
 
       const response = await sendEmergencyVoice({
         audioBlob: blob,
@@ -186,9 +230,17 @@ export default function ButtonEmergencyVoice() {
         voiceNoteDurationSec: preview.durationSec > 0 ? preview.durationSec : undefined,
       });
 
+      console.log('[EmergencyVoice] Respuesta inicial:', response);
+      
+      // Guardar la respuesta inicial y el ID para WebSocket
       setServerResponse(response);
+      setActiveEmergencyId(response.data.id);
+      
       setState("success");
-      alertService.success("Emergencia reportada exitosamente");
+      alertService.success(
+        'Emergencia registrada. Procesando audio y extrayendo información...',
+        4000
+      );
     } catch (err: any) {
       console.error("[ButtonEmergencyVoice] Error:", err);
       alertService.error(err.message || "Error al enviar la emergencia");
@@ -378,7 +430,7 @@ export default function ButtonEmergencyVoice() {
         </div>
       )}
 
-      {/* Éxito: respuesta del backend con clasificación */}
+      {/* Éxito: respuesta del backend con procesamiento en tiempo real */}
       {serverResponse && (
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 overflow-y-auto"
@@ -388,16 +440,68 @@ export default function ButtonEmergencyVoice() {
             className="bg-surface-container-lowest rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 my-8"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
+            {/* Header con estado de procesamiento */}
             <div className="flex items-center gap-3">
-              <span className="material-symbols-rounded text-4xl text-success">check_circle</span>
-              <div>
-                <h2 className="text-xl font-bold text-on-surface">¡Emergencia reportada!</h2>
+              {currentUpdate?.processingStatus === 'completa' || !activeEmergencyId ? (
+                <span className="material-symbols-rounded text-4xl text-success">check_circle</span>
+              ) : currentUpdate?.processingStatus === 'error' ? (
+                <span className="material-symbols-rounded text-4xl text-error">error</span>
+              ) : (
+                <span className="material-symbols-rounded text-4xl text-primary">progress_activity</span>
+              )}
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-on-surface">
+                  {currentUpdate?.processingStatus === 'completa' || !activeEmergencyId
+                    ? '¡Emergencia reportada!'
+                    : currentUpdate?.processingStatus === 'error'
+                    ? 'Error en el procesamiento'
+                    : 'Procesando emergencia...'}
+                </h2>
                 <p className="text-xs text-on-surface-variant">
                   ID: {serverResponse.data.id}
                 </p>
+                {activeEmergencyId && currentUpdate && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-success' : 'bg-warning'}`}></div>
+                    <span className="text-xs text-on-surface-variant">
+                      {isConnected ? 'Conectado' : 'Reconectando...'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Estado de procesamiento */}
+            {activeEmergencyId && currentUpdate && currentUpdate.processingStatus !== 'completa' && (
+              <div className="bg-surface-container-low rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-rounded text-primary text-sm animate-pulse">
+                    {currentUpdate.processingStatus === 'recibida' && 'hourglass_empty'}
+                    {currentUpdate.processingStatus === 'procesando' && 'settings'}
+                    {currentUpdate.processingStatus === 'pendiente_revision' && 'pending'}
+                    {currentUpdate.processingStatus === 'error' && 'error'}
+                  </span>
+                  <label className="text-sm font-semibold text-on-surface">
+                    {currentUpdate.processingStatus === 'recibida' && 'Emergencia recibida'}
+                    {currentUpdate.processingStatus === 'procesando' && 'Procesando audio y datos'}
+                    {currentUpdate.processingStatus === 'pendiente_revision' && 'Pendiente de revisión'}
+                    {currentUpdate.processingStatus === 'error' && 'Error en el procesamiento'}
+                  </label>
+                </div>
+                
+                {currentUpdate.step && (
+                  <div className="text-xs text-on-surface-variant">
+                    Paso actual: {currentUpdate.step}
+                  </div>
+                )}
+                
+                {currentUpdate.message && (
+                  <p className="text-sm text-on-surface-variant">
+                    {currentUpdate.message}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Clasificación del backend */}
             {serverResponse.infoEmergencia && (

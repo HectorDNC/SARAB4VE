@@ -108,6 +108,7 @@ const FIND_BY_ID = `
          latitude, longitude, urgency,
          need_type AS "needType",
          description, status,
+         processing_status AS "processingStatus",
          assigned_at AS "assignedAt",
          resolved_at AS "resolvedAt",
          created_at AS "createdAt",
@@ -148,9 +149,37 @@ async function updateEmergencyStatusToAssigned(id) {
   return result.rows[0] || null;
 }
 
+// ---------------------------------------------------------------------------
+// Queries de procesamiento asíncrono
+// ---------------------------------------------------------------------------
+
+const GET_PROCESSING_STATUS = `
+  SELECT id,
+         processing_status AS "processingStatus",
+         transcript,
+         transcript_method AS "transcriptMethod",
+         need_type AS "needType",
+         description,
+         urgency,
+         updated_at AS "updatedAt"
+  FROM emergencies
+  WHERE id = $1
+`;
+
+/**
+ * Obtiene el estado de procesamiento de una emergencia.
+ * @param {string} id
+ * @returns {Promise<Object|null>}
+ */
+async function getProcessingStatus(id) {
+  const result = await db.query(GET_PROCESSING_STATUS, [id]);
+  return result.rows[0] || null;
+}
+
 module.exports = {
   buildDistanceExpression,
   buildListEmergenciesQuery,
   findEmergencyById,
+  getProcessingStatus,
   updateEmergencyStatusToAssigned,
 };

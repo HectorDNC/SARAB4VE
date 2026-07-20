@@ -1,14 +1,17 @@
 /**
  * Endpoint POST /api/emergencies/voice — reporte de emergencia por voz.
  *
- * Permite crear una emergencia enviando un archivo de audio + transcripción.
- * El audio se sube a R2 y el registro se guarda con report_origin='voz'.
+ * FLUJO ASÍNCRONO:
+ *   1. Inserta la emergencia INMEDIATAMENTE con estado 'recibida' y responde.
+ *   2. El procesamiento pesado (transcripción/extracción) corre en background.
+ *   3. El frontend recibe actualizaciones en tiempo real vía WebSocket.
  *
  * Schemas Zod (EmergenciaVozSchema) para validación + documentación OpenAPI.
  */
 
 const { z } = require("zod");
 const { extendZodWithOpenApi } = require("@asteasolutions/zod-to-openapi");
+const multer = require("multer");
 
 extendZodWithOpenApi(z);
 
@@ -24,36 +27,6 @@ const COMMUNICATION_MODES = [
   "vibrador_oseo",
 ];
 const URGENCY_LEVELS = ["low", "medium", "high", "critical"];
-
-/**
- * Indica si el JSON crudo devuelto por Gemini (junto con la transcripción
- * del audio) trae suficiente información estructurada como para
- * saltarse la cascada de clasificación `extraerInformacionEmergencia`.
- *
- * Consideramos "útil" si al menos uno de los campos clave está
- * presente (no null) o si la transcripción tiene contenido
- * significativo. Esto evita el caso degenerado en que Gemini devuelve
- * `{ "transcripcion": "", "tipo": null, ... }` y aún así se
- * reutilizaría como "infoExtraida vacía", perdiendo los beneficios
- * del fallback por diccionario.
- *
- * @param {Object|null} infoGemini
- * @returns {boolean}
- */
-function infoGeminiEsUtil(infoGemini) {
-  if (!infoGemini || typeof infoGemini !== "object") return false;
-  if (infoGemini.tipo) return true;
-  if (infoGemini.severidad) return true;
-  if (infoGemini.disabilityType) return true;
-  if (infoGemini.name) return true;
-  if (typeof infoGemini.transcripcion === "string" && infoGemini.transcripcion.trim().length > 0) {
-    // Gemini transcribió algo pero no clasificó — aún así es útil
-    // porque la cascada de clasificación re-evaluaría el mismo texto.
-    // Devolvemos true para que al menos no se llame dos veces a la IA.
-    return true;
-  }
-  return false;
-}
 
 // ---------------------------------------------------------------------------
 // Schema Zod para validación del body (multipart/form-data)
@@ -240,151 +213,56 @@ const EmergenciaVozSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Servicio — lógica de negocio
+// Servicio — lógica de negocio (INSERT inmediato + procesamiento asíncrono)
 // ---------------------------------------------------------------------------
 
 const db = require("../../db");
-const { uploadAudio } = require("../../services/storage");
-const { extraerInformacionEmergencia } = require("./extractorEmergencia");
-const { obtenerTranscript } = require("./transcriptorEmergencia");
+const { processVoiceEmergency } = require("./emergencies.processor");
 
 /**
- * Inserta una emergencia por voz en la base de datos.
+ * Inserta una emergencia por voz en la base de datos de forma INMEDIATA.
+ * El procesamiento pesado (transcripción/extracción) se lanza en background.
  *
  * @param {Object} payload — cuerpo validado del request (campos en camelCase)
  * @param {Object|null} audioFile — archivo de audio subido por multer, o null
- * @returns {Promise<Object>} fila insertada
+ * @returns {Promise<Object>} fila insertada con processing_status='recibida'
  */
 async function createEmergencyFromVoice(payload, audioFile) {
-  // ── Determinar el transcript y el método de transcripción ──
-  // Precedencia:
-  //   1. Si el cliente ya envió transcript (Web Speech API → "cliente-webspeech"),
-  //      lo respetamos.
-  //   2. Si no, y hay audio adjunto, intentamos la cascada del backend
-  //      (Gemini) para transcribirlo.
-  //   3. Si no hay transcript ni audio, dejamos null y el registro se
-  //      guarda igual para revisión manual.
-  let transcript = payload.transcript ? payload.transcript.trim() : "";
-  let metodoTranscripcion = "cliente-webspeech";
-  /** Cuando Gemini transcribe el audio, ya devuelve junto al transcript un
-   *  objeto JSON con tipo, severidad, discapacidad, etc. Si lo tenemos
-   *  válido, lo reutilizamos y nos ahorramos una llamada extra a
-   *  `extraerInformacionEmergencia` (Groq + clasificación). */
-  let infoExtraidaDeGemini = null;
-
-  if (!transcript && audioFile && audioFile.buffer && audioFile.buffer.length > 0) {
-    console.log(
-      "[createEmergencyFromVoice] No se recibió transcript del cliente; transcribiendo audio en backend…",
-    );
-    const transcripcion = await obtenerTranscript(
-      audioFile.buffer,
-      audioFile.mimetype || "audio/webm",
-    );
-    transcript = transcripcion.transcript || "";
-    metodoTranscripcion = transcripcion.metodoTranscripcion;
-    infoExtraidaDeGemini = transcripcion.rawInfo || null;
-    console.log(
-      `[createEmergencyFromVoice] Transcripción de backend: método=${metodoTranscripcion}, ${transcript.length} chars`,
-    );
-  } else if (!transcript) {
-    metodoTranscripcion = "ninguno";
-  }
-
-  // ── Determinar la información estructurada de la emergencia ──
-  // Precedencia:
-  //   A) Si el transcript vino de Gemini y el JSON crudo trae campos
-  //      válidos (tipo/severidad/etc.), los reutilizamos directamente.
-  //   B) Si no, corremos la cascada de clasificación sobre el texto
-  //      (Gemini-texto → Groq → diccionario).
-  let infoExtraida;
-  if (infoExtraidaDeGemini && infoGeminiEsUtil(infoExtraidaDeGemini)) {
-    console.log(
-      "[createEmergencyFromVoice] Reutilizando infoExtraida de Gemini (saltando cascada de clasificación)",
-    );
-    infoExtraida = infoExtraidaDeGemini;
-  } else {
-    // Si después de la cascada seguimos sin transcript, podemos igual
-    // extraer keywords mínimas del propio payload (description, needType).
-    const textoParaClasificar = transcript
-      || (payload.description && payload.description !== payload.transcript ? payload.description : "")
-      || payload.needType
-      || "";
-
-    infoExtraida = await extraerInformacionEmergencia(textoParaClasificar);
-    console.log("[createEmergencyFromVoice] Información extraída:", infoExtraida);
-  }
-  // ── Subir audio a R2 si está presente ──
-  let voiceNoteUrl = null;
-
-  if (audioFile && audioFile.buffer && audioFile.buffer.length > 0) {
-    try {
-      voiceNoteUrl = await uploadAudio(
-        audioFile.buffer,
-        audioFile.originalname || "audio.webm",
-        audioFile.mimetype || "audio/webm",
-      );
-    } catch (err) {
-      console.error("Error subiendo audio a R2:", err.message);
-      // Fallback: guardar sin audio_url, el registro se crea igual
-      voiceNoteUrl = null;
-    }
-  }
-
-  // ── Normalizar payload (camelCase → valores para INSERT) ──
-  // Los valores del payload tienen prioridad; si no vienen, se usan los inferidos por el extractor
-  const requesterName = (payload.requesterName || infoExtraida.name || "Persona en emergencia").trim();
-
-  const isInjured =
-    payload.isInjured === true || payload.isInjured === "true" || infoExtraida.isInjured;
-  const cannotMove =
-    payload.cannotMove === true || payload.cannotMove === "true" || infoExtraida.cannotMove;
-
+  // ── Preparar datos mínimos para INSERT inmediato ──
+  // Solo lo esencial: ubicación, datos del formulario, estado inicial
+  const requesterName = (payload.requesterName || "Persona en emergencia").trim();
+  const isInjured = payload.isInjured === true || payload.isInjured === "true";
+  const cannotMove = payload.cannotMove === true || payload.cannotMove === "true";
   const disabilityType =
-    (payload.disabilityType && DISABILITY_TYPES.includes(payload.disabilityType))
+    payload.disabilityType && DISABILITY_TYPES.includes(payload.disabilityType)
       ? payload.disabilityType
-      : (infoExtraida.disabilityType || "motriz");
-
-  // description: si no se envió explícitamente, usar el resumen del extractor o el transcript
-  const description =
-    payload.description && payload.description !== payload.transcript && payload.description !== transcript
-      ? payload.description.trim()
-      : (infoExtraida.resumen || transcript || payload.description || "Emergencia reportada por voz");
-
-  // needType: usar tipo_emergencia del payload, sino el tipo del extractor, sino transcript
-  const needType = payload.tipo_emergencia?.trim()
-    ? payload.tipo_emergencia.trim()
-    : (infoExtraida.tipo || payload.needType?.trim() || (transcript ? transcript.slice(0, 50) : "Emergencia"));
-
-  const latitude = Number(payload.latitude);
-  const longitude = Number(payload.longitude);
-  
-  // urgency: mapear severidad del extractor a urgency si no se especificó
-  let urgency = payload.urgency;
-  if (!urgency && infoExtraida.severidad) {
-    urgency = 
-      infoExtraida.severidad === "alta" ? "critical" :
-      infoExtraida.severidad === "media" ? "high" :
-      "medium";
-  }
-  urgency = urgency || "high";
-
-  const communicationMode =
-    payload.communicationMode?.trim() || infoExtraida.communicationMode || null;
-  const disabilitySubcategory =
-    payload.disabilitySubcategory?.trim() || infoExtraida.disabilitySubcategory || null;
+      : "motriz";
+  const communicationMode = payload.communicationMode?.trim() || null;
+  const disabilitySubcategory = payload.disabilitySubcategory?.trim() || null;
   const extraInfo = payload.extraInfo?.trim() || null;
   const voiceNoteDurationSec = payload.voiceNoteDurationSec
     ? Number(payload.voiceNoteDurationSec)
     : null;
 
-  // ── INSERT ──
+  const latitude = Number(payload.latitude);
+  const longitude = Number(payload.longitude);
+  const urgency = payload.urgency || "high";
+
+  // Datos temporales (se actualizarán en el procesamiento asíncrono)
+  const needType = payload.tipo_emergencia?.trim() || payload.needType?.trim() || "Emergencia por voz";
+  const description = payload.description?.trim() || "Emergencia reportada por voz (procesando...)";
+  const transcript = payload.transcript?.trim() || null;
+  const transcriptMethod = transcript ? "cliente-webspeech" : null;
+
+  // ── INSERT inmediato ──
   const result = await db.query(
     `INSERT INTO emergencies (
         requester_name, is_injured, cannot_move, disability_type,
         communication_mode, disability_subcategory, extra_info,
-        voice_note_url, voice_note_duration_sec,
+        voice_note_duration_sec,
         latitude, longitude, urgency, need_type, description,
-        report_origin, transcript, transcript_method
+        report_origin, transcript, transcript_method,
+        processing_status
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING
@@ -399,6 +277,7 @@ async function createEmergencyFromVoice(payload, audioFile) {
         report_origin AS "reportOrigin",
         transcript,
         transcript_method AS "transcriptMethod",
+        processing_status AS "processingStatus",
         assigned_at AS "assignedAt", resolved_at AS "resolvedAt",
         created_at AS "createdAt", updated_at AS "updatedAt"
     `,
@@ -410,7 +289,6 @@ async function createEmergencyFromVoice(payload, audioFile) {
       communicationMode,
       disabilitySubcategory,
       extraInfo,
-      voiceNoteUrl,
       voiceNoteDurationSec,
       latitude,
       longitude,
@@ -418,17 +296,31 @@ async function createEmergencyFromVoice(payload, audioFile) {
       needType,
       description,
       "voz", // report_origin
-      transcript || null,
-      metodoTranscripcion,
+      transcript,
+      transcriptMethod,
+      "recibida", // processing_status
     ],
   );
 
-  return {
-    emergency: result.rows[0],
-    infoEmergencia: infoExtraida,
-    metodoTranscripcion,
-    transcript,
-  };
+  const emergency = result.rows[0];
+
+  // ── Lanzar procesamiento asíncrono en background ──
+  // IMPORTANTE: No esperar la promesa. El procesamiento corre en background.
+  const audioBuffer = audioFile?.buffer || null;
+  const audioMimetype = audioFile?.mimetype || "audio/webm";
+
+  console.log(`[voice] Emergencia ${emergency.id} creada. Lanzando procesamiento asíncrono...`);
+
+  // Fire-and-forget: procesar en background sin bloquear la respuesta
+  setImmediate(async () => {
+    try {
+      await processVoiceEmergency(emergency.id, payload, audioBuffer, audioMimetype);
+    } catch (error) {
+      console.error(`[voice] Error crítico en procesamiento asíncrono de emergencia ${emergency.id}:`, error);
+    }
+  });
+
+  return emergency;
 }
 
 // ---------------------------------------------------------------------------
@@ -440,6 +332,9 @@ async function createEmergencyFromVoice(payload, audioFile) {
  *
  * Requiere autenticación (cualquier rol autenticado).
  * Acepta multipart/form-data con archivo de audio + campos.
+ *
+ * RESPONDE INMEDIATAMENTE con la emergencia creada (processing_status='recibida').
+ * El procesamiento continúa en background y el frontend recibe actualizaciones vía WebSocket.
  */
 function createEmergencyVoiceHandler(schema) {
   return async (req, res, next) => {
@@ -457,9 +352,15 @@ function createEmergencyVoiceHandler(schema) {
       // req.file viene de multer (puede ser undefined si no se envió audio)
       const audioFile = req.file || null;
 
-      const { emergency, infoEmergencia } = await createEmergencyFromVoice(parsed.data, audioFile);
+      // INSERT inmediato + procesamiento asíncrono en background
+      const emergency = await createEmergencyFromVoice(parsed.data, audioFile);
 
-      return res.status(201).json({ data: emergency, infoEmergencia });
+      // Responder INMEDIATAMENTE al cliente
+      return res.status(201).json({
+        data: emergency,
+        message: "Emergencia registrada. Procesamiento en curso. Suscríbete a WebSocket para actualizaciones.",
+        wsEndpoint: `/ws?emergencyId=${emergency.id}`
+      });
     } catch (error) {
       return next(error);
     }
@@ -469,8 +370,6 @@ function createEmergencyVoiceHandler(schema) {
 // ---------------------------------------------------------------------------
 // Multer — middleware para parsear multipart/form-data con archivo de audio
 // ---------------------------------------------------------------------------
-
-const multer = require("multer");
 
 /**
  * Middleware de multer configurado para recibir el archivo de audio en memoria.

@@ -108,9 +108,24 @@ async function getEmergencyById(id, repository) {
   return { data: row, status: 200 };
 }
 
+/**
+ * Obtiene el estado de procesamiento de una emergencia.
+ * @param {string} id
+ * @param {Object} repository
+ * @returns {Promise<{ data: Object|null, status: number, errors?: string[] }>}
+ */
+async function getProcessingStatus(id, repository) {
+  const row = await repository.getProcessingStatus(id);
+  if (!row) {
+    return { errors: ["emergency not found"], status: 404 };
+  }
+  return { data: row, status: 200 };
+}
+
 module.exports = {
   normalizeCreateEmergency,
   createEmergency,
   listEmergencies,
   getEmergencyById,
+  getProcessingStatus,
 };

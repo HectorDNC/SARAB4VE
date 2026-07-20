@@ -24,6 +24,12 @@ router.get("/",
 router.get("/:id", 
     authenticate, authorize("admin", "organization", "volunteer"), 
     controller.getEmergencyById(service, schema, repository));
+
+// ── Estado de procesamiento asíncrono ──
+router.get("/:id/processing-status",
+    authenticate, authorize("admin", "organization", "volunteer"),
+    controller.getProcessingStatus(service, schema, repository));
+
 router.post("/", controller.createEmergency(service, schema));
 
 // ── Voz: reporte con audio + transcripción (autenticado, cualquier rol) ──

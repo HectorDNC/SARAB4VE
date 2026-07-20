@@ -153,3 +153,12 @@ ALTER TABLE emergencies
 ALTER TABLE emergencies
   ADD COLUMN IF NOT EXISTS transcript_method TEXT
     CHECK (transcript_method IN ('cliente-webspeech', 'gemini', 'transformers-local', 'ninguno'));
+
+-- ---------------------------------------------------------------------------
+-- Processing status — estado del procesamiento asíncrono de emergencias por voz
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE emergencies
+  ADD COLUMN IF NOT EXISTS processing_status VARCHAR(20) DEFAULT null;
+  
+-- Valores: 'none' (no aplica), 'recibida', 'procesando', 'completa', 'pendiente_revision', 'error'
