@@ -25,6 +25,9 @@ export default function ButtonEmergencyVoice() {
   const [showPreview, setShowPreview] = useState(false);
   const [preview, setPreview] = useState<VoicePreview | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Reintento de geolocalización al confirmar el envío
+  const [isRefreshingLocation, setIsRefreshingLocation] = useState(false);
+  const [freshCoords, setFreshCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   // Respuesta del backend tras enviar — para mostrar pantalla de éxito con clasificación
   const [serverResponse, setServerResponse] = useState<VoiceEmergencyResponse | null>(null);
   // Emergency ID para suscribirse a WebSocket
@@ -45,7 +48,6 @@ export default function ButtonEmergencyVoice() {
     const eid = activeEmergencyIdRef.current;
     if (!eid) return;
     try {
-      console.log('[EmergencyVoice] Fallback: re-fetching emergency', eid);
       const fresh = await getEmergencyById(eid);
       const current = serverResponseRef.current;
       if (!current) return;
@@ -232,6 +234,55 @@ export default function ButtonEmergencyVoice() {
     }
   }, [locationStatus, requestLocation]);
 
+  // Al abrir el modal de preview, si la ubicación aún no está lista, intentar
+  // obtenerla automáticamente. Esto evita que el usuario tenga que tocar
+  // "Reintentar" o "Confirmar y enviar" solo para conseguir coordenadas.
+  useEffect(() => {
+    if (!showPreview || !preview) return;
+    // Si ya tenemos coordenadas válidas (en freshCoords, en el preview o en el
+    // contexto de ubicación), no hacemos nada.
+    if (freshCoords) return;
+    const hasValidLocation =
+      preview.latitude !== 0 ||
+      preview.longitude !== 0;
+    if (hasValidLocation) return;
+
+    let cancelled = false;
+    setIsRefreshingLocation(true);
+
+    const tryGet = (): Promise<{ latitude: number; longitude: number } | null> =>
+      requestLocation()
+        .then((coords) => coords)
+        .catch(() => null);
+
+    (async () => {
+      let coords = await tryGet();
+      if (cancelled) return;
+      if (!coords) {
+        // Reintento tras breve delay para que el GPS se estabilice
+        await new Promise((r) => setTimeout(r, 800));
+        if (cancelled) return;
+        coords = await tryGet();
+      }
+      if (cancelled) return;
+      if (coords) {
+        // Unificamos: guardamos en freshCoords (fuente única) y replicamos
+        // en el preview para que la UI lo muestre de inmediato.
+        setFreshCoords(coords);
+        setPreview((p) =>
+          p ? { ...p, latitude: coords!.latitude, longitude: coords!.longitude } : p,
+        );
+      }
+      setIsRefreshingLocation(false);
+    })();
+
+    return () => {
+      cancelled = true;
+      setIsRefreshingLocation(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPreview]);
+
   // Detectar silencio de 3 segundos para auto-detener
   useEffect(() => {
     if (!isListening) return;
@@ -301,18 +352,17 @@ export default function ButtonEmergencyVoice() {
         return;
       }
 
-      // Requerimos coordenadas para el backend voice endpoint
-      if (!location) {
-        alertService.warning("Necesitamos tu ubicación para reportar. Activa el GPS.");
-        setState("idle");
-        reset();
-        return;
-      }
+      // No abortamos si aún no hay ubicación: el modal de confirmación
+      // reintentará la geolocalización justo antes de enviar el reporte.
+      // Usamos coordenadas 0/0 como placeholder si no hay; serán sobrescritas
+      // (o se mostrará error) en handleSubmitEmergency.
+      const fallbackLat = location?.latitude ?? 0;
+      const fallbackLng = location?.longitude ?? 0;
 
       setPreview({
         transcript,
-        latitude: location.latitude,
-        longitude: location.longitude,
+        latitude: fallbackLat,
+        longitude: fallbackLng,
         durationSec,
       });
       setShowPreview(true);
@@ -332,8 +382,43 @@ export default function ButtonEmergencyVoice() {
     setPreview(null);
     setServerResponse(null);
     setActiveEmergencyId(null);
+    setFreshCoords(null);
     reset();
   }, [reset]);
+
+  /**
+   * Devuelve coordenadas válidas para enviar la emergencia. Orden de prioridad:
+   *  1. `freshCoords` (lo capturado al abrir el preview / tras "Reintentar")
+   *  2. `location` del contexto (si llegó tras montar el componente)
+   *  3. Reintenta obtener una ubicación fresca (1 intento + 1 reintento)
+   */
+  const ensureFreshLocation = useCallback(async (): Promise<{ latitude: number; longitude: number } | null> => {
+    if (freshCoords) return freshCoords;
+    if (location && location.latitude !== 0 && location.longitude !== 0) {
+      setFreshCoords(location);
+      return location;
+    }
+
+    setIsRefreshingLocation(true);
+    try {
+      const coords = await requestLocation();
+      setFreshCoords(coords);
+      return coords;
+    } catch (firstErr) {
+      console.warn('[ButtonEmergencyVoice] Primer intento de ubicación falló, reintentando…', firstErr);
+      try {
+        await new Promise((r) => setTimeout(r, 800));
+        const coords = await requestLocation();
+        setFreshCoords(coords);
+        return coords;
+      } catch (secondErr) {
+        console.error('[ButtonEmergencyVoice] Segundo intento de ubicación falló:', secondErr);
+        return null;
+      }
+    } finally {
+      setIsRefreshingLocation(false);
+    }
+  }, [freshCoords, location, requestLocation]);
 
   const handleSubmitEmergency = useCallback(async () => {
     const blob = audioBlobRef.current;
@@ -345,22 +430,35 @@ export default function ButtonEmergencyVoice() {
     setIsSubmitting(true);
 
     try {
+      // Re-obtener ubicación al confirmar: la captura inicial puede no estar
+      // lista (GPS frío, permiso recién concedido, etc.). Solo abortamos si
+      // tras 2 intentos seguimos sin coordenadas válidas.
+      const freshCoords = await ensureFreshLocation();
+
+      if (!freshCoords) {
+        alertService.error(
+          "No pudimos obtener tu ubicación. Activa el GPS e inténtalo de nuevo.",
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       const transcript = preview.transcript || null;
 
       const response = await sendEmergencyVoice({
         audioBlob: blob,
         transcript,
-        latitude: preview.latitude,
-        longitude: preview.longitude,
+        latitude: freshCoords.latitude,
+        longitude: freshCoords.longitude,
         voiceNoteDurationSec: preview.durationSec > 0 ? preview.durationSec : undefined,
       });
 
       console.log('[EmergencyVoice] Respuesta inicial:', response);
-      
+
       // Guardar la respuesta inicial y el ID para WebSocket
       setServerResponse(response);
       setActiveEmergencyId(response.data.id);
-      
+
       setState("success");
       // Mensaje amigable al enviar, consistente con el formulario manual
       alertService.success(
@@ -372,7 +470,7 @@ export default function ButtonEmergencyVoice() {
       alertService.error(err.message || "Error al enviar la emergencia");
       setIsSubmitting(false);
     }
-  }, [preview, audioBlobRef]);
+  }, [preview, audioBlobRef, ensureFreshLocation]);
 
   const renderButtonIcon = () => {
     switch (state) {
@@ -520,11 +618,59 @@ export default function ButtonEmergencyVoice() {
 
             {/* Ubicación */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-on-surface">
-                Tu ubicación:
-              </label>
-              <div className="bg-surface-container-low rounded-lg p-3 text-xs text-on-surface-variant font-mono">
-                Lat: {preview.latitude.toFixed(6)}, Lng: {preview.longitude.toFixed(6)}
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-on-surface">
+                  Tu ubicación:
+                </label>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setIsRefreshingLocation(true);
+                    try {
+                      const coords = await requestLocation();
+                      setFreshCoords(coords);
+                      setPreview((p) =>
+                        p ? { ...p, latitude: coords.latitude, longitude: coords.longitude } : p,
+                      );
+                    } catch {
+                      alertService.warning(
+                        "No pudimos refrescar la ubicación. Verifica tu GPS.",
+                      );
+                    } finally {
+                      setIsRefreshingLocation(false);
+                    }
+                  }}
+                  disabled={isRefreshingLocation || isSubmitting}
+                  className="text-[11px] flex items-center gap-1 px-2 py-1 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
+                  aria-label="Reintentar obtener ubicación manualmente"
+                >
+                  <span
+                    className={`material-symbols-rounded text-xs ${isRefreshingLocation ? "animate-spin" : ""}`}
+                  >
+                    {isRefreshingLocation ? "progress_activity" : "refresh"}
+                  </span>
+                  {isRefreshingLocation ? "Obteniendo…" : "Reintentar"}
+                </button>
+              </div>
+              <div
+                className={`rounded-lg p-3 text-xs font-mono flex items-center gap-2 ${
+                  !freshCoords
+                    ? "bg-yellow-50 text-yellow-900 border border-yellow-300"
+                    : "bg-surface-container-low text-on-surface-variant"
+                }`}
+              >
+                {isRefreshingLocation && (
+                  <span className="material-symbols-rounded text-base animate-spin text-primary">
+                    progress_activity
+                  </span>
+                )}
+                <span>
+                  {!freshCoords
+                    ? isRefreshingLocation
+                      ? "Obteniendo tu ubicación automáticamente…"
+                      : "Aún no tenemos tu ubicación. Intenta de nuevo o toca Reintentar."
+                    : `Lat: ${freshCoords.latitude.toFixed(6)}, Lng: ${freshCoords.longitude.toFixed(6)}`}
+                </span>
               </div>
             </div>
 
@@ -543,7 +689,7 @@ export default function ButtonEmergencyVoice() {
               <button
                 type="button"
                 onClick={handleClosePreview}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isRefreshingLocation}
                 className="flex-1 px-4 py-3 rounded-xl border border-outline text-on-surface hover:bg-surface-container transition-colors font-medium disabled:opacity-50"
               >
                 Cancelar
@@ -551,10 +697,14 @@ export default function ButtonEmergencyVoice() {
               <button
                 type="button"
                 onClick={handleSubmitEmergency}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isRefreshingLocation}
                 className="flex-1 px-4 py-3 rounded-xl bg-primary text-on-primary hover:bg-primary/90 transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? "Enviando..." : "Confirmar y enviar"}
+                {isRefreshingLocation
+                  ? "Obteniendo ubicación…"
+                  : isSubmitting
+                    ? "Enviando..."
+                    : "Confirmar y enviar"}
               </button>
             </div>
           </div>
