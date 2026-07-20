@@ -109,6 +109,8 @@ export interface EmergencyDetail {
   needType: string;
   description: string;
   status: string;
+  /** Estado de procesamiento asíncrono (devuelto por GET /api/emergencies/:id). */
+  processingStatus?: "recibida" | "procesando" | "completa" | "pendiente_revision" | "error" | null;
   assignedAt: string | null;
   resolvedAt: string | null;
   createdAt: string;

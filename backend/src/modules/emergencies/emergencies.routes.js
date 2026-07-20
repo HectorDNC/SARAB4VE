@@ -22,7 +22,6 @@ router.get("/",
     authenticate, authorize("admin", "organization", "volunteer"), 
     controller.listEmergencies(service, repository, schema));
 router.get("/:id", 
-    authenticate, authorize("admin", "organization", "volunteer"), 
     controller.getEmergencyById(service, schema, repository));
 
 // ── Estado de procesamiento asíncrono ──

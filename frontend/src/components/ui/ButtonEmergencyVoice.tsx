@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useLocation } from "@/hooks/useLocation";
 import ConsentModal from "./ConsentModal";
-import { sendEmergencyVoice, type VoiceEmergencyResponse } from "@/api/emergencies";
+import { sendEmergencyVoice, getEmergencyById, type VoiceEmergencyResponse } from "@/api/emergencies";
 import { alertService } from "@/services/alertService";
 import { useEmergencyProcessing, type ProcessingUpdate } from "@/hooks/useEmergencyProcessing";
 
@@ -35,9 +35,124 @@ export default function ButtonEmergencyVoice() {
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTranscriptRef = useRef<string>("");
   const recordingStartRef = useRef<number>(0);
+  // Refs espejo para leer valores actuales dentro del callback del timer
+  const activeEmergencyIdRef = useRef<string | null>(null);
+  const serverResponseRef = useRef<VoiceEmergencyResponse | null>(null);
+
+  // Programa un re-fetch de la emergencia tras 10s para refrescar la data
+  // cuando el WebSocket falla o se desconecta.
+  const scheduleFallbackFetch = useCallback(async () => {
+    const eid = activeEmergencyIdRef.current;
+    if (!eid) return;
+    try {
+      console.log('[EmergencyVoice] Fallback: re-fetching emergency', eid);
+      const fresh = await getEmergencyById(eid);
+      const current = serverResponseRef.current;
+      if (!current) return;
+
+      // Mapear campos del GET /api/emergencies/:id al VoiceEmergencyResponse local
+      // - urgency (critical/high/medium/low) → severidad (alta/media/baja/null)
+      // - needType → tipo
+      // - status / processingStatus → indica si la emergencia ya fue procesada
+      const urgenciaASeveridad = (urgency: string): "alta" | "media" | "baja" | null => {
+        switch (urgency) {
+          case "critical":
+          case "high":
+            return "alta";
+          case "medium":
+            return "media";
+          case "low":
+            return "baja";
+          default:
+            return null;
+        }
+      };
+
+      const isCompleta =
+        fresh.processingStatus === "completa" || fresh.processingStatus === "pendiente_revision";
+
+      const fallbackInfoEmergencia: VoiceEmergencyResponse["infoEmergencia"] = {
+        tipo: current.infoEmergencia?.tipo ?? fresh.needType ?? null,
+        severidad:
+          current.infoEmergencia?.severidad ?? urgenciaASeveridad(fresh.urgency),
+        personasAfectadas: current.infoEmergencia?.personasAfectadas ?? null,
+        resumen: current.infoEmergencia?.resumen ?? fresh.description ?? "",
+        palabrasClaveDetectadas: current.infoEmergencia?.palabrasClaveDetectadas ?? [],
+        metodoExtraccion: current.infoEmergencia?.metodoExtraccion ?? "diccionario",
+        isInjured: current.infoEmergencia?.isInjured ?? fresh.isInjured,
+        cannotMove: current.infoEmergencia?.cannotMove ?? fresh.cannotMove,
+        disabilityType: current.infoEmergencia?.disabilityType ?? fresh.disabilityType,
+        communicationMode: current.infoEmergencia?.communicationMode ?? fresh.communicationMode,
+        disabilitySubcategory:
+          current.infoEmergencia?.disabilitySubcategory ?? fresh.disabilitySubcategory,
+        name: current.infoEmergencia?.name ?? fresh.requesterName,
+      };
+
+      setServerResponse({
+        ...current,
+        data: fresh,
+        infoEmergencia: fallbackInfoEmergencia,
+      });
+
+      console.log('[EmergencyVoice] Fallback: data actualizada', {
+        status: fresh.status,
+        processingStatus: fresh.processingStatus,
+        urgency: fresh.urgency,
+        needType: fresh.needType,
+      });
+
+      // Reflejar el processingStatus del GET en currentUpdate priorizando el
+      // estado más avanzado. Si el WS ya marcó 'completa' antes, no lo
+      // sobreescribimos.
+      if (fresh.processingStatus) {
+        const orden: Record<string, number> = {
+          recibida: 1,
+          procesando: 2,
+          pendiente_revision: 3,
+          completa: 4,
+          error: 3,
+        };
+        const incomingRank = orden[fresh.processingStatus] ?? 0;
+        const currentRank = orden[currentUpdate?.processingStatus ?? ''] ?? 0;
+
+        if (incomingRank > currentRank) {
+          setExternalUpdate({
+            processingStatus: fresh.processingStatus,
+            step: isCompleta ? 'completed' : currentUpdate?.step,
+            message: isCompleta
+              ? 'Emergencia clasificada correctamente'
+              : currentUpdate?.message,
+            infoEmergencia: isCompleta
+              ? {
+                tipo: fallbackInfoEmergencia.tipo,
+                severidad: fallbackInfoEmergencia.severidad,
+                resumen: fallbackInfoEmergencia.resumen,
+                palabrasClaveDetectadas: fallbackInfoEmergencia.palabrasClaveDetectadas,
+                disabilityType: fallbackInfoEmergencia.disabilityType,
+                disabilitySubcategory: fallbackInfoEmergencia.disabilitySubcategory,
+                communicationMode: fallbackInfoEmergencia.communicationMode,
+                cannotMove: fallbackInfoEmergencia.cannotMove,
+                isInjured: fallbackInfoEmergencia.isInjured,
+              }
+              : currentUpdate?.infoEmergencia,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+
+      if (isCompleta) {
+        alertService.success(
+          "Hemos actualizado la información de tu emergencia.",
+          5000
+        );
+      }
+    } catch (err) {
+      console.error('[EmergencyVoice] Fallback fetch falló:', err);
+    }
+  }, []);
 
   // Hook para procesamiento asíncrono vía WebSocket
-  const { currentUpdate, isConnected } = useEmergencyProcessing({
+  const { currentUpdate, isConnected, setExternalUpdate } = useEmergencyProcessing({
     emergencyId: activeEmergencyId,
     onUpdate: (update) => {
       setProcessingUpdates(prev => [...prev, update]);
@@ -49,7 +164,7 @@ export default function ButtonEmergencyVoice() {
         'Hemos identificado tu emergencia.',
         5000
       );
-      
+
       // Actualizar serverResponse con los datos finales del procesamiento
       console.log(serverResponse, update.infoEmergencia);
       if (serverResponse && update.infoEmergencia) {
@@ -73,7 +188,8 @@ export default function ButtonEmergencyVoice() {
     },
     onError: (error) => {
       console.error('[EmergencyProcessing] Error:', error);
-      alertService.error(`Error en el procesamiento: ${error}`, 6000);
+      // Si el WS falla, refrescar la data de la emergencia tras
+      scheduleFallbackFetch();
     }
   });
 
@@ -99,6 +215,15 @@ export default function ButtonEmergencyVoice() {
     const consent = localStorage.getItem("sara_voice_consent");
     setHasConsent(consent === "true");
   }, []);
+
+  // Sincronizar refs espejo para que el callback del fallback lea valores frescos
+  useEffect(() => {
+    activeEmergencyIdRef.current = activeEmergencyId;
+  }, [activeEmergencyId]);
+
+  useEffect(() => {
+    serverResponseRef.current = serverResponse;
+  }, [serverResponse]);
 
   // Pedir ubicación al montar si no está lista
   useEffect(() => {
@@ -206,6 +331,7 @@ export default function ButtonEmergencyVoice() {
     setShowPreview(false);
     setPreview(null);
     setServerResponse(null);
+    setActiveEmergencyId(null);
     reset();
   }, [reset]);
 

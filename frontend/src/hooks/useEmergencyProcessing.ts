@@ -73,8 +73,29 @@ export function useEmergencyProcessing({
   const [currentUpdate, setCurrentUpdate] = useState<ProcessingUpdate | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+
+  /**
+   * Permite actualizar `currentUpdate` desde fuera del hook (p. ej. cuando
+   * un GET de fallback refresca la data y queremos que el modal refleje
+   * el nuevo `processingStatus`). Acepta un update parcial.
+   */
+  const setExternalUpdate = useCallback((partial: Partial<ProcessingUpdate>) => {
+    setCurrentUpdate((prev) => {
+      if (!prev) {
+        // Si todavía no hay update, construimos uno mínimo con los datos
+        // provistos y los campos requeridos.
+        return {
+          emergencyId: emergencyIdRef.current || '',
+          processingStatus: 'procesando',
+          timestamp: new Date().toISOString(),
+          ...partial,
+        } as ProcessingUpdate;
+      }
+      return { ...prev, ...partial };
+    });
+  }, []);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
+  const maxReconnectAttempts = 4;
   const subscribedRef = useRef(false);
 
   // Mantener refs estables de los callbacks para no recrear el WebSocket
@@ -170,7 +191,7 @@ export function useEmergencyProcessing({
       // Intentar reconectar
       if (reconnectAttempts.current < maxReconnectAttempts) {
         reconnectAttempts.current++;
-        const delay = 2000 * reconnectAttempts.current;
+        const delay = 1500 * reconnectAttempts.current;
         console.log(`[WebSocket] Reintentando conexión en ${delay}ms (${reconnectAttempts.current}/${maxReconnectAttempts})...`);
         setTimeout(() => {
           if (emergencyIdRef.current) {
@@ -209,5 +230,6 @@ export function useEmergencyProcessing({
   return {
     currentUpdate,
     isConnected,
+    setExternalUpdate,
   };
 }
