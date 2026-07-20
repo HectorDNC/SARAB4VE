@@ -95,7 +95,7 @@ export function useEmergencyProcessing({
     });
   }, []);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 4;
+  const maxReconnectAttempts = 3;
   const subscribedRef = useRef(false);
 
   // Mantener refs estables de los callbacks para no recrear el WebSocket
@@ -191,7 +191,7 @@ export function useEmergencyProcessing({
       // Intentar reconectar
       if (reconnectAttempts.current < maxReconnectAttempts) {
         reconnectAttempts.current++;
-        const delay = 1500 * reconnectAttempts.current;
+        const delay = 1000 * reconnectAttempts.current;
         console.log(`[WebSocket] Reintentando conexión en ${delay}ms (${reconnectAttempts.current}/${maxReconnectAttempts})...`);
         setTimeout(() => {
           if (emergencyIdRef.current) {

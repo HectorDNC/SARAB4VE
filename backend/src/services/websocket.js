@@ -97,36 +97,58 @@ function initWebSocketServer(server) {
 
 /**
  * Envía una actualización de estado a todos los clientes suscritos a una emergencia.
+ *
+ * Esta función es defensiva: NUNCA lanza excepciones. Si el servidor WS no
+ * está inicializado, si la serialización JSON falla, o si algún cliente está
+ * en un estado inválido, el error se registra y se continúa. La idea es que
+ * el canal de notificaciones en tiempo real sea estrictamente best-effort y
+ * NUNCA afecte al flujo principal de procesamiento de emergencias.
+ *
  * @param {string} emergencyId
  * @param {Object} data
  */
 function notifyEmergencyUpdate(emergencyId, data) {
-  // Almacenar el último estado para enviarlo a clientes que se suscriban después
-  lastState.set(emergencyId, data);
-  
-  if (!clients.has(emergencyId)) {
-    console.log(`[WS] No hay clientes suscritos para emergencia ${emergencyId}, estado guardado en cache`);
-    return;
-  }
-
-  const message = JSON.stringify({
-    type: 'emergency_update',
-    emergencyId,
-    data,
-    timestamp: new Date().toISOString()
-  });
-
-  const clientSet = clients.get(emergencyId);
-  let sentCount = 0;
-  for (const ws of clientSet) {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(message);
-      sentCount++;
+  try {
+    if (!wss) {
+      console.warn(`[WS] notifyEmergencyUpdate llamado sin servidor WS inicializado (${emergencyId})`);
+      return;
     }
-  }
 
-  if (sentCount > 0) {
-    console.log(`[WS] Notificación enviada a ${sentCount} cliente(s) para emergencia ${emergencyId}`);
+    // Almacenar el último estado para enviarlo a clientes que se suscriban después
+    lastState.set(emergencyId, data);
+
+    if (!clients.has(emergencyId)) {
+      console.log(`[WS] No hay clientes suscritos para emergencia ${emergencyId}, estado guardado en cache`);
+      return;
+    }
+
+    const message = JSON.stringify({
+      type: 'emergency_update',
+      emergencyId,
+      data,
+      timestamp: new Date().toISOString()
+    });
+
+    const clientSet = clients.get(emergencyId);
+    if (!clientSet) return;
+
+    let sentCount = 0;
+    for (const ws of clientSet) {
+      try {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+          sentCount++;
+        }
+      } catch (sendErr) {
+        console.error(`[WS] Error enviando a cliente (continuando):`, sendErr.message);
+      }
+    }
+
+    if (sentCount > 0) {
+      console.log(`[WS] Notificación enviada a ${sentCount} cliente(s) para emergencia ${emergencyId}`);
+    }
+  } catch (err) {
+    console.error(`[WS] Error en notifyEmergencyUpdate (no fatal):`, err?.message || err);
   }
 }
 

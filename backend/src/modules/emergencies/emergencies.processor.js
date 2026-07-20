@@ -46,11 +46,25 @@ function infoGeminiEsUtil(infoGemini) {
 
 /**
  * Notifica al frontend vía WebSocket el cambio de estado de una emergencia.
+ *
+ * Es BEST-EFFORT: cualquier error del WebSocket (servidor no inicializado,
+ * fallo de serialización, cliente con estado inválido, etc.) se registra en
+ * consola pero NUNCA interrumpe el procesamiento de la emergencia. La
+ * emergencia siempre termina su pipeline y queda persistida en BD; si el WS
+ * falla, el frontend puede hacer polling de /processing-status como fallback.
+ *
  * @param {string} emergencyId
  * @param {Object} update — campos del update parcial
  */
 function notify(emergencyId, update) {
-  notifyEmergencyUpdate(emergencyId, update);
+  try {
+    notifyEmergencyUpdate(emergencyId, update);
+  } catch (err) {
+    console.error(
+      `[PROCESSOR] WebSocket notify falló para emergencia ${emergencyId} (continuando):`,
+      err?.message || err
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
