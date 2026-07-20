@@ -68,8 +68,32 @@ function getEmergencyById(service, schema, repository) {
   };
 }
 
+/**
+ * GET /api/emergencies/:id/processing-status
+ */
+function getProcessingStatus(service, schema, repository) {
+  return async (req, res, next) => {
+    if (!schema.isUuid(req.params.id)) {
+      return res.status(400).json({ errors: ["id must be a valid UUID"] });
+    }
+
+    try {
+      const result = await service.getProcessingStatus(req.params.id, repository);
+
+      if (result.errors) {
+        return res.status(result.status).json({ errors: result.errors });
+      }
+
+      return res.json({ data: result.data });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
 module.exports = {
   listEmergencies,
   createEmergency,
   getEmergencyById,
+  getProcessingStatus,
 };

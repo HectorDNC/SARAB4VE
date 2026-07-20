@@ -210,3 +210,51 @@ export interface iAdmin extends BaseUserForm {
 }
 
 export const USE_MOCK=false;
+
+// ── Procesamiento asíncrono de emergencias por voz ──────────────────────────
+
+export type ProcessingStatus = "recibida" | "procesando" | "completa" | "pendiente_revision" | "error";
+
+export type ProcessingStep = 
+  | "audio_uploaded" 
+  | "transcribing" 
+  | "transcribed" 
+  | "extracting" 
+  | "data_extracted" 
+  | "completed"
+  | "error";
+
+export interface EmergencyProcessingUpdate {
+  emergencyId: string;
+  processingStatus: ProcessingStatus;
+  step?: ProcessingStep;
+  message?: string;
+  audioUrl?: string;
+  transcript?: string;
+  transcriptMethod?: string;
+  infoEmergencia?: EmergencyExtractedInfo | null;
+  processingError?: string;
+  timestamp: string;
+}
+
+export interface EmergencyExtractedInfo {
+  tipo: string | null;
+  severidad: "baja" | "media" | "alta" | null;
+  personasAfectadas: number | null;
+  resumen: string;
+  palabrasClaveDetectadas: string[];
+  metodoExtraccion: "ia" | "diccionario";
+  isInjured: boolean;
+  cannotMove: boolean;
+  disabilityType?: string | null;
+  communicationMode?: string | null;
+  disabilitySubcategory?: string | null;
+  name?: string | null;
+}
+
+export interface WebSocketMessage {
+  type: "subscribed" | "emergency_update";
+  emergencyId?: string;
+  data?: EmergencyProcessingUpdate;
+  timestamp: string;
+}

@@ -8,12 +8,12 @@ import { alertService } from "@/services/alertService";
 
 interface LocationPickerProps {
   value: { lat: number; lng: number } | null;
-  onChange: (location: { lat: number; lng: number }) => void;
+  onChange?: (location: { lat: number; lng: number }) => void;
   readOnly?: boolean;
 }
 
 function ClickHandler({ onChange, readOnly, }: {
-  onChange: (location: { lat: number; lng: number }) => void;
+  onChange?: (location: { lat: number; lng: number }) => void;
   readOnly: boolean;
 }) {
  useMapEvents({
