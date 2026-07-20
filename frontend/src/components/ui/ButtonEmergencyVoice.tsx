@@ -40,7 +40,6 @@ export default function ButtonEmergencyVoice() {
   const { currentUpdate, isConnected } = useEmergencyProcessing({
     emergencyId: activeEmergencyId,
     onUpdate: (update) => {
-      console.log('[EmergencyProcessing] Update:', update);
       setProcessingUpdates(prev => [...prev, update]);
     },
     onComplete: (update) => {
@@ -55,7 +54,6 @@ export default function ButtonEmergencyVoice() {
       console.log(serverResponse, update.infoEmergencia);
       if (serverResponse && update.infoEmergencia) {
         const info = update.infoEmergencia as Record<string, unknown>;
-        console.log('Updating serverResponse with infoEmergencia:', info);
         setServerResponse({
           ...serverResponse,
           infoEmergencia: {
@@ -467,11 +465,6 @@ export default function ButtonEmergencyVoice() {
                 <p className="text-xs text-on-surface-variant">
                   ID: {serverResponse.data.id}
                 </p>
-                {activeEmergencyId && currentUpdate && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-success' : 'bg-warning'}`}></div>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -528,13 +521,6 @@ export default function ButtonEmergencyVoice() {
                   <label className="text-sm font-semibold text-on-surface">
                     Clasificación automática
                   </label>
-                  <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                    serverResponse.infoEmergencia.metodoExtraccion === "ia"
-                      ? "bg-primary-container/20 text-primary"
-                      : "bg-surface-container-high text-on-surface-variant"
-                  }`}>
-                    {serverResponse.infoEmergencia.metodoExtraccion === "ia" ? "IA" : "Diccionario"}
-                  </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
