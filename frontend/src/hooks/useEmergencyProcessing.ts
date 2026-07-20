@@ -115,7 +115,6 @@ export function useEmergencyProcessing({
     ws.onmessage = (event) => {
       try {
         const envelope: WebSocketEnvelope = JSON.parse(event.data);
-        console.log('[WebSocket] Mensaje recibido:', envelope);
 
         // Ignorar confirmación de subscribe
         if (envelope.type === 'subscribed') {
