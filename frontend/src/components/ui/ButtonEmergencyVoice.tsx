@@ -42,32 +42,33 @@ export default function ButtonEmergencyVoice() {
     onUpdate: (update) => {
       console.log('[EmergencyProcessing] Update:', update);
       setProcessingUpdates(prev => [...prev, update]);
-      
-      // Mostrar notificación de progreso
-      if (update.message) {
-        alertService.info(update.message, 3000);
-      }
     },
     onComplete: (update) => {
       console.log('[EmergencyProcessing] Complete:', update);
-      alertService.success('Emergencia procesada completamente', 5000);
+      // Mensaje amigable al completar
+      alertService.success(
+        'Hemos identificado tu emergencia.',
+        5000
+      );
       
       // Actualizar serverResponse con los datos finales del procesamiento
+      console.log(serverResponse, update.infoEmergencia);
       if (serverResponse && update.infoEmergencia) {
         const info = update.infoEmergencia as Record<string, unknown>;
+        console.log('Updating serverResponse with infoEmergencia:', info);
         setServerResponse({
           ...serverResponse,
           infoEmergencia: {
             ...serverResponse.infoEmergencia,
-            tipo: (info.tipo as string) || serverResponse.infoEmergencia.tipo,
-            severidad: (info.severidad as "baja" | "media" | "alta") || serverResponse.infoEmergencia.severidad,
-            palabrasClaveDetectadas: (info.palabrasClaveDetectadas as string[]) || serverResponse.infoEmergencia.palabrasClaveDetectadas,
+            tipo: (info.tipo as string) || serverResponse.infoEmergencia?.tipo,
+            severidad: (info.severidad as "baja" | "media" | "alta") || serverResponse.infoEmergencia?.severidad,
+            palabrasClaveDetectadas: (info.palabrasClaveDetectadas as string[]) || serverResponse.infoEmergencia?.palabrasClaveDetectadas,
             disabilityType: (info.disabilityType as string) || serverResponse.infoEmergencia?.disabilityType,
-            disabilitySubcategory: (info.disabilitySubcategory as string) || serverResponse.infoEmergencia.disabilitySubcategory,
-            communicationMode: (info.communicationMode as string) || serverResponse.infoEmergencia.communicationMode,
-            cannotMove: (info.cannotMove as boolean) ?? serverResponse.infoEmergencia.cannotMove,
-            isInjured: (info.isInjured as boolean) ?? serverResponse.infoEmergencia.isInjured,
-            resumen: (info.resumen as string) || serverResponse.infoEmergencia.resumen,
+            disabilitySubcategory: (info.disabilitySubcategory as string) || serverResponse.infoEmergencia?.disabilitySubcategory,
+            communicationMode: (info.communicationMode as string) || serverResponse.infoEmergencia?.communicationMode,
+            cannotMove: (info.cannotMove as boolean) ?? serverResponse.infoEmergencia?.cannotMove,
+            isInjured: (info.isInjured as boolean) ?? serverResponse.infoEmergencia?.isInjured,
+            resumen: (info.resumen as string) || serverResponse.infoEmergencia?.resumen,
           }
         });
       }
@@ -237,9 +238,10 @@ export default function ButtonEmergencyVoice() {
       setActiveEmergencyId(response.data.id);
       
       setState("success");
+      // Mensaje amigable al enviar, consistente con el formulario manual
       alertService.success(
-        'Emergencia registrada. Procesando audio y extrayendo información...',
-        4000
+        "Tu alerta ya está en nuestro mapa. Mantente en un lugar seguro.",
+        5000
       );
     } catch (err: any) {
       console.error("[ButtonEmergencyVoice] Error:", err);
@@ -290,16 +292,21 @@ export default function ButtonEmergencyVoice() {
         disabled={state === "processing"}
         className={`fixed bottom-24 right-4 z-50 flex items-center gap-3 px-5 py-4 rounded-full shadow-lg transition-all duration-200 ${
           state === "listening"
-            ? "bg-red-600 text-white scale-110"
+            ? "bg-red-800 text-white scale-110"
             : state === "processing"
               ? "bg-yellow-600 text-white"
-              : "bg-primary text-on-primary hover:bg-primary/90 hover:scale-105"
+              : "bg-red-900 text-white hover:bg-red-800 hover:scale-105"
         } disabled:opacity-50 disabled:cursor-not-allowed`}
         aria-label={getButtonLabel()}
         title={getButtonLabel()}
       >
         {renderButtonIcon()}
-        <span className="font-semibold text-sm hidden sm:inline">{getButtonLabel()}</span>
+        <div className="flex flex-col items-start leading-tight">
+          {state === "idle" && (
+            <span className="font-bold text-base sm:text-lg">SOS</span>
+          )}
+          <span className="font-medium text-[11px] sm:text-xs opacity-90">{getButtonLabel()}</span>
+        </div>
       </button>
 
       {/* Overlay de transcripción en tiempo real */}
@@ -433,7 +440,7 @@ export default function ButtonEmergencyVoice() {
       {/* Éxito: respuesta del backend con procesamiento en tiempo real */}
       {serverResponse && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 overflow-y-auto"
+          className="fixed inset-0 z-[9000] flex items-center justify-center bg-black/50 p-4 overflow-y-auto"
           onClick={handleClosePreview}
         >
           <div
@@ -463,11 +470,21 @@ export default function ButtonEmergencyVoice() {
                 {activeEmergencyId && currentUpdate && (
                   <div className="flex items-center gap-2 mt-1">
                     <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-success' : 'bg-warning'}`}></div>
-                    <span className="text-xs text-on-surface-variant">
-                      {isConnected ? 'Conectado' : 'Reconectando...'}
-                    </span>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Mensaje tranquilizador persistente dentro del modal */}
+            <div className="bg-success-container/30 border border-success/20 rounded-xl p-4 flex items-start gap-3">
+              <span className="material-symbols-rounded text-success text-2xl flex-shrink-0 mt-0.5">verified_user</span>
+              <div className="flex-1 space-y-1">
+                <p className="text-sm font-semibold text-on-surface">
+                  Tu alerta ya está en nuestro mapa
+                </p>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Ya notificamos a voluntarios y puntos de apoyo cercanos. No cierres esta ventana y mantente en un lugar seguro mientras llega la ayuda.
+                </p>
               </div>
             </div>
 
