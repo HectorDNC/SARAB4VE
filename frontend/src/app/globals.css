@@ -71,6 +71,9 @@
 }
 
 /* ── Base ── */
+html {
+  font-size: 16px;
+}
 body {
   background-color: var(--color-background);
   color: var(--color-on-surface);

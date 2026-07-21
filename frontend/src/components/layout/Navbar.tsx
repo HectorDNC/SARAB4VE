@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import FontScaleControl from "@/components/ui/FontScaleControl";
+
 
 const navLinks = [
   { href: "/", label: "Inicio" },
@@ -21,14 +23,17 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 bg-surface-container-low border-b border-outline-variant shadow-card">
       <div className="max-w-7xl mx-auto px-5 lg:px-10 h-16 flex items-center justify-between gap-4">
         {/* Logo */}
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-primary font-bold text-xl min-h-0"
-          aria-label="SARA — Ir al inicio"
-        >
-          <img src="/logo.webp" alt="SARA" className="h-8 w-auto" />
-          <span>SARA</span>
-        </Link>
+        <div className="flex items-center gap-2"> 
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-primary font-bold text-xl min-h-0"
+            aria-label="SARA — Ir al inicio"    
+          >
+            <img src="/logo.webp" alt="SARA" className="h-8 w-auto" />
+            <span>SARA</span>
+          </Link>
+          <FontScaleControl />
+        </div>
 
         {/* Desktop nav */}
         <nav className="hidden lg:flex items-center gap-1" aria-label="Navegación principal">
