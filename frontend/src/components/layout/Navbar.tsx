@@ -6,10 +6,18 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { alertService } from "@/services/alertService";
 import AccessibilityToolbar from "@/components/layout/AccessibilityToolbar";
+import type { ROLES_USER } from "@/types";
 
-const navLinks = [
+type NavLink = {
+  href: string;
+  label: string;
+  /** Si se define, el link solo es visible para usuarios autenticados con uno de estos roles. */
+  roles?: ROLES_USER[];
+};
+
+const navLinks: NavLink[] = [
   { href: "/", label: "Inicio" },
-  { href: "/mapa", label: "Mapa" },
+  { href: "/mapa", label: "Mapa", roles: ["admin", "organization", "volunteer"] },
   { href: "/refugios", label: "Refugios" },
   { href: "/recursos", label: "Recursos" },
   { href: "/directorio", label: "Directorio" },
@@ -23,6 +31,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const isAdmin = user?.role === "admin";
 
   // Cerrar menú de usuario al hacer clic fuera
   useEffect(() => {
@@ -36,6 +45,11 @@ export default function Navbar() {
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [userMenuOpen]);
+
+  const userRole = user?.role;
+  const visibleNavLinks = navLinks.filter(
+    (link) => !link.roles || (userRole ? link.roles.includes(userRole as ROLES_USER) : false)
+  );
 
   const handleLogout = () => {
     logout();
@@ -61,7 +75,7 @@ export default function Navbar() {
 
         {/* Desktop nav */}
         <nav className="hidden lg:flex items-center gap-1" aria-label="Navegación principal">
-          {navLinks.map((link) => (
+          {visibleNavLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -124,12 +138,25 @@ export default function Navbar() {
                         <p className="text-xs text-on-surface-variant truncate">
                           {user.email}
                         </p>
+
                       </div>
                     </div>
                   </div>
 
                   {/* Opciones */}
                   <div className="py-1">
+                    { isAdmin && (
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-on-surface hover:bg-surface-container-high transition-colors"
+                      >
+                        <span className="material-symbols-rounded text-xl text-on-surface-variant" aria-hidden="true">
+                          dashboard
+                        </span>
+                        Panel
+                      </Link>
+                    )}
                     <Link
                       href="/perfil"
                       onClick={() => setUserMenuOpen(false)}
@@ -187,7 +214,7 @@ export default function Navbar() {
           aria-label="Menú móvil"
         >
           <ul className="flex flex-col divide-y divide-outline-variant">
-            {navLinks.map((link) => (
+            {visibleNavLinks.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}

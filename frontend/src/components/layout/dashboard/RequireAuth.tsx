@@ -4,13 +4,22 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 
-export default function RequireAuth({ children }: { children: React.ReactNode }) {
+type RequireAuthProps = {
+  roles?: ("admin" | "organization" | "volunteer" | "citizen")[];
+  children: React.ReactNode;
+};
+
+export default function RequireAuth({ roles, children }: RequireAuthProps) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/login");
+    }
+
+    if (roles && user && !roles.includes(user.role)) {
+      router.push("/");
     }
   }, [isLoading, user, router]);
 
@@ -20,6 +29,10 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
         <p className="text-on-surface-variant text-sm">Verificando sesión...</p>
       </div>
     );
+  }
+
+  if (roles && !roles.includes(user.role)) {
+    return null;
   }
 
   return <>{children}</>;

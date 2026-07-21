@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { MapItem, UrgencyLevel } from "@/types";
 import { Refugios, CONFIGURACION_SERVICIOS } from "@/mocks/refugios";
@@ -12,6 +13,7 @@ import { ModalDetalleSolicitud } from "@/app/(webpage)/mapa/ModalDetalleSolicitu
 import { listEmergencies, EmergencyListItem } from "@/api/emergencies";
 import { listHelpRequests, HelpRequestListItem } from "@/api/helpRequests";
 import { useLocation } from "@/hooks/useLocation";
+import { useAuth } from "@/providers/AuthProvider";
 
 const LeafletMap = dynamic(() => import("./LeafletMap"), {
   ssr: false,
@@ -203,6 +205,41 @@ function FilterSelect<V extends string>({
 // ── Página ──────────────────────────────────────────────────────────────────
 
 export default function MapaPage() {
+  return (
+    <MapaPageGuard>
+      <MapaPageContent />
+    </MapaPageGuard>
+  );
+}
+
+// ── Guarda de acceso: redirige a "/" si el usuario no tiene un rol permitido ──
+
+const ALLOWED_ROLES = ["admin", "organization", "volunteer"] as const;
+
+function MapaPageGuard({ children }: { children: React.ReactNode }) {
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isAuthLoading) return;
+    const allowed = user != null && (ALLOWED_ROLES as readonly string[]).includes(user.role);
+    if (!allowed) {
+      router.replace("/");
+    }
+  }, [user, isAuthLoading, router]);
+
+  // Mientras se hidrata la sesión, no renderizar nada
+  if (isAuthLoading) return null;
+
+  const allowed = user != null && (ALLOWED_ROLES as readonly string[]).includes(user.role);
+  if (!allowed) return null;
+
+  return <>{children}</>;
+}
+
+// ── Contenido real de la página (todos los hooks viven aquí, sin returns tempranos) ──
+
+function MapaPageContent() {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showBanner, setShowBanner] = useState(false);
