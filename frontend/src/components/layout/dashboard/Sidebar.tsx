@@ -108,13 +108,23 @@ export default function Sidebar() {
         </nav>
 
         <div className="px-3 py-4 border-t border-outline-variant">
+          <Link
+            href="/"
+             className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors duration-150
+                text-on-surface-variant hover:bg-primary/10 hover:text-primary`}
+          >
+            <span className="material-symbols-rounded text-xl" aria-hidden="true">
+              home
+            </span>
+            Inicio
+          </Link>
           <button
             type="button"
             onClick={() => {
               handleLogout();
               closeMenu();
             }}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-colors duration-150"
+            className="flex items-center gap-3 rounded-xl w-full px-3 py-2 text-sm font-medium text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-colors duration-150"
           >
             <span className="material-symbols-rounded text-xl" aria-hidden="true">
               logout

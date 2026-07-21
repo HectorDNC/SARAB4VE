@@ -124,12 +124,23 @@ export default function Navbar() {
                         <p className="text-xs text-on-surface-variant truncate">
                           {user.email}
                         </p>
+
                       </div>
                     </div>
                   </div>
 
                   {/* Opciones */}
                   <div className="py-1">
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-on-surface hover:bg-surface-container-high transition-colors"
+                    >
+                      <span className="material-symbols-rounded text-xl text-on-surface-variant" aria-hidden="true">
+                        dashboard
+                      </span>
+                      Panel
+                    </Link>
                     <Link
                       href="/perfil"
                       onClick={() => setUserMenuOpen(false)}
