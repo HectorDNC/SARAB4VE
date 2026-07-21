@@ -46,7 +46,11 @@ export default function Login() {
             saveSession(response.token, response.user);
 
             alertService.success(`Bienvenida , ${response.user.fullName}`);
-            router.push('/dashboard');
+            if (response.user.role === "admin") {
+                router.push('/dashboard');
+            } else {
+                router.push('/');
+            }
         } catch (error) {
             const message = error instanceof Error ? error.message : 'No se pudo iniciar sesión';
             alertService.error(message);

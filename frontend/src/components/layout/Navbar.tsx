@@ -23,6 +23,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const isAdmin = user?.role === "admin";
 
   // Cerrar menú de usuario al hacer clic fuera
   useEffect(() => {
@@ -131,16 +132,18 @@ export default function Navbar() {
 
                   {/* Opciones */}
                   <div className="py-1">
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-on-surface hover:bg-surface-container-high transition-colors"
-                    >
-                      <span className="material-symbols-rounded text-xl text-on-surface-variant" aria-hidden="true">
-                        dashboard
-                      </span>
-                      Panel
-                    </Link>
+                    { isAdmin && (
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-on-surface hover:bg-surface-container-high transition-colors"
+                      >
+                        <span className="material-symbols-rounded text-xl text-on-surface-variant" aria-hidden="true">
+                          dashboard
+                        </span>
+                        Panel
+                      </Link>
+                    )}
                     <Link
                       href="/perfil"
                       onClick={() => setUserMenuOpen(false)}
