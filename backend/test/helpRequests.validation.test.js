@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { buildListHelpRequestsQuery } = require("../src/helpRequests/query");
+const { buildListHelpRequestsQuery } = require("../src/modules/helpRequests/helpRequests.repository");
 const {
   DEFAULT_RADIUS_KM,
   isUuid,
@@ -9,7 +9,7 @@ const {
   validateHelpRequest,
   validateHelpRequestAcceptance,
   validateHelpRequestSearchParams,
-} = require("../src/validation/helpRequests");
+} = require("../src/modules/helpRequests");
 
 test("accepts a valid help request payload", () => {
   const result = validateHelpRequest({

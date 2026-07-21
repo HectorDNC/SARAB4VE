@@ -10,6 +10,24 @@ export type AlertMessage = {
 type AlertInput = Omit<AlertMessage, "id">;
 type AlertListener = (alert: AlertMessage) => void;
 
+// ── Patrones de vibración háptica (WCAG 2.1 AA — Discapacidad Auditiva) ──
+const HAPTIC_PATTERNS: Record<AlertType, VibratePattern> = {
+  success: [100, 50, 100],
+  error:   [200, 100, 200, 100, 200],
+  warning: [150, 50, 150],
+  info:    [50],
+};
+
+function triggerHaptic(type: AlertType): void {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    try {
+      navigator.vibrate(HAPTIC_PATTERNS[type]);
+    } catch {
+      // Silencioso — algunos navegadores bloquean vibración sin gesto de usuario
+    }
+  }
+}
+
 class AlertService {
   private listeners = new Set<AlertListener>();
 
@@ -25,6 +43,9 @@ class AlertService {
       ...input,
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     };
+
+    // Disparar vibración háptica para discapacidad auditiva
+    triggerHaptic(input.type);
 
     this.listeners.forEach((listener) => listener(alert));
   }

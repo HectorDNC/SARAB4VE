@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS help_requests (
   contact_value TEXT NOT NULL,
   need_type TEXT NOT NULL,
   description TEXT NOT NULL,
-  latitude NUMERIC(9, 6) NOT NULL,
-  longitude NUMERIC(9, 6) NOT NULL,
+  latitude NUMERIC(9, 6),
+  longitude NUMERIC(9, 6),
   urgency TEXT NOT NULL DEFAULT 'medium',
   status TEXT NOT NULL DEFAULT 'open',
   volunteer_name TEXT,
@@ -103,3 +103,62 @@ CREATE INDEX IF NOT EXISTS help_requests_status_idx
 
 CREATE INDEX IF NOT EXISTS help_requests_created_at_idx
   ON help_requests (created_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- Attendees — vinculan emergencies / help_requests con los usuarios que las atienden
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS emergency_attendees (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  emergency_id UUID NOT NULL REFERENCES emergencies(id),
+  attended_by UUID NOT NULL REFERENCES users(id),
+  attended_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (emergency_id, attended_by)
+);
+
+CREATE INDEX IF NOT EXISTS emergency_attendees_emergency_id_idx
+  ON emergency_attendees (emergency_id);
+
+CREATE TABLE IF NOT EXISTS help_request_attendees (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  help_request_id UUID NOT NULL REFERENCES help_requests(id),
+  attended_by UUID NOT NULL REFERENCES users(id),
+  attended_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (help_request_id, attended_by)
+);
+
+CREATE INDEX IF NOT EXISTS help_request_attendees_help_request_id_idx
+  ON help_request_attendees (help_request_id);
+
+-- ---------------------------------------------------------------------------
+-- Voice emergency reporting — columnas para reportes por voz
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE emergencies
+  ADD COLUMN IF NOT EXISTS report_origin TEXT NOT NULL DEFAULT 'form';
+
+ALTER TABLE emergencies
+  ADD COLUMN IF NOT EXISTS voice_note_url TEXT;
+
+ALTER TABLE emergencies
+  ADD COLUMN IF NOT EXISTS transcript TEXT;
+
+-- Método de transcripción del audio (cascada backend).
+-- Valores posibles:
+--   'cliente-webspeech'    → transcript vino del navegador (Web Speech API)
+--   'gemini'               → transcript vía Google AI Studio / Gemini
+--   'transformers-local'   → transcript vía Whisper local (HF Transformers)
+--   'ninguno'              → no se pudo transcribir (registro guardado para
+--                            revisión manual)
+ALTER TABLE emergencies
+  ADD COLUMN IF NOT EXISTS transcript_method TEXT
+    CHECK (transcript_method IN ('cliente-webspeech', 'gemini', 'transformers-local', 'ninguno'));
+
+-- ---------------------------------------------------------------------------
+-- Processing status — estado del procesamiento asíncrono de emergencias por voz
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE emergencies
+  ADD COLUMN IF NOT EXISTS processing_status VARCHAR(20) DEFAULT null;
+  
+-- Valores: 'none' (no aplica), 'recibida', 'procesando', 'completa', 'pendiente_revision', 'error'

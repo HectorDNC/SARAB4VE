@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Atkinson_Hyperlegible } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/layout/Navbar";
-import BottomNav from "@/components/layout/BottomNav";
+import LocationProvider from "@/providers/LocationProvider";
+import { AuthProvider } from "@/providers/AuthProvider";
+import { AccessibilityProvider } from "@/providers/AccessibilityProvider";
 import AlertsHost from "@/components/ui/AlertsHost";
 
 const atkinson = Atkinson_Hyperlegible({
@@ -33,10 +34,14 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-on-surface">
-        <Navbar />
-        <AlertsHost />
-        <main className="flex-1 pb-20 lg:pb-0">{children}</main>
-        <BottomNav />
+        <AccessibilityProvider>
+          <AuthProvider>
+            <LocationProvider>
+              <AlertsHost />
+              {children}
+            </LocationProvider>
+          </AuthProvider>
+        </AccessibilityProvider>
       </body>
     </html>
   );
