@@ -77,7 +77,7 @@ export default function Navbar() {
         </nav>
 
         {/* Desktop SOS CTA */}
-        <div className="hidden lg:flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Link
             href="/sos"
             className="flex items-center gap-3 bg-error text-on-error px-5 py-2.5 rounded-full font-extrabold text-base shadow-lg shadow-error/25 hover:brightness-110 active:scale-95 transition-all min-h-0 animate-pulse"
@@ -90,6 +90,7 @@ export default function Navbar() {
               <span>AYUDA - SOS</span>
             </div>
           </Link>
+          <AccessibilityToolbar compact />
         </div>
 
         <div className="hidden lg:flex items-center">
@@ -103,7 +104,7 @@ export default function Navbar() {
                 aria-expanded={userMenuOpen}
               >
                 {/* Avatar */}
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary/80 text-on-primary font-bold text-sm flex items-center justify-center ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all shadow-sm">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-surface-container-highest to-surface-container-high text-on-surface-variant font-bold text-sm flex items-center justify-center ring-2 ring-outline-variant/40 group-hover:ring-outline/60 transition-all shadow-sm">
                   {userInitial}
                 </div>
               </button>
@@ -113,7 +114,7 @@ export default function Navbar() {
                   {/* Cabecera */}
                   <div className="px-4 py-3 border-b border-outline-variant/50">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/80 text-on-primary font-bold flex items-center justify-center shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-surface-container-highest to-surface-container-high text-on-surface-variant font-bold text-sm flex items-center justify-center ring-2 ring-outline-variant/40 group-hover:ring-outline/60 transition-all shadow-sm">
                         {userInitial}
                       </div>
                       <div className="min-w-0">
