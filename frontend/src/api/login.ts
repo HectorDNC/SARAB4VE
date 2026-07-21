@@ -1,6 +1,6 @@
 import { normalizeUser } from "@/lib/normalizeUser";
 import { API, getAuthHeaders } from "./client";
-import { ApiUser } from "@/types";
+import { ApiUser, ROLES_USER } from "@/types";
 
 export type LoginPayload = {
   email: string;
@@ -12,7 +12,7 @@ export type LoginUser = {
   fullName: string;
   email: string;
   phone: string;
-  role: string;
+  role: ROLES_USER;
   status: string;
   location: { lat: number; lng: number } | null;
   zone: string | null;

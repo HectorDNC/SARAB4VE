@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 
 type RequireAuthProps = {
-  roles?: string[];
+  roles?: ("admin" | "organization" | "volunteer" | "citizen")[];
   children: React.ReactNode;
 };
 
@@ -14,7 +14,6 @@ export default function RequireAuth({ roles, children }: RequireAuthProps) {
   const router = useRouter();
 
   useEffect(() => {
-    console.log("RequireAuth: user", user, "isLoading", isLoading, "roles", roles);
     if (!isLoading && !user) {
       router.push("/login");
     }
