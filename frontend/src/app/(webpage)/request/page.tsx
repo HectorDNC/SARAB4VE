@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CategoryCard from "@/components/ui/CategoryCard";
 import ApplicantForm, { type SOSFormValues } from "./components/ApplicantForm";
 import { alertService } from "@/services/alertService";
 import { sendHelpRequest } from "@/api/helpRequests";
+import { useFabVisibility } from "@/providers/FabVisibilityProvider";
 
 const categories = [
   {
@@ -55,6 +56,7 @@ const categories = [
 
 export default function SOSPage() {
   const router = useRouter();
+  const { setFormFocused } = useFabVisibility();
   const [selected, setSelected] = useState<string | null>(null);
   const [step, setStep] = useState<number>(1);
   const [loading, setLoading] = useState(false);
@@ -70,9 +72,37 @@ export default function SOSPage() {
   });
   // Step 1 only selects category; Step 2 (`/sos/ubicacion`) will collect details.
 
+  // Esta ruta es de solicitudes de ayuda/insumos, no de emergencias,
+  // por lo que el FAB de voz (emergencias) debe permanecer visible.
+  // Aun así, lo minimizamos mientras el usuario está escribiendo
+  // en el formulario para que no tape campos ni el botón "Enviar".
+  // Al desmontar restauramos el estado por defecto.
+  useEffect(() => {
+    setFormFocused(true);
+    return () => {
+      setFormFocused(false);
+    };
+  }, [setFormFocused]);
+
   const handleFormChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm((current) => ({ ...current, [name]: name === "people" ? Number(value) : value }));
+  };
+
+  // Propaga focus/blur desde cualquier elemento focusable del
+  // formulario al provider. El FAB (cuando está visible en otras
+  // rutas) reacciona minimizándose mientras el usuario escribe.
+  const handleFormFocus = () => {
+    setFormFocused(true);
+  };
+
+  const handleFormBlur = () => {
+    // Solo marcamos no-focus si el foco realmente salió del formulario
+    // (relatedTarget == null cuando el foco va a un elemento no
+    // focusable, p. ej. al hacer click fuera). En la práctica
+    // `setFormFocused(false)` es seguro: el siguiente focus volverá
+    // a ponerlo en true.
+    setFormFocused(false);
   };
 
   const getCurrentPosition = () => {
@@ -221,6 +251,8 @@ export default function SOSPage() {
             onSubmit={handleSubmit}
             loading={loading}
             onBack={() => setStep(1)}
+            onFormFocus={handleFormFocus}
+            onFormBlur={handleFormBlur}
           />
         </div>
       )}
