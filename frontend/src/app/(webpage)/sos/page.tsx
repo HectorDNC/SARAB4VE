@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { sendEmergency } from "@/api/emergencies";
 import { alertService } from "@/services/alertService";
 import { useLocation } from "@/hooks/useLocation";
+import { useFabVisibility } from "@/providers/FabVisibilityProvider";
 import StepDisabilityType from "./components/StepDisabilityType";
 import StepInitialStatus from "./components/StepInitialStatus";
 import StepNameAndLocation from "./components/StepNameAndLocation";
@@ -61,6 +62,13 @@ export default function SOSFlowPage() {
     requestLocation,
   } = useLocation();
 
+  // En `/sos` el FAB de voz convive con el formulario de emergencia,
+  // por lo que lo minimizamos desde el instante en que el usuario
+  // entra a la ruta, igual que ocurre en `/request`. Cuando abandona
+  // la ruta (unmount) o el foco sale de un input (onBlur), el FAB
+  // vuelve a su tamaño completo.
+  const { setFormFocused } = useFabVisibility();
+
   const [isInjured, setIsInjured] = useState<boolean | null>(null);
   const [cannotMove, setCannotMove] = useState<boolean | null>(null);
   const [disabilityType, setDisabilityType] = useState<DisabilityType | null>(null);
@@ -94,6 +102,16 @@ export default function SOSFlowPage() {
     // Solo ejecutar al montar la página
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Minimizar el FAB desde el mount (mismo comportamiento que en
+  // /request). Al salir de la ruta restauramos `isFormFocused = false`
+  // para que en otras vistas el FAB vuelva a su tamaño completo.
+  useEffect(() => {
+    setFormFocused(true);
+    return () => {
+      setFormFocused(false);
+    };
+  }, [setFormFocused]);
 
   const goToStep = (nextStep: number) => {
     if (nextStep === currentStep || nextStep < 1 || nextStep > TOTAL_STEPS) {

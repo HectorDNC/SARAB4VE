@@ -7,8 +7,32 @@ import ConsentModal from "./ConsentModal";
 import { sendEmergencyVoice, getEmergencyById, type VoiceEmergencyResponse } from "@/api/emergencies";
 import { alertService } from "@/services/alertService";
 import { useEmergencyProcessing, type ProcessingUpdate } from "@/hooks/useEmergencyProcessing";
+import { useFabVisibility } from "@/providers/FabVisibilityProvider";
+import {
+  voiceRecorderClearPending,
+  voiceRecorderSetPhase,
+  subscribeVoiceRecorder,
+  getVoiceRecorderSnapshot,
+} from "@/providers/VoiceRecorderStore";
 
 type ButtonState = "idle" | "listening" | "processing" | "success";
+
+/**
+ * Tamaño y opacidad del FAB cuando el usuario está escribiendo en un
+ * formulario (estado reducido). Mantener 32px y 0.4 para que el botón
+ * sea visible pero claramente subordinado y no oculte el campo activo.
+ */
+const FAB_MINIMIZED_SIZE_PX = 45;
+const FAB_MINIMIZED_OPACITY = 0.6;
+const FAB_FULL_SIZE_CLASS = "px-5 py-4";
+
+/**
+ * Cuando el FAB está minimizado y el usuario inicia una grabación,
+ * crece hasta 48px y recupera opacidad plena. El objetivo es que el
+ * toque para detener la grabación sea cómodo (target ≥ 44px según
+ * WCAG 2.5.5) sin volver al tamaño completo que oculta el formulario.
+ */
+const FAB_MINIMIZED_RECORDING_SIZE_PX = 50;
 
 /** Datos recolectados listos para revisión antes de enviar al backend. */
 interface VoicePreview {
@@ -212,11 +236,37 @@ export default function ButtonEmergencyVoice() {
 
   const { location, status: locationStatus, requestLocation } = useLocation();
 
+  // Visibilidad del FAB controlada por la ruta / el formulario activo.
+  // - `hideFAB === true`: la ruta expone su propio micrófono inline
+  //   (ej. /request), por lo que ocultamos el FAB por completo.
+  // - `isFormFocused === true`: el usuario está escribiendo en un
+  //   input/textarea del formulario, así que minimizamos el FAB a un
+  //   ícono discreto de 32px para que no tape los campos.
+  const { isFormFocused, hideFAB } = useFabVisibility();
+  const isMinimized = isFormFocused;
+
+  // Refs espejo de las acciones de grabación para que el efecto que
+  // reacciona al store pueda invocarlas sin quedar atrapado en un
+  // orden de declaración. (El botón inline solicita start/stop desde
+  // fuera; aquí lo atendemos).
+  const startRecordingRef = useRef<() => Promise<void>>(async () => {});
+  const handleStopRef = useRef<() => void>(() => {});
+  // Ref al consentimiento para que el handler del store lea el valor
+  // actual sin re-suscribirse.
+  const hasConsentRef = useRef<boolean>(false);
+
   // Cargar consentimiento desde localStorage
   useEffect(() => {
     const consent = localStorage.getItem("sara_voice_consent");
     setHasConsent(consent === "true");
   }, []);
+
+  // Reflejar el consentimiento en un ref para que el handler del
+  // store de voz (suscrito una sola vez al montar) pueda leer el
+  // valor actual sin re-suscribirse.
+  useEffect(() => {
+    hasConsentRef.current = hasConsent;
+  }, [hasConsent]);
 
   // Sincronizar refs espejo para que el callback del fallback lea valores frescos
   useEffect(() => {
@@ -377,6 +427,61 @@ export default function ButtonEmergencyVoice() {
     startRecording();
   }, [startRecording]);
 
+  // Publicar la fase actual del grabador en el store global para que
+  // componentes como `InlineMicButton` puedan reflejar el estado
+  // (idle / listening / processing / success) en su UI.
+  useEffect(() => {
+    voiceRecorderSetPhase(state);
+  }, [state]);
+
+  // Mantener refs sincronizadas con los handlers reales. Permite que
+  // el efecto de `pendingAction` (suscrito una sola vez) invoque las
+  // versiones más recientes sin re-suscribirse.
+  useEffect(() => {
+    startRecordingRef.current = startRecording;
+  }, [startRecording]);
+
+  useEffect(() => {
+    handleStopRef.current = handleStop;
+  }, [handleStop]);
+
+  // Reaccionar a solicitudes externas (p. ej. InlineMicButton) de
+  // iniciar o detener la grabación. Se suscribe una sola vez al
+  // montar y consume `pendingAction` desde el store.
+  useEffect(() => {
+    // Procesa la última `pendingAction` del store (si la hay) y la
+    // ejecuta a través de los refs (versiones más recientes de los
+    // handlers, sin quedar atrapado en el orden de declaración).
+    const tick = () => {
+      const snap = getVoiceRecorderSnapshot();
+      if (!snap.pendingAction) return;
+      if (snap.pendingAction === "start") {
+        // El FAB tiene su propio modal de consentimiento; si el
+        // usuario aún no consintió, la versión UI se abrirá cuando
+        // intente grabar de nuevo. Limpiamos el flag de todos modos
+        // para no entrar en bucle.
+        if (hasConsentRef.current) {
+          startRecordingRef.current();
+        }
+      } else if (snap.pendingAction === "stop") {
+        handleStopRef.current();
+      }
+      voiceRecorderClearPending();
+    };
+
+    // Re-entrante: tick() ya limpia `pendingAction` antes de invocar
+    // a los handlers. Aun así, los handlers pueden cambiar `state`,
+    // lo que emite un nuevo snapshot pero ya con `pendingAction ===
+    // null`, así que no se vuelve a ejecutar.
+    const unsubscribe = subscribeVoiceRecorder(tick);
+
+    // Procesar pendientes que ya estuvieran en cola al montar
+    // (caso poco probable pero correcto en HMR / re-mounts).
+    tick();
+
+    return unsubscribe;
+  }, []);
+
   const handleClosePreview = useCallback(() => {
     setShowPreview(false);
     setPreview(null);
@@ -473,22 +578,25 @@ export default function ButtonEmergencyVoice() {
   }, [preview, audioBlobRef, ensureFreshLocation]);
 
   const renderButtonIcon = () => {
+    // Tamaño del ícono: más pequeño cuando el FAB está minimizado
+    // para que el círculo de 32px no quede saturado.
+    const iconClass = isMinimized ? "text-xl" : "text-3xl";
     switch (state) {
       case "idle":
-        return <span className="material-symbols-rounded text-3xl">mic</span>;
+        return <span className={`material-symbols-rounded ${iconClass}`}>mic</span>;
       case "listening":
         return (
           <div className="relative">
-            <span className="material-symbols-rounded text-3xl animate-pulse">mic</span>
+            <span className={`material-symbols-rounded ${iconClass} animate-pulse`}>mic</span>
             <div className="absolute inset-0 rounded-full bg-red-500/30 animate-ping" />
           </div>
         );
       case "processing":
         return (
-          <span className="material-symbols-rounded text-3xl animate-spin">progress_activity</span>
+          <span className={`material-symbols-rounded ${iconClass} animate-spin`}>progress_activity</span>
         );
       case "success":
-        return <span className="material-symbols-rounded text-3xl">check_circle</span>;
+        return <span className={`material-symbols-rounded ${iconClass}`}>check_circle</span>;
     }
   };
 
@@ -505,34 +613,74 @@ export default function ButtonEmergencyVoice() {
     }
   };
 
+  /**
+   * Cuando la ruta opta por ocultar el FAB (`hideFAB = true`), no
+   * renderizamos el botón flotante ni el overlay de transcripción
+   * (ese overlay es propio del FAB). Los modales de consentimiento,
+   * preview y éxito siguen siendo accesibles porque viven en su propio
+   * árbol.
+   */
+  const shouldRenderFab = !hideFAB;
+
+  // Mientras el FAB está minimizado pero grabando, lo expandimos a un
+  // tamaño intermedio (48px) para que el target de toque sea cómodo
+  // y detener la grabación no requiera precisión quirúrgica.
+  const isMinimizedRecording = isMinimized && state === "listening";
+
+  // Clases dinámicas del FAB en función de estado y minimización.
+  // Importante: las clases fijas (z-50, fixed, etc.) siempre se mantienen;
+  // solo cambian tamaño, padding, opacidad y contenido visible.
+  // - Minimizado idle: padding 0, justify-center (ícono único), sin gap.
+  // - Minimizado grabando: mismo padding 0 (círculo) pero más grande y opacidad plena.
+  // - Expandido: padding generoso para acomodar ícono + label.
+  const fabSizeClass = isMinimized
+    ? "p-0 justify-center"
+    : `${FAB_FULL_SIZE_CLASS} gap-3`;
+  const fabStyle = isMinimized
+    ? {
+        width: `${isMinimizedRecording ? FAB_MINIMIZED_RECORDING_SIZE_PX : FAB_MINIMIZED_SIZE_PX}px`,
+        height: `${isMinimizedRecording ? FAB_MINIMIZED_RECORDING_SIZE_PX : FAB_MINIMIZED_SIZE_PX}px`,
+        // Al grabar recuperamos opacidad plena para que el botón
+        // comunique claramente que es interactivo.
+        opacity: isMinimizedRecording ? 1 : FAB_MINIMIZED_OPACITY,
+      }
+    : undefined;
+
   return (
     <>
       {/* Botón flotante */}
-      <button
-        type="button"
-        onClick={handleButtonClick}
-        disabled={state === "processing"}
-        className={`fixed bottom-24 right-4 z-50 flex items-center gap-3 px-5 py-4 rounded-full shadow-lg transition-all duration-200 ${
-          state === "listening"
-            ? "bg-red-800 text-white scale-110"
-            : state === "processing"
-              ? "bg-yellow-600 text-white"
-              : "bg-red-900 text-white hover:bg-red-800 hover:scale-105"
-        } disabled:opacity-50 disabled:cursor-not-allowed`}
-        aria-label={getButtonLabel()}
-        title={getButtonLabel()}
-      >
-        {renderButtonIcon()}
-        <div className="flex flex-col items-start leading-tight">
-          {state === "idle" && (
-            <span className="font-bold text-base sm:text-lg">SOS</span>
+      {shouldRenderFab && (
+        <button
+          type="button"
+          onClick={handleButtonClick}
+          disabled={state === "processing"}
+          className={`fixed bottom-24 right-4 z-50 flex items-center ${fabSizeClass} rounded-full shadow-lg transition-all duration-200 ${
+            state === "listening"
+              ? "bg-red-800 text-white scale-110"
+              : state === "processing"
+                ? "bg-yellow-600 text-white"
+                : "bg-red-900 text-white hover:bg-red-800 hover:scale-105"
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+          style={fabStyle}
+          aria-label={getButtonLabel()}
+          aria-hidden={isMinimized}
+          tabIndex={isMinimized ? -1 : 0}
+          title={getButtonLabel()}
+        >
+          {renderButtonIcon()}
+          {!isMinimized && (
+            <div className="flex flex-col items-start leading-tight">
+              {state === "idle" && (
+                <span className="font-bold text-base sm:text-lg">SOS</span>
+              )}
+              <span className="font-medium text-[11px] sm:text-xs opacity-90">{getButtonLabel()}</span>
+            </div>
           )}
-          <span className="font-medium text-[11px] sm:text-xs opacity-90">{getButtonLabel()}</span>
-        </div>
-      </button>
+        </button>
+      )}
 
       {/* Overlay de transcripción en tiempo real */}
-      {isListening && (
+      {shouldRenderFab && isListening && (
         <div className="fixed bottom-36 right-4 z-40 max-w-xs bg-surface-container-lowest rounded-xl shadow-xl p-4 border border-outline-variant">
           <div className="flex items-center gap-2 mb-2">
             <span className="material-symbols-rounded text-red-600 animate-pulse">
@@ -903,3 +1051,11 @@ export default function ButtonEmergencyVoice() {
     </>
   );
 }
+
+/**
+ * Alias semántico de `ButtonEmergencyVoice` (default export). El
+ * nombre `FloatingVoiceButton` se usa en la documentación y en
+ * la conversación con el equipo para hacer explícito que se trata
+ * del FAB flotante que vive en el layout principal.
+ */
+export { ButtonEmergencyVoice as FloatingVoiceButton };

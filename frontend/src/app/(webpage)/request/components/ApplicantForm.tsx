@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ChangeEvent, FormEvent } from "react";
+import type { ChangeEvent, FocusEvent, FormEvent } from "react";
 
 export type SOSFormValues = {
   requester_name: string;
@@ -20,12 +20,38 @@ type Props = {
   onSubmit: (e: FormEvent) => Promise<void> | void;
   loading: boolean;
   onBack?: () => void;
+  /**
+   * Notifica al padre cuando cualquier elemento focusable dentro del
+   * formulario recibe o pierde el foco. Los eventos se delegan desde
+   * el `<form>` (onFocus/onOnBlur), por eso el target es `HTMLFormElement`.
+   * Permite al FAB minimizarse mientras el usuario escribe (vía
+   * `FabVisibilityProvider`).
+   */
+  onFormFocus?: (e: FocusEvent<HTMLFormElement>) => void;
+  onFormBlur?: (e: FocusEvent<HTMLFormElement>) => void;
 };
 
-export default function ClientForm({ form, onChange, onSubmit, loading, onBack }: Props) {
+export default function ClientForm({
+  form,
+  onChange,
+  onSubmit,
+  loading,
+  onBack,
+  onFormFocus,
+  onFormBlur,
+}: Props) {
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+    <form
+      onSubmit={onSubmit}
+      // Padding inferior para que el botón "Enviar" nunca quede
+      // oculto por el FAB flotante. El FAB vive a `bottom-24` (96px)
+      // y mide hasta ~64px de alto en su versión expandida; 128px de
+      // margen asegura visibilidad incluso con teclado virtual abierto.
+      className="flex flex-col gap-5 pb-32"
+      onFocus={onFormFocus}
+      onBlur={onFormBlur}
+    >
       <div>
         <label className="text-sm font-semibold text-on-surface mb-1">Nombre o identificación</label>
         <input name="requester_name" value={form.requester_name} onChange={onChange} className="w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3.5" placeholder="Tu nombre" required />
@@ -70,8 +96,21 @@ export default function ClientForm({ form, onChange, onSubmit, loading, onBack }
           <input name="people" value={String(form.people)} onChange={onChange} type="number" min={1} className="w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3.5" />
         </div>
         <div>
-          <label className="text-sm font-semibold text-on-surface mb-1">Descripción</label>
-          <textarea name="description" value={form.description} onChange={onChange} rows={4} placeholder="Describe la situación con mayor detalle" className="w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3.5 resize-none" />
+          <label
+            htmlFor="description"
+            className="text-sm font-semibold text-on-surface mb-1"
+          >
+            Descripción
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            value={form.description}
+            onChange={onChange}
+            rows={4}
+            placeholder="Describe la situación con mayor detalle"
+            className="w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3.5 resize-none"
+          />
         </div>
       </div>
 
