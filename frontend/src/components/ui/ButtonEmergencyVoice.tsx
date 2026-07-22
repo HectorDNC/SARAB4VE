@@ -45,7 +45,7 @@ interface VoicePreview {
 export default function ButtonEmergencyVoice() {
   const [state, setState] = useState<ButtonState>("idle");
   const [showConsent, setShowConsent] = useState(false);
-  const [hasConsent, setHasConsent] = useState(false);
+  const [hasConsent, setHasConsent] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [preview, setPreview] = useState<VoicePreview | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -254,12 +254,6 @@ export default function ButtonEmergencyVoice() {
   // Ref al consentimiento para que el handler del store lea el valor
   // actual sin re-suscribirse.
   const hasConsentRef = useRef<boolean>(false);
-
-  // Cargar consentimiento desde localStorage
-  useEffect(() => {
-    const consent = localStorage.getItem("sara_voice_consent");
-    setHasConsent(consent === "true");
-  }, []);
 
   // Reflejar el consentimiento en un ref para que el handler del
   // store de voz (suscrito una sola vez al montar) pueda leer el
@@ -733,7 +727,7 @@ export default function ButtonEmergencyVoice() {
       {/* Preview: revisión antes de enviar al backend */}
       {showPreview && preview && !serverResponse && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 overflow-y-auto"
+          className="fixed inset-0 z-[9980] flex items-center justify-center bg-black/50 p-4 overflow-y-auto"
           onClick={handleClosePreview}
         >
           <div

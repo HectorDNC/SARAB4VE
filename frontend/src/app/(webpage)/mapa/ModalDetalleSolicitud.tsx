@@ -315,7 +315,7 @@ export function ModalDetalleSolicitud({ id, kind, open, onClose, onAttendSuccess
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}

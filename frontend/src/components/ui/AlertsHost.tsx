@@ -92,7 +92,7 @@ export default function AlertsHost() {
   };
 
   return (
-    <div className="pointer-events-none fixed right-4 bottom-24 lg:bottom-6 z-[9999] w-[calc(100%-2rem)] max-w-sm space-y-2">
+    <div className="pointer-events-none fixed right-4 bottom-24 lg:bottom-6 z-[9990] w-[calc(100%-2rem)] max-w-sm space-y-2">
       {visibleAlerts.map((alert) => {
         const style = alertStyles[alert.type];
         const durationMs = alert.durationMs ?? 4000;
