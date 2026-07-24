@@ -3,10 +3,13 @@
  */
 
 const emergenciesRepository = require("../emergencies/emergencies.repository");
+const conversationsService = require("../conversations/conversations.service");
+const conversationsRepository = require("../conversations/conversations.repository");
 
 /**
  * Vincula al usuario autenticado como atendiendo una emergencia.
  * Si la emergencia está en estado "received", la transiciona a "assigned".
+ * Crea automáticamente una conversación para el chat.
  * @param {string} emergencyId
  * @param {string} attendedBy — userId del token JWT
  * @param {Object} repository
@@ -21,6 +24,17 @@ async function createEmergencyAttendee(emergencyId, attendedBy, repository) {
 
   // Transicionar la emergencia de "received" → "assigned"
   await emergenciesRepository.updateEmergencyStatusToAssigned(emergencyId);
+
+  // Crear conversación para el chat (idempotente)
+  try {
+    await conversationsService.getOrCreateOnAttend(
+      { emergencyId, attendedBy },
+      conversationsRepository,
+    );
+  } catch (error) {
+    console.error("[emergencyAttendees] Error creando conversación:", error.message);
+    // No fallar si la conversación no se puede crear, continuar con el flujo normal
+  }
 
   return { data: row, status: 201 };
 }

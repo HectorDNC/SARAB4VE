@@ -9,6 +9,9 @@ let wss = null;
 const clients = new Map(); // emergencyId -> Set<ws>
 const lastState = new Map(); // emergencyId -> último estado de procesamiento
 
+// ── Chat (conversations) ──
+const chatClients = new Map(); // conversationId -> Set<ws>
+
 /**
  * Inicializa el servidor WebSocket.
  * @param {import('http').Server} server - Servidor HTTP de Express
@@ -24,9 +27,17 @@ function initWebSocketServer(server) {
 
     ws.on('close', () => {
       console.log('[WS] Cliente desconectado');
+      
+      // Limpiar suscripciones a emergencias
       for (const [emergencyId, clientSet] of clients.entries()) {
         clientSet.delete(ws);
         if (clientSet.size === 0) clients.delete(emergencyId);
+      }
+      
+      // Limpiar suscripciones a conversaciones de chat
+      for (const [conversationId, clientSet] of chatClients.entries()) {
+        clientSet.delete(ws);
+        if (clientSet.size === 0) chatClients.delete(conversationId);
       }
     });
 
@@ -34,7 +45,7 @@ function initWebSocketServer(server) {
       try {
         const data = JSON.parse(message);
 
-        // Suscripción a actualizaciones de una emergencia
+        // ── Suscripción a actualizaciones de una emergencia ──
         if (data.type === 'subscribe' && data.emergencyId) {
           if (!clients.has(data.emergencyId)) {
             clients.set(data.emergencyId, new Set());
@@ -43,14 +54,14 @@ function initWebSocketServer(server) {
           if (clientSet) {
             clientSet.add(ws);
             console.log(`[WS] Cliente suscrito a emergencia ${data.emergencyId}`);
-            
+
             // Enviar confirmación de suscripción
             ws.send(JSON.stringify({
               type: 'subscribed',
               emergencyId: data.emergencyId,
               timestamp: new Date().toISOString()
             }));
-            
+
             // Enviar inmediatamente el último estado si existe (resuelve race condition)
             if (lastState.has(data.emergencyId)) {
               const cachedState = lastState.get(data.emergencyId);
@@ -65,7 +76,7 @@ function initWebSocketServer(server) {
           }
         }
 
-        // Desuscripción
+        // ── Desuscripción de emergencia ──
         if (data.type === 'unsubscribe' && data.emergencyId) {
           if (clients.has(data.emergencyId)) {
             clients.get(data.emergencyId).delete(ws);
@@ -73,6 +84,21 @@ function initWebSocketServer(server) {
               clients.delete(data.emergencyId);
             }
           }
+        }
+
+        // ── Suscripción a conversación de chat ──
+        if (data.type === 'subscribe_conversation' && data.conversationId) {
+          subscribeToConversation(ws, data.conversationId);
+          ws.send(JSON.stringify({
+            type: 'subscribed_conversation',
+            conversationId: data.conversationId,
+            timestamp: new Date().toISOString()
+          }));
+        }
+
+        // ── Desuscripción de conversación de chat ──
+        if (data.type === 'unsubscribe_conversation' && data.conversationId) {
+          unsubscribeFromConversation(ws, data.conversationId);
         }
       } catch (error) {
         console.error('[WS] Error procesando mensaje:', error);
@@ -169,7 +195,108 @@ function closeWebSocketServer() {
     wss = null;
     clients.clear();
     lastState.clear();
+    chatClients.clear();
     console.log('[WS] Servidor WebSocket cerrado');
+  }
+}
+
+// ── Chat (conversations) ──
+
+/**
+ * Suscribe un cliente WebSocket a una conversación.
+ * @param {WebSocket} ws - Cliente WebSocket
+ * @param {string} conversationId - ID de la conversación
+ */
+function subscribeToConversation(ws, conversationId) {
+  if (!chatClients.has(conversationId)) {
+    chatClients.set(conversationId, new Set());
+  }
+  const clientSet = chatClients.get(conversationId);
+  clientSet.add(ws);
+  console.log(`[WS] Cliente suscrito a conversación ${conversationId}`);
+}
+
+/**
+ * Desuscribe un cliente WebSocket de una conversación.
+ * @param {WebSocket} ws - Cliente WebSocket
+ * @param {string} conversationId - ID de la conversación
+ */
+function unsubscribeFromConversation(ws, conversationId) {
+  if (chatClients.has(conversationId)) {
+    chatClients.get(conversationId).delete(ws);
+    if (chatClients.get(conversationId).size === 0) {
+      chatClients.delete(conversationId);
+    }
+  }
+}
+
+/**
+ * Notifica a todos los clientes suscritos sobre un nuevo mensaje.
+ * @param {string} conversationId - ID de la conversación
+ * @param {Object} message - Mensaje creado
+ */
+function notifyNewMessage(conversationId, message) {
+  try {
+    if (!chatClients.has(conversationId)) {
+      return;
+    }
+
+    const payload = JSON.stringify({
+      type: 'new_message',
+      conversationId,
+      message,
+    });
+
+    const clientSet = chatClients.get(conversationId);
+    let sentCount = 0;
+
+    for (const ws of clientSet) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(payload);
+        sentCount++;
+      }
+    }
+
+    if (sentCount > 0) {
+      console.log(`[WS] Nuevo mensaje notificado a ${sentCount} cliente(s) en conversación ${conversationId}`);
+    }
+  } catch (err) {
+    console.error('[WS] Error en notifyNewMessage:', err.message);
+  }
+}
+
+/**
+ * Notifica a todos los clientes suscritos sobre un mensaje marcado como leído.
+ * @param {string} conversationId - ID de la conversación
+ * @param {Object} message - Mensaje actualizado
+ */
+function notifyMessageRead(conversationId, message) {
+  try {
+    if (!chatClients.has(conversationId)) {
+      return;
+    }
+
+    const payload = JSON.stringify({
+      type: 'message_read',
+      conversationId,
+      message,
+    });
+
+    const clientSet = chatClients.get(conversationId);
+    let sentCount = 0;
+
+    for (const ws of clientSet) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(payload);
+        sentCount++;
+      }
+    }
+
+    if (sentCount > 0) {
+      console.log(`[WS] Mensaje leído notificado a ${sentCount} cliente(s) en conversación ${conversationId}`);
+    }
+  } catch (err) {
+    console.error('[WS] Error en notifyMessageRead:', err.message);
   }
 }
 
@@ -177,5 +304,9 @@ module.exports = {
   initWebSocketServer,
   notifyEmergencyUpdate,
   getConnectedClients,
-  closeWebSocketServer
+  closeWebSocketServer,
+  subscribeToConversation,
+  unsubscribeFromConversation,
+  notifyNewMessage,
+  notifyMessageRead,
 };
