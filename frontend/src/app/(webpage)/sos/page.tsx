@@ -245,7 +245,7 @@ export default function SOSFlowPage() {
     setSubmitting(true);
 
     try {
-      await sendEmergency({
+      const response = await sendEmergency({
         requesterName: finalRequesterName,
         isInjured,
         cannotMove,
@@ -261,6 +261,12 @@ export default function SOSFlowPage() {
         needType: mapNeedType(disabilityType, communicationMode, visualSubcategory, neuroSubcategory, motrizSubcategory),
         description,
       });
+
+      // Guardar accessToken + emergencyId en localStorage para que el ciudadano acceda al chat
+      if (response?.data?.accessToken && response?.data?.id) {
+        localStorage.setItem("emergencyAccessToken", response.data.accessToken);
+        localStorage.setItem("emergencyId", response.data.id);
+      }
 
       setSent(true);
       performFeedback("confirm");
@@ -346,10 +352,17 @@ export default function SOSFlowPage() {
             Ya notificamos a voluntarios y puntos de apoyo cercanos. No cierres esta ventana.
           </p>
 
-          <div className="mt-5 sm:mt-7 grid gap-2 sm:gap-3 sm:grid-cols-2">
+          <div className="mt-5 sm:mt-7 grid gap-2 sm:gap-3 sm:grid-cols-3">
+            <Link
+              href="/chat"
+              className="min-h-12 sm:min-h-14 inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 sm:px-5 py-2.5 sm:py-3 font-bold text-on-primary text-sm sm:text-base hover:opacity-90 transition-opacity"
+            >
+              <span className="material-symbols-rounded" aria-hidden="true">chat</span>
+              Abrir chat
+            </Link>
             <Link
               href="/mapa"
-              className="min-h-12 sm:min-h-14 inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 sm:px-5 py-2.5 sm:py-3 font-bold text-on-primary text-sm sm:text-base hover:opacity-90 transition-opacity"
+              className="min-h-12 sm:min-h-14 inline-flex items-center justify-center gap-2 rounded-2xl border border-outline px-4 sm:px-5 py-2.5 sm:py-3 font-semibold text-on-surface text-sm sm:text-base hover:bg-surface-container transition-colors"
             >
               <span className="material-symbols-rounded" aria-hidden="true">map</span>
               Ver mapa de apoyo

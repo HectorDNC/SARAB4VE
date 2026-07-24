@@ -10,63 +10,37 @@
  * `req.citizenEmergencyId` para que los siguientes handlers lo usen.
  */
 
+const { verifyToken } = require("../modules/auth/auth.service");
 const bcrypt = require("bcrypt");
 const db = require("../db");
 
-/**
- * Busca la emergencia por su access_token_hash.
- * @param {string} tokenHash — hash bcrypt del token
- * @returns {Promise<string|null>} — emergencyId o null
- */
-async function findEmergencyByTokenHash(tokenHash) {
-  const result = await db.query(
-    `SELECT id FROM emergencies WHERE access_token_hash = $1 LIMIT 1`,
-    [tokenHash],
-  );
-  return result.rows[0]?.id || null;
-}
+// ── Helpers (sin cambios) ──────────────────────────────────────────────────
 
-/**
- * Valida el token de acceso del ciudadano contra todas las emergencias.
- * Como no podemos hacer lookup por hash sin conocer el emergencyId,
- * necesitamos buscar todas las emergencias con token y comparar una por una.
- * Para optimizar, usamos el query param emergencyId si está disponible.
- * 
- * @param {string} accessToken — token plano del ciudadano
- * @param {string|null} emergencyId — si se conoce, valida solo contra esta emergencia
- * @returns {Promise<string|null>} — emergencyId válido o null
- */
 async function validateCitizenToken(accessToken, emergencyId = null) {
   if (emergencyId) {
-    // Buscar emergencia específica
     const result = await db.query(
       `SELECT id, access_token_hash FROM emergencies WHERE id = $1`,
       [emergencyId],
     );
     const emergency = result.rows[0];
-    if (!emergency || !emergency.access_token_hash) {
-      return null;
-    }
+    if (!emergency || !emergency.access_token_hash) return null;
     const isValid = await bcrypt.compare(accessToken, emergency.access_token_hash);
     return isValid ? emergency.id : null;
   }
 
-  // Si no se especifica emergencyId, buscar en todas las emergencias con token
-  // Esto es menos eficiente pero necesario para el endpoint /mine
   const result = await db.query(
     `SELECT id, access_token_hash FROM emergencies WHERE access_token_hash IS NOT NULL`,
     [],
   );
-
   for (const emergency of result.rows) {
-    const isValid = await bcrypt.compare(accessToken, emergency.access_token_hash);
-    if (isValid) {
+    if (await bcrypt.compare(accessToken, emergency.access_token_hash)) {
       return emergency.id;
     }
   }
-
   return null;
 }
+
+// ── requireCitizenToken (sin cambios) ──────────────────────────────────────
 
 /**
  * Middleware de autenticación para ciudadano anónimo (Express).
@@ -111,4 +85,83 @@ async function requireCitizenToken(req, res, next) {
   }
 }
 
-module.exports = { requireCitizenToken, validateCitizenToken };
+// ── hybridAuth: JWT o token de ciudadano ────────────────────────────────────
+
+/**
+ * Middleware híbrido — acepta JWT (Authorization: Bearer) o token de ciudadano
+ * (X-Citizen-Token o ?t=). No depende de que authenticate falle — decide por sí
+ * mismo qué modo usar según los headers presentes.
+ *
+ * - Si hay header Authorization → valida JWT e inyecta req.user
+ * - Si no hay Authorization pero sí X-Citizen-Token o ?t= → valida token
+ *   de ciudadano e inyecta req.citizenEmergencyId
+ * - Si no hay ninguno → 401
+ *
+ * Uso:
+ *   router.get("/:id/messages", hybridAuth, controller.listMessages(...));
+ */
+async function hybridAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  // ── Rama JWT ──
+  if (authHeader) {
+    const parts = authHeader.split(" ");
+    if (parts.length !== 2 || parts[0] !== "Bearer") {
+      return res.status(401).json({
+        errors: ["Formato de autorización inválido. Usa: Bearer <token>"],
+      });
+    }
+
+    const token = parts[1];
+    const result = verifyToken(token);
+
+    if (!result.valid) {
+      return res.status(401).json({
+        errors: [result.error || "Token inválido"],
+      });
+    }
+
+    req.user = {
+      userId: result.payload.userId,
+      role: result.payload.role,
+      status: result.payload.status,
+    };
+
+    return next();
+  }
+
+  // ── Rama ciudadano anónimo ──
+  const citizenToken = req.query.t || req.headers["x-citizen-token"];
+
+  if (!citizenToken) {
+    return res.status(401).json({
+      errors: [
+        "Autenticación requerida. Usa Authorization: Bearer <token> (JWT) o X-Citizen-Token / ?t= (ciudadano)",
+      ],
+    });
+  }
+
+  const emergencyId = req.query.emergencyId || null;
+
+  try {
+    const validEmergencyId = await validateCitizenToken(citizenToken, emergencyId);
+
+    if (!validEmergencyId) {
+      return res.status(401).json({
+        errors: ["Token de ciudadano inválido o expirado"],
+      });
+    }
+
+    req.citizenEmergencyId = validEmergencyId;
+    req.citizenToken = citizenToken;
+
+    return next();
+  } catch (error) {
+    console.error("[hybridAuth] Error validando token de ciudadano:", error);
+    return res.status(500).json({
+      errors: ["Error interno al validar el token de ciudadano"],
+    });
+  }
+}
+
+module.exports = { requireCitizenToken, validateCitizenToken, hybridAuth };

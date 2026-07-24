@@ -9,7 +9,7 @@ const conversationsRepository = require("./conversations.repository");
 const messagesRepository = require("./messages.repository");
 const schema = require("./conversations.schema");
 const { authenticate } = require("../../middleware/authenticate");
-const { requireCitizenToken } = require("../../middleware/requireCitizenToken");
+const { requireCitizenToken, hybridAuth } = require("../../middleware/requireCitizenToken");
 
 // Servicio WebSocket (opcional, puede ser null si no está inicializado)
 let websocketService = null;
@@ -38,17 +38,7 @@ router.get(
 // GET /api/conversations/:id/messages — lista mensajes (JWT o token)
 router.get(
   "/:id/messages",
-  (req, res, next) => {
-    // Middleware híbrido: acepta JWT o token de ciudadano
-    authenticate(req, res, (err) => {
-      if (err || !req.user) {
-        // Si falla JWT, intentar con token de ciudadano
-        requireCitizenToken(req, res, next);
-      } else {
-        next();
-      }
-    });
-  },
+  hybridAuth,
   controller.listMessages(
     messagesService,
     conversationsRepository,
@@ -60,17 +50,7 @@ router.get(
 // POST /api/conversations/:id/messages — envía mensaje (JWT o token)
 router.post(
   "/:id/messages",
-  (req, res, next) => {
-    // Middleware híbrido: acepta JWT o token de ciudadano
-    authenticate(req, res, (err) => {
-      if (err || !req.user) {
-        // Si falla JWT, intentar con token de ciudadano
-        requireCitizenToken(req, res, next);
-      } else {
-        next();
-      }
-    });
-  },
+  hybridAuth,
   controller.sendMessage(
     messagesService,
     conversationsRepository,
@@ -83,17 +63,7 @@ router.post(
 // PATCH /api/messages/:id/read — marca mensaje como leído (JWT o token)
 router.patch(
   "/messages/:id/read",
-  (req, res, next) => {
-    // Middleware híbrido: acepta JWT o token de ciudadano
-    authenticate(req, res, (err) => {
-      if (err || !req.user) {
-        // Si falla JWT, intentar con token de ciudadano
-        requireCitizenToken(req, res, next);
-      } else {
-        next();
-      }
-    });
-  },
+  hybridAuth,
   controller.markMessageRead(messagesService, messagesRepository, schema),
 );
 
