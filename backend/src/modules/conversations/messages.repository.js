@@ -68,10 +68,14 @@ const LIST_MESSAGES_BY_CONVERSATION = `
          body,
          created_at AS "createdAt",
          read_at AS "readAt"
-  FROM messages
-  WHERE conversation_id = $1
-  ORDER BY created_at DESC
-  LIMIT $2
+  FROM (
+    SELECT id, conversation_id, sender_user_id, body, created_at, read_at
+    FROM messages
+    WHERE conversation_id = $1
+    ORDER BY created_at DESC
+    LIMIT $2
+  ) sub
+  ORDER BY created_at ASC
 `;
 
 /**
@@ -95,12 +99,16 @@ const LIST_MESSAGES_BY_CONVERSATION_WITH_CURSOR = `
          body,
          created_at AS "createdAt",
          read_at AS "readAt"
-  FROM messages
-  WHERE conversation_id = $1 AND created_at < (
-    SELECT created_at FROM messages WHERE id = $2
-  )
-  ORDER BY created_at DESC
-  LIMIT $3
+  FROM (
+    SELECT id, conversation_id, sender_user_id, body, created_at, read_at
+    FROM messages
+    WHERE conversation_id = $1 AND created_at < (
+      SELECT created_at FROM messages WHERE id = $2
+    )
+    ORDER BY created_at DESC
+    LIMIT $3
+  ) sub
+  ORDER BY created_at ASC
 `;
 
 /**

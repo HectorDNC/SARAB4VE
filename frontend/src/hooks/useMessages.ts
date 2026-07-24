@@ -38,10 +38,12 @@ export function useMessages(conversationId: string | null): UseMessagesReturn {
     setError(null);
     cursorRef.current = null;
     try {
+      // Backend retorna ORDER BY created_at ASC → [más antiguo, ..., más reciente]
       const data = await listMessages(conversationId, { limit: 50 });
       setMessages(data.map((m) => ({ ...m, sendStatus: "sent" as const })));
       setHasMore(data.length === 50);
-      if (data.length > 0) cursorRef.current = data[data.length - 1].id;
+      // Cursor → id del mensaje más antiguo del lote
+      if (data.length > 0) cursorRef.current = data[0].id;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
@@ -49,14 +51,22 @@ export function useMessages(conversationId: string | null): UseMessagesReturn {
     }
   }, [conversationId]);
 
-  // ── Paginación ──
+  // ── Paginación (carga más antiguos) ──
   const loadMore = useCallback(async () => {
     if (!conversationId || !hasMore || !cursorRef.current) return;
     try {
-      const data = await listMessages(conversationId, { cursor: cursorRef.current, limit: 50 });
-      setMessages((prev) => [...data.map((m) => ({ ...m, sendStatus: "sent" as const })), ...prev]);
+      // Backend retorna mensajes más antiguos que el cursor, en ASC
+      const data = await listMessages(conversationId, {
+        cursor: cursorRef.current,
+        limit: 50,
+      });
+      // Prepend al inicio: los más antiguos van arriba
+      setMessages((prev) => [
+        ...data.map((m) => ({ ...m, sendStatus: "sent" as const })),
+        ...prev,
+      ]);
       setHasMore(data.length === 50);
-      if (data.length > 0) cursorRef.current = data[data.length - 1].id;
+      if (data.length > 0) cursorRef.current = data[0].id;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
     }
