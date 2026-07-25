@@ -234,7 +234,7 @@ html.a11y-high-contrast {
   /* Estados */
   --color-error:                      #FF4444;
   --color-error-container:            #330000;
-  --color-on-error:                   #100c08;
+  --color-on-error:                   #F8F8FF;
   --color-on-error-container:         #FFAAAA;
 
   --color-warning:                    #FFAA00;
@@ -631,6 +631,12 @@ html.a11y-high-contrast [class*="text-on-surface-variant"] {
   color: #100c08 !important;
 }
 
+/* ── EXCEPCIÓN: text-on-error debe ser BLANCO en Alto Contraste ── */
+html.a11y-high-contrast .text-on-error,
+html.a11y-high-contrast [class*="text-on-error"] {
+  color: #F8F8FF !important;
+}
+
 /* ── Radio buttons y checkboxes en alto contraste ── */
 html.a11y-high-contrast input[type="radio"],
 html.a11y-high-contrast input[type="checkbox"] {
@@ -677,7 +683,25 @@ html.a11y-high-contrast [role="button"][class*="bg-primary"] span {
    Estas reglas están al FINAL para asegurar máxima prioridad
    ═════════════════════════════════════════════════════════════════════════ */
 
-html.a11y-high-contrast [class*="bg-error"] {
+/* Apunta a TODOS los elementos con bg-error: links, buttons, divs */
+html.a11y-high-contrast a.bg-error,
+html.a11y-high-contrast a[class*="bg-error"],
+html.a11y-high-contrast button.bg-error,
+html.a11y-high-contrast button[class*="bg-error"],
+html.a11y-high-contrast div.bg-error,
+html.a11y-high-contrast div[class*="bg-error"] {
+  color: #F8F8FF !important;
+}
+
+/* Todo lo dentro de bg-error: spans, divs, etc */
+html.a11y-high-contrast a.bg-error span,
+html.a11y-high-contrast a[class*="bg-error"] span,
+html.a11y-high-contrast a.bg-error div,
+html.a11y-high-contrast a[class*="bg-error"] div,
+html.a11y-high-contrast button.bg-error span,
+html.a11y-high-contrast button[class*="bg-error"] span,
+html.a11y-high-contrast button.bg-error div,
+html.a11y-high-contrast button[class*="bg-error"] div {
   color: #F8F8FF !important;
 }
 
@@ -761,7 +785,8 @@ html.a11y-high-contrast button:not([aria-label*="Ajustar"]):not([aria-label*="Re
   border: 1px solid #F8F8FF !important;
 }
 
-html.a11y-high-contrast button:not([aria-label*="Ajustar"]):not([aria-label*="Restaurar"]) span:not(.material-symbols-rounded) {
+/* Excluir bg-error para que no afecte al botón SOS */
+html.a11y-high-contrast button:not([aria-label*="Ajustar"]):not([aria-label*="Restaurar"]):not([class*="bg-error"]) span:not(.material-symbols-rounded) {
   color: #100c08 !important;
 }
 
@@ -804,4 +829,98 @@ html.a11y-high-contrast button.bg-error span {
 
 html.a11y-high-contrast button.bg-error .material-symbols-rounded {
   color: #F8F8FF !important;
+}
+
+/* ÚLTIMA LÍNEA DEFENSIVA: Forzar blanco en TODOS los bg-error */
+html.a11y-high-contrast [class*="bg-error"] {
+  color: #F8F8FF !important;
+}
+
+/* MÁXIMA ESPECIFICIDAD: Spans y divs dentro de bg-error */
+html.a11y-high-contrast button[class*="bg-error"] > span,
+html.a11y-high-contrast button[class*="bg-error"] > div,
+html.a11y-high-contrast button[class*="bg-error"] > div > span {
+  color: #F8F8FF !important;
+}
+
+/* Todos los spans/divs sin importar nivel de profundidad */
+html.a11y-high-contrast button.bg-error,
+html.a11y-high-contrast [class*="bg-error"] {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast [class*="bg-error"] span,
+html.a11y-high-contrast [class*="bg-error"] div,
+html.a11y-high-contrast [class*="bg-error"] p,
+html.a11y-high-contrast [class*="bg-error"] a {
+  color: #F8F8FF !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** NUCLEAR OPTION: Todos los elementos con text-on-error en Alto Contraste ***
+   ═════════════════════════════════════════════════════════════════════════ */
+html.a11y-high-contrast *[class*="text-on-error"] {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast *[class*="bg-error"] *[class*="text-on-error"] {
+  color: #F8F8FF !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** BOTÓN FAB DE EMERGENCIA (bg-red-*, text-white) ***
+   El botón SOS flotante usa bg-red-800, bg-red-900, bg-yellow-600, text-white
+   ═════════════════════════════════════════════════════════════════════════ */
+html.a11y-high-contrast [class*="bg-red-"] {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast [class*="bg-red-"] * {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast [class*="text-white"] {
+  color: #F8F8FF !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** LAYER UTILITIES: Máxima prioridad para Alto Contraste ***
+   Esto garantiza que sobreescriba a Tailwind
+   ═════════════════════════════════════════════════════════════════════════ */
+@layer utilities {
+  html.a11y-high-contrast button[class*="bg-red"] {
+    color: #F8F8FF !important;
+  }
+
+  html.a11y-high-contrast button[class*="bg-red"] span {
+    color: #F8F8FF !important;
+  }
+
+  html.a11y-high-contrast [class*="bg-red-800"],
+  html.a11y-high-contrast [class*="bg-red-900"],
+  html.a11y-high-contrast [class*="bg-yellow"] {
+    color: #F8F8FF !important;
+  }
+
+  html.a11y-high-contrast [class*="text-white"] {
+    color: #F8F8FF !important;
+  }
+
+  /* Overrides brutales para el botón SOS FAB */
+  html.a11y-high-contrast button[class*="shadow-lg"][class*="bg-red"] {
+    color: #F8F8FF !important;
+  }
+
+  html.a11y-high-contrast button[class*="shadow-lg"] span {
+    color: #F8F8FF !important;
+  }
+
+  /* Último recurso: todos los botones fixed en Alto Contraste */
+  html.a11y-high-contrast button[class*="fixed"] {
+    color: #F8F8FF !important;
+  }
+
+  html.a11y-high-contrast button[class*="fixed"] * {
+    color: #F8F8FF !important;
+  }
 }
