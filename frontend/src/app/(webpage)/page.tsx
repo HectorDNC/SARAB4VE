@@ -32,8 +32,8 @@ export default function HomePage() {
         className="relative bg-surface-container-low border-b border-outline-variant"
         aria-labelledby="hero-heading"
       >
-        <div className="max-w-5xl mx-auto px-5 lg:px-10 py-14 lg:py-24 flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
-          <div className="flex-1 text-center lg:text-left">
+        <div className="max-w-5xl mx-auto px-5 lg:px-10 py-14 lg:py-24 flex flex-col items-center gap-10">
+          <div className="flex-1 text-center">
             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
               <span className="material-symbols-rounded text-base" aria-hidden="true">emergency_home</span>
               Plataforma de Emergencia Accesible
@@ -44,7 +44,7 @@ export default function HomePage() {
             >
               Asistencia inmediata para personas con discapacidad
             </h1>
-            <p className="mt-4 text-base lg:text-lg text-on-surface-variant max-w-lg mx-auto lg:mx-0">
+            <p className="mt-4 text-base lg:text-lg text-on-surface-variant max-w-2xl mx-auto">
               SARA facilita la comunicación, ayuda y el rescate en situaciones críticas. Para los afectados por el terremoto en Venezuela.
               Pulsa el botón central para alertar a los equipos de emergencia cercanos.
             </p>
@@ -60,23 +60,7 @@ export default function HomePage() {
               </Link>
             </div>
 
-            <div className="mt-8 mx-2 lg:mx-1 flex flex-col sm:flex-row gap-3 justify-center lg:justify-around">
-              {/* Boton de Solicitud de Apoyo */}
-              <Link
-                href="/request"
-                className="flex items-center justify-center gap-3 bg-secondary-container text-on-secondary px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:opacity-90 transition-all hover:scale-[1.02] active:scale-100 focus-visible:outline-3 focus-visible:outline-primary"
-              >
-                <span className="material-symbols-rounded text-2xl" aria-hidden="true">crisis_alert</span>
-                Solicitar Apoyo
-              </Link>
-              <Link
-                href="/mapa"
-                className="flex items-center justify-center gap-2 bg-primary text-on-primary px-6 py-4 rounded-full font-semibold text-base hover:opacity-90 transition-all hover:scale-[1.02] active:scale-100 focus-visible:outline-3 focus-visible:outline-primary"
-              >
-                <span className="material-symbols-rounded text-xl" aria-hidden="true">map</span>
-                Ver mapa
-              </Link>
-            </div>
+
 
             <div className="mt-6 inline-flex items-center gap-2 text-sm text-on-surface-variant">
               <span className="material-symbols-rounded text-base text-primary" aria-hidden="true">group</span>
@@ -84,26 +68,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="flex-shrink-0 w-full max-w-xs lg:max-w-sm">
-            <div className="relative z-10 rounded-3xl bg-primary p-8 flex flex-col items-center gap-6 shadow-xl">
-              <img src="/logo.webp" alt="SARA" className="h-20 w-auto brightness-0 invert" />
-              <p className="text-on-primary/80 text-center text-sm font-medium">
-                Sistema Autónomo de Respuesta y Asistencia
-              </p>
-              <div className="w-full flex flex-col gap-2">
-                {[
-                  { icon: "location_on", label: "3 puntos de auxilio cercanos" },
-                  { icon: "volunteer_activism", label: "Voluntarios en menos de 15 min" },
-                  { icon: "accessible", label: "100% accesible" },
-                ].map(({ icon, label }) => (
-                  <div key={label} className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-2.5">
-                    <span className="material-symbols-rounded text-on-primary/80 text-lg" aria-hidden="true">{icon}</span>
-                    <span className="text-on-primary text-sm font-medium">{label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          
         </div>
       </section>
 
