@@ -698,3 +698,7 @@ html.a11y-high-contrast [class*="bg-error"] strong,
 html.a11y-high-contrast [class*="bg-error"] em {
   color: #F8F8FF !important;
 }
+
+html.a11y-high-contrast [class*="bg-error"] .material-symbols-rounded {
+  color: #F8F8FF !important;
+}
