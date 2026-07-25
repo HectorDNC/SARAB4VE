@@ -586,9 +586,16 @@ html.a11y-high-contrast * {
   text-shadow: none !important;
 }
 
-/* ── Asegurar que TODO texto sea negro EXCEPTO en botones ── */
-html.a11y-high-contrast :not(button):not([role="button"]):not([role="radio"]) {
+/* ── Asegurar que TODO texto sea negro EXCEPTO en botones y elementos de error ── */
+html.a11y-high-contrast :not(button):not([role="button"]):not([role="radio"]):not([class*="bg-error"]):not([class*="bg-primary"]):not([class*="bg-success"]) {
   color: #100c08 !important;
+}
+
+/* ── Textos dentro de botones/enlaces con bg-error deben ser blancos ── */
+html.a11y-high-contrast button[class*="bg-error"] *,
+html.a11y-high-contrast [role="button"][class*="bg-error"] *,
+html.a11y-high-contrast a[class*="bg-error"] * {
+  color: #F8F8FF !important;
 }
 
 /* ── Radio buttons y checkboxes en alto contraste ── */
