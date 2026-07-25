@@ -601,8 +601,8 @@ html.a11y-high-contrast * {
   text-shadow: none !important;
 }
 
-/* ── Textos negros SOLO en párrafos y elementos de contenido específicos ── */
-html.a11y-high-contrast p:not([class*="bg-error"]) {
+/* ── Textos negros SOLO en elementos ESPECÍFICOS (sin :not) ── */
+html.a11y-high-contrast p {
   color: #100c08 !important;
 }
 html.a11y-high-contrast h1,
@@ -616,24 +616,10 @@ html.a11y-high-contrast h6 {
 html.a11y-high-contrast li {
   color: #100c08 !important;
 }
-html.a11y-high-contrast label:not([class*="bg-error"]) {
+html.a11y-high-contrast label {
   color: #100c08 !important;
 }
-
-/* ── Textos con clases de color específicas: forzar negro ── */
-html.a11y-high-contrast [class*="text-primary"]:not([class*="bg-error"]):not([class*="bg-primary"]) {
-  color: #100c08 !important;
-}
-html.a11y-high-contrast [class*="text-on-surface-variant"]:not([class*="bg-error"]) {
-  color: #100c08 !important;
-}
-html.a11y-high-contrast [class*="text-on-surface"]:not([class*="bg-error"]) {
-  color: #100c08 !important;
-}
-html.a11y-high-contrast span:not([class*="bg-error"]):not(.material-symbols-rounded) {
-  color: #100c08 !important;
-}
-html.a11y-high-contrast div:not([class*="bg-error"]):not([role="button"]) {
+html.a11y-high-contrast strong {
   color: #100c08 !important;
 }
 
@@ -651,11 +637,6 @@ html.a11y-high-contrast [class*="border-t"] {
   border-color: #F8F8FF !important;
 }
 
-/* ── Badge de progreso ── */
-html.a11y-high-contrast [class*="text-on-surface-variant"] {
-  color: #FFFFFF !important;
-  font-weight: 700 !important;
-}
 
 /* ── Botones deshabilitados ── */
 html.a11y-high-contrast button:disabled,
