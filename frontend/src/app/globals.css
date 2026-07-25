@@ -791,9 +791,17 @@ html.a11y-high-contrast button:not([aria-label]):not([class*="bg-error"]) {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
-   *** TEXTO SOS CHAT DE VOZ: BLANCO (SEPARADO) ***
-   Solo aplica a texto dentro de bg-error, NO a iconos
+   *** BOTÓN SOS CHAT DE VOZ: TRANSFORMACIÓN INDEPENDIENTE ***
+   Ultra-específico: Solo para button.bg-error (sin otros selectores)
    ═════════════════════════════════════════════════════════════════════════ */
-html.a11y-high-contrast [class*="bg-error"] {
+html.a11y-high-contrast button.bg-error {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast button.bg-error span {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast button.bg-error .material-symbols-rounded {
   color: #F8F8FF !important;
 }
