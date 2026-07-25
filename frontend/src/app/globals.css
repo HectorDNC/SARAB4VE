@@ -622,6 +622,25 @@ html.a11y-high-contrast label {
 html.a11y-high-contrast strong {
   color: #100c08 !important;
 }
+html.a11y-high-contrast span {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast div {
+  color: #100c08 !important;
+}
+
+/* ── Textos con clases de color: forzar negro ── */
+html.a11y-high-contrast [class*="text-primary"] {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast [class*="text-on-surface-variant"] {
+  color: #100c08 !important;
+}
+
+/* ── Iconos Material Symbols: forzar negro en Alto Contraste ── */
+html.a11y-high-contrast .material-symbols-rounded {
+  color: #100c08 !important;
+}
 
 /* ── Radio buttons y checkboxes en alto contraste ── */
 html.a11y-high-contrast input[type="radio"],
