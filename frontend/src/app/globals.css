@@ -601,26 +601,6 @@ html.a11y-high-contrast * {
   text-shadow: none !important;
 }
 
-/* ── MÁXIMA PRIORIDAD: Textos dentro de bg-error SIEMPRE blancos ── */
-html.a11y-high-contrast [class*="bg-error"] {
-  color: #F8F8FF !important;
-}
-html.a11y-high-contrast [class*="bg-error"] span {
-  color: #F8F8FF !important;
-}
-html.a11y-high-contrast [class*="bg-error"] div {
-  color: #F8F8FF !important;
-}
-html.a11y-high-contrast [class*="bg-error"] p {
-  color: #F8F8FF !important;
-}
-html.a11y-high-contrast [class*="bg-error"] a {
-  color: #F8F8FF !important;
-}
-html.a11y-high-contrast [class*="bg-error"] * {
-  color: #F8F8FF !important;
-}
-
 /* ── Textos negros SOLO en párrafos y elementos de contenido específicos ── */
 html.a11y-high-contrast p:not([class*="bg-error"]) {
   color: #100c08 !important;
@@ -701,4 +681,26 @@ html.a11y-high-contrast a[class*="bg-error"] .material-symbols-rounded {
 html.a11y-high-contrast button[class*="bg-primary"] span,
 html.a11y-high-contrast [role="button"][class*="bg-primary"] span {
   color: #100c08 !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** ÚLTIMA LÍNEA DEFENSIVA: BOTONES SOS SIEMPRE BLANCOS ***
+   Estas reglas están al FINAL para asegurar máxima prioridad
+   ═════════════════════════════════════════════════════════════════════════ */
+
+html.a11y-high-contrast [class*="bg-error"] {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast [class*="bg-error"] * {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast [class*="bg-error"] span,
+html.a11y-high-contrast [class*="bg-error"] div,
+html.a11y-high-contrast [class*="bg-error"] p,
+html.a11y-high-contrast [class*="bg-error"] a,
+html.a11y-high-contrast [class*="bg-error"] strong,
+html.a11y-high-contrast [class*="bg-error"] em {
+  color: #F8F8FF !important;
 }
