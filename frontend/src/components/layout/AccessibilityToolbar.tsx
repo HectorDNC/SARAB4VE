@@ -167,21 +167,6 @@ export default function AccessibilityToolbar({ compact = false, openUp = false }
                   />
                 </button>
               </div>
-              {/* Preview visual del alto contraste */}
-              {highContrast && (
-                <div
-                  className="mt-2 rounded-lg p-2 text-[11px] leading-tight"
-                  style={{
-                    backgroundColor: "#000000",
-                    color: "#FFFF00",
-                    border: "1px solid #FFFFFF",
-                  }}
-                  aria-hidden="true"
-                >
-                  <span style={{ color: "#FFFFFF" }}>T</span>exto blanco{" "}
-                  <span style={{ color: "#FFFF00" }}>T</span>exto amarillo
-                </div>
-              )}
             </div>
           </div>
 
