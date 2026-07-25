@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { alertService } from "@/services/alertService";
 import AccessibilityToolbar from "@/components/layout/AccessibilityToolbar";
+import FontScaleControl from "@/components/ui/FontScaleControl";
 import type { ROLES_USER } from "@/types";
 
 type NavLink = {
@@ -104,6 +105,7 @@ export default function Navbar() {
               <span>AYUDA - SOS</span>
             </div>
           </Link>
+          <FontScaleControl />
           <AccessibilityToolbar compact />
         </div>
 

@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Propuesta: Control de Escala de Fuente - SARA</title>
+<style>
+:root {
+  --primary: #0040a1;
+  --primary-fixed: #dae2ff;
+  --secondary-container: #fc6018;
+  --surface-container-low: #f6f3f2;
+  --surface-container: #f0edec;
+  --on-surface: #1c1b1b;
+  --on-surface-variant: #424654;
+  --outline-variant: #c3c6d6;
+  --background: #fcf9f8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #b2c5ff;
+    --primary-fixed: #0040a1;
+    --secondary-container: #ff9a5a;
+    --surface-container-low: #3a3a3a;
+    --surface-container: #4a4a4a;
+    --on-surface: #eeeeee;
+    --on-surface-variant: #c0c0c0;
+    --outline-variant: #5a5a5a;
+    --background: #1a1a1a;
+  }
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--background);
+  color: var(--on-surface);
+  line-height: 1.6;
+  padding: 2rem 1rem;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: var(--on-surface-variant);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.hu-section {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 3rem;
+}
+
+.hu-section h2 {
+  color: var(--primary);
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hu-content {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.hu-item {
+  padding: 1rem;
+  background: var(--surface-container);
+  border-left: 4px solid var(--primary);
+  border-radius: 4px;
+}
+
+.hu-item strong {
+  color: var(--primary);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.acceptance-criteria {
+  background: var(--surface-container);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.acceptance-criteria h3 {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: var(--primary);
+}
+
+.criteria-list {
+  list-style: none;
+  padding: 0;
+}
+
+.criteria-list li {
+  padding: 0.5rem 0;
+  padding-left: 2rem;
+  position: relative;
+}
+
+.criteria-list li:before {
+  content: '☑';
+  position: absolute;
+  left: 0;
+  color: var(--primary);
+  font-weight: bold;
+}
+
+.options-grid {
+  display: grid;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.option-card {
+  background: var(--surface-container-low);
+  border: 2px solid var(--outline-variant);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.3s, transform 0.3s;
+}
+
+.option-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.option-card.recommended {
+  border-color: var(--primary);
+  background: var(--primary-fixed);
+}
+
+.option-header {
+  background: var(--primary);
+  color: white;
+  padding: 1rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.option-card.recommended .option-header {
+  background: var(--primary);
+  position: relative;
+}
+
+.recommended-badge {
+  display: inline-block;
+  background: #4CAF50;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.option-body {
+  padding: 1.5rem;
+}
+
+.mockup {
+  background: #ffffff;
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 0.9rem;
+  overflow-x: auto;
+  line-height: 1.5;
+  color: #333;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mockup {
+    background: #2a2a2a;
+    color: #e0e0e0;
+  }
+}
+
+.mockup code {
+  color: inherit;
+}
+
+.pro-con {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.pro, .con {
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.pro {
+  background: rgba(76, 175, 80, 0.1);
+  border-left: 3px solid #4CAF50;
+}
+
+.pro strong {
+  color: #2e7d32;
+}
+
+.con {
+  background: rgba(255, 152, 0, 0.1);
+  border-left: 3px solid #ff9800;
+}
+
+.con strong {
+  color: #e65100;
+}
+
+.navbar-mockup {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  background: var(--surface-container);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.comparison-table th {
+  background: var(--primary);
+  color: white;
+  font-weight: 700;
+}
+
+.comparison-table tr:last-child td {
+  border-bottom: none;
+}
+
+.comparison-table tbody tr:hover {
+  background: var(--surface-container-low);
+}
+
+.check-mark {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+.tech-section {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 3rem;
+}
+
+.tech-section h2 {
+  color: var(--primary);
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.code-block {
+  background: #1e1e1e;
+  color: #e0e0e0;
+  padding: 1.5rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 1rem 0;
+}
+
+.code-block code {
+  color: #e0e0e0;
+}
+
+.keyword { color: #569cd6; }
+.string { color: #ce9178; }
+.function { color: #dcdcaa; }
+.comment { color: #6a9955; }
+.tag { color: #4ec9b0; }
+
+.footer {
+  text-align: center;
+  color: var(--on-surface-variant);
+  font-size: 0.95rem;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--outline-variant);
+}
+
+@media (max-width: 768px) {
+  h1 {
+    font-size: 1.8rem;
+  }
+
+  .pro-con {
+    grid-template-columns: 1fr;
+  }
+
+  .options-grid {
+    gap: 1rem;
+  }
+
+  .comparison-table {
+    font-size: 0.9rem;
+  }
+
+  .comparison-table th,
+  .comparison-table td {
+    padding: 0.75rem;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- HEADER -->
+  <header>
+    <h1>🔤 Control de Escala de Fuente</h1>
+    <p class="subtitle">Propuesta de ubicación e implementación para mejorar accesibilidad en SARA</p>
+  </header>
+
+  <!-- HISTORIA DE USUARIO -->
+  <section class="hu-section">
+    <h2>📖 Historia de Usuario</h2>
+    <div class="hu-content">
+      <div class="hu-item">
+        <strong>Como</strong>
+        usuario con baja visión o dificultad para leer texto pequeño
+      </div>
+      <div class="hu-item">
+        <strong>Quiero</strong>
+        poder incrementar el tamaño de la fuente en toda la aplicación hasta 200%
+      </div>
+      <div class="hu-item">
+        <strong>Para que</strong>
+        pueda leer el contenido con mayor claridad y comodidad
+      </div>
+    </div>
+
+    <div class="acceptance-criteria">
+      <h3>✅ Criterios de Aceptación</h3>
+      <ul class="criteria-list">
+        <li>Botón visible y accesible en la barra superior en todas las páginas</li>
+        <li>Control que permite 4 niveles de escala: 100%, 125%, 150%, 200%</li>
+        <li>La preferencia se persiste en localStorage</li>
+        <li>Se aplica instantáneamente a todo el contenido</li>
+        <li>Funciona en desktop y móvil</li>
+        <li>Totalmente accesible (aria-label, focus visible, teclado)</li>
+        <li>No hay saltos de layout al cambiar escala</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- OPCIONES -->
+  <section>
+    <h2 style="font-size: 1.8rem; margin-bottom: 2rem; color: var(--on-surface);">Opciones de Ubicación</h2>
+
+    <div class="options-grid">
+      <!-- OPCIÓN A -->
+      <div class="option-card">
+        <div class="option-header">
+          Opción A: Derecha del botón "NECESITO AYUDA"
+        </div>
+        <div class="option-body">
+          <div class="navbar-mockup">
+            <code>┌─────────────────────────────────────────────────────────────┐<br>
+│ SARA    Inicio  Mapa  Refugios  ...     NECESITO AYUDA  <span style="background: #ff9800; padding: 2px 4px; color: white; border-radius: 3px; font-weight: bold;">🔤</span> │<br>
+└─────────────────────────────────────────────────────────────┘</code>
+          </div>
+
+          <div class="pro-con">
+            <div class="pro">
+              <strong>✓ Ventajas</strong>
+              <ul style="margin-top: 0.5rem; margin-left: 1.2rem;">
+                <li>Agrupa accesibilidad</li>
+                <li>Visible en desktop</li>
+              </ul>
+            </div>
+            <div class="con">
+              <strong>✗ Desventajas</strong>
+              <ul style="margin-top: 0.5rem; margin-left: 1.2rem;">
+                <li>Compite con CTA</li>
+                <li>Menos visible</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPCIÓN B -->
+      <div class="option-card">
+        <div class="option-header">
+          Opción B: En menú desplegable (móvil)
+        </div>
+        <div class="option-body">
+          <div class="navbar-mockup">
+            <code>Desktop:<br>
+┌───────────────────────────────────────────────┐<br>
+│ SARA    Inicio  Mapa  Refugios     NECESITO..  [🔤]<br>
+└───────────────────────────────────────────────┘<br><br>
+Móvil (menú):<br>
+┌──────────────────┐<br>
+│ Inicio           │<br>
+│ Mapa             │<br>
+│ ...              │<br>
+│ ────────────────│<br>
+│ 🔤 Tamaño fuente│<br>
+└──────────────────┘</code>
+          </div>
+
+          <div class="pro-con">
+            <div class="pro">
+              <strong>✓ Ventajas</strong>
+              <ul style="margin-top: 0.5rem; margin-left: 1.2rem;">
+                <li>No invasivo</li>
+                <li>Móvil integrado</li>
+              </ul>
+            </div>
+            <div class="con">
+              <strong>✗ Desventajas</strong>
+              <ul style="margin-top: 0.5rem; margin-left: 1.2rem;">
+                <li>Requiere click extra</li>
+                <li>Menos visible</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPCIÓN C (RECOMENDADA) -->
+      <div class="option-card recommended">
+        <div class="option-header">
+          Opción C: Junto al logo SARA
+          <span class="recommended-badge">⭐ RECOMENDADO</span>
+        </div>
+        <div class="option-body">
+          <div class="navbar-mockup" style="border: 2px solid var(--primary);">
+            <code>┌──────────────────────────────────────────────────────────┐<br>
+│ SARA [logo] <span style="background: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">🔤 100%</span>    Inicio  Mapa  Refugios  NECESITO AYUDA │<br>
+└──────────────────────────────────────────────────────────┘<br><br>
+Al hacer click, menú dropdown:<br>
+┌─────────────┐<br>
+│ 100%  ✓     │<br>
+│ 125%        │<br>
+│ 150%        │<br>
+│ 200%        │<br>
+└─────────────┘</code>
+          </div>
+
+          <div class="pro-con">
+            <div class="pro">
+              <strong>✓ Ventajas</strong>
+              <ul style="margin-top: 0.5rem; margin-left: 1.2rem;">
+                <li>Prominente (core brand)</li>
+                <li>Siempre visible</li>
+                <li>Enfatiza inclusión</li>
+                <li>Móvil-friendly</li>
+              </ul>
+            </div>
+            <div class="con">
+              <strong>✗ Desventajas</strong>
+              <ul style="margin-top: 0.5rem; margin-left: 1.2rem;">
+                <li>Ligeramente más visual</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TABLA COMPARATIVA -->
+  <section style="margin: 3rem 0;">
+    <h2 style="font-size: 1.5rem; margin-bottom: 1.5rem; color: var(--on-surface);">Comparativa Detallada</h2>
+    <table class="comparison-table">
+      <thead>
+        <tr>
+          <th>Aspecto</th>
+          <th>Opción A</th>
+          <th>Opción B</th>
+          <th>Opción C</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Visibilidad</strong></td>
+          <td>Media</td>
+          <td>Baja</td>
+          <td><span class="check-mark">⭐ Alta</span></td>
+        </tr>
+        <tr>
+          <td><strong>Accesibilidad</strong></td>
+          <td>Media</td>
+          <td>Baja</td>
+          <td><span class="check-mark">⭐ Alta</span></td>
+        </tr>
+        <tr>
+          <td><strong>Impacto visual</strong></td>
+          <td>Bajo</td>
+          <td>Bajo</td>
+          <td><span class="check-mark">⭐ Medio</span></td>
+        </tr>
+        <tr>
+          <td><strong>Esfuerzo usuario</strong></td>
+          <td>Bajo</td>
+          <td>Medio</td>
+          <td><span class="check-mark">⭐ Bajo</span></td>
+        </tr>
+        <tr>
+          <td><strong>Consistencia SARA</strong></td>
+          <td>Media</td>
+          <td>Media</td>
+          <td><span class="check-mark">⭐ Alta</span></td>
+        </tr>
+        <tr>
+          <td><strong>Móvil</strong></td>
+          <td>Medio</td>
+          <td>Media</td>
+          <td><span class="check-mark">⭐ Alta</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- IMPLEMENTACIÓN TÉCNICA -->
+  <section class="tech-section">
+    <h2>🔧 Implementación Técnica (Opción C)</h2>
+
+    <div style="margin-bottom: 2rem;">
+      <h3 style="color: var(--primary); margin-bottom: 1rem;">1. Crear componente FontScaleControl.tsx</h3>
+      <div class="code-block"><code><span class="keyword">"use client"</span>;
+
+<span class="keyword">import</span> { useEffect, useState } <span class="keyword">from</span> <span class="string">"react"</span>;
+
+<span class="keyword">export default function</span> <span class="function">FontScaleControl</span>() {
+  <span class="keyword">const</span> [scale, setScale] = useState(100);
+  <span class="keyword">const</span> scales = [100, 125, 150, 200];
+
+  <span class="function">useEffect</span>(() => {
+    <span class="comment">// Cargar del localStorage</span>
+    <span class="keyword">const</span> saved = localStorage.getItem(<span class="string">"fontScale"</span>);
+    <span class="keyword">if</span> (saved) {
+      <span class="keyword">const</span> value = parseInt(saved, 10);
+      setScale(value);
+      applyScale(value);
+    }
+  }, []);
+
+  <span class="keyword">const</span> <span class="function">applyScale</span> = (value) => {
+    document.documentElement.style.fontSize = <span class="string">`${(value / 100) * 16}px`</span>;
+    localStorage.setItem(<span class="string">"fontScale"</span>, value.toString());
+  };
+
+  <span class="keyword">return</span> (
+    <span class="tag">&lt;button</span> <span class="function">onClick</span>={() => applyScale(125)} <span class="tag">&gt;</span>
+      {scale}%
+    <span class="tag">&lt;/button&gt;</span>
+  );
+}</code></div>
+    </div>
+
+    <div style="margin-bottom: 2rem;">
+      <h3 style="color: var(--primary); margin-bottom: 1rem;">2. Integrar en Navbar.tsx</h3>
+      <div class="code-block"><code><span class="keyword">import</span> FontScaleControl <span class="keyword">from</span> <span class="string">"@/components/ui/FontScaleControl"</span>;
+
+<span class="comment">// En el JSX del header, después del logo:</span>
+<span class="tag">&lt;FontScaleControl /&gt;</span></code></div>
+    </div>
+
+    <div>
+      <h3 style="color: var(--primary); margin-bottom: 1rem;">3. Actualizar globals.css</h3>
+      <div class="code-block"><code><span class="selector">html</span> {
+  <span class="function">font-size</span>: 16px; <span class="comment">/* Base por defecto */</span>
+}
+
+<span class="selector">body</span> {
+  <span class="function">font-size</span>: 1rem; <span class="comment">/* Hereda del html */</span>
+}
+
+<span class="comment">/* Todos los elementos usan rem o em para escalar */</span></code></div>
+    </div>
+  </section>
+
+  <!-- DEFINICIÓN DE HECHO -->
+  <section class="hu-section">
+    <h2>✅ Definición de Hecho</h2>
+    <ul class="criteria-list">
+      <li>Componente FontScaleControl.tsx creado y testeado</li>
+      <li>Integrado en Navbar (Opción C recomendada)</li>
+      <li>localStorage persiste preferencia del usuario</li>
+      <li>Funciona en Chrome, Firefox, Safari, Edge</li>
+      <li>Responsive en desktop y móvil</li>
+      <li>Accesible: aria-label, focus visible, navegación por teclado</li>
+      <li>Tests con Axe DevTools / WAVE</li>
+      <li>Documentado en CLAUDE.md</li>
+      <li>Code review completado</li>
+    </ul>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>Propuesta creada: 2026-07-12 | Estado: Listo para implementación</p>
+  </footer>
+</div>
+
+</body>
+</html>
