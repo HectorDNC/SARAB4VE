@@ -781,3 +781,19 @@ html.a11y-high-contrast .material-symbols-rounded {
 html.a11y-high-contrast [class*="bg-error"] .material-symbols-rounded {
   color: #F8F8FF !important;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** TEXTO DE PORCENTAJES: BLANCO (SEPARADO) ***
+   Solo aplica a texto, NO a iconos
+   ═════════════════════════════════════════════════════════════════════════ */
+html.a11y-high-contrast button:not([aria-label]):not([class*="bg-error"]) {
+  color: #F8F8FF !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** TEXTO SOS CHAT DE VOZ: BLANCO (SEPARADO) ***
+   Solo aplica a texto dentro de bg-error, NO a iconos
+   ═════════════════════════════════════════════════════════════════════════ */
+html.a11y-high-contrast [class*="bg-error"] {
+  color: #F8F8FF !important;
+}
