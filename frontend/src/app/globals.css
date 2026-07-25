@@ -584,6 +584,11 @@ html.a11y-high-contrast * {
   text-shadow: none !important;
 }
 
+/* ── Asegurar que TODO texto sea negro EXCEPTO en botones ── */
+html.a11y-high-contrast :not(button):not([role="button"]):not([role="radio"]) {
+  color: #100c08 !important;
+}
+
 /* ── Radio buttons y checkboxes en alto contraste ── */
 html.a11y-high-contrast input[type="radio"],
 html.a11y-high-contrast input[type="checkbox"] {
