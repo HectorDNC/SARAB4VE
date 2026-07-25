@@ -735,6 +735,10 @@ html.a11y-high-contrast button[aria-label*="Restaurar configuraciones"] span:not
   color: #F8F8FF !important;
 }
 
+html.a11y-high-contrast button[aria-label*="Restaurar configuraciones"] .material-symbols-rounded {
+  color: #F8F8FF !important;
+}
+
 /* ── Botón A+ (escala): Transparente con texto NEGRO ── */
 html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] {
   background-color: transparent !important;
@@ -747,7 +751,7 @@ html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] span:not(.material
 }
 
 html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] .material-symbols-rounded {
-  color: #F8F8FF !important;
+  color: #100c08 !important;
 }
 
 /* ── Opciones de porcentajes (100%, 125%, 150%): Botones NEGROS con texto NEGRO ── */
