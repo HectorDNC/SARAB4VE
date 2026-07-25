@@ -315,9 +315,10 @@ html.a11y-high-contrast [role="radio"][aria-checked="true"] * {
   color: #100c08 !important;
 }
 
-/* Botones de error seleccionados (Sí herido/a, No puedo moverme) */
+/* Botones de error seleccionados (Sí herido/a, No puedo moverme, Emergencia SOS) */
 html.a11y-high-contrast button[class*="bg-error"],
-html.a11y-high-contrast [role="button"][class*="bg-error"] {
+html.a11y-high-contrast [role="button"][class*="bg-error"],
+html.a11y-high-contrast a[class*="bg-error"] {
   background-color: #100c08 !important;
   color: #F8F8FF !important;
   border: 4px solid #F8F8FF !important;
@@ -325,7 +326,8 @@ html.a11y-high-contrast [role="button"][class*="bg-error"] {
 }
 
 html.a11y-high-contrast button[class*="bg-error"] *,
-html.a11y-high-contrast [role="button"][class*="bg-error"] * {
+html.a11y-high-contrast [role="button"][class*="bg-error"] *,
+html.a11y-high-contrast a[class*="bg-error"] * {
   color: #F8F8FF !important;
 }
 
@@ -618,12 +620,14 @@ html.a11y-high-contrast [role="button"][aria-disabled="true"] {
 
 /* ── Garantizar contraste en textos dentro de botones negros (error) ── */
 html.a11y-high-contrast button[class*="bg-error"] span,
-html.a11y-high-contrast [role="button"][class*="bg-error"] span {
+html.a11y-high-contrast [role="button"][class*="bg-error"] span,
+html.a11y-high-contrast a[class*="bg-error"] span {
   color: #F8F8FF !important;
 }
 
 html.a11y-high-contrast button[class*="bg-error"] .material-symbols-rounded,
-html.a11y-high-contrast [role="button"][class*="bg-error"] .material-symbols-rounded {
+html.a11y-high-contrast [role="button"][class*="bg-error"] .material-symbols-rounded,
+html.a11y-high-contrast a[class*="bg-error"] .material-symbols-rounded {
   color: #F8F8FF !important;
 }
 
