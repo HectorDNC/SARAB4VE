@@ -923,4 +923,66 @@ html.a11y-high-contrast [class*="text-white"] {
   html.a11y-high-contrast button[class*="fixed"] * {
     color: #F8F8FF !important;
   }
+
+  /* ═════════════════════════════════════════════════════════════════════════
+     *** Secciones principales con fondo amarillo (#f9dc87) ***
+     ═════════════════════════════════════════════════════════════════════════ */
+
+  /* Recursos de Guía */
+  html.a11y-high-contrast [class*="bg-secondary-fixed"] {
+    background-color: #f9dc87 !important;
+    color: #100c08 !important;
+  }
+
+  html.a11y-high-contrast [class*="bg-secondary-fixed"] * {
+    color: #100c08 !important;
+  }
+
+  /* Directorio */
+  html.a11y-high-contrast [class*="bg-surface-container-high"] {
+    background-color: #f9dc87 !important;
+    color: #100c08 !important;
+  }
+
+  html.a11y-high-contrast [class*="bg-surface-container-high"] * {
+    color: #100c08 !important;
+  }
+
+  /* ¿Quieres colaborar en la red de apoyo? */
+  html.a11y-high-contrast section [class*="bg-primary"] {
+    background-color: #f9dc87 !important;
+    color: #100c08 !important;
+  }
+
+  html.a11y-high-contrast section [class*="bg-primary"] * {
+    color: #100c08 !important;
+  }
+
+  /* ═════════════════════════════════════════════════════════════════════════
+     *** Placeholders de input en Alto Contraste ***
+     ═════════════════════════════════════════════════════════════════════════ */
+  html.a11y-high-contrast input::placeholder {
+    color: #100c08 !important;
+  }
+
+  html.a11y-high-contrast input[type="search"]::placeholder {
+    color: #100c08 !important;
+  }
+
+  /* ═════════════════════════════════════════════════════════════════════════
+     *** Logo SARA: mantener fondo blanco ***
+     ═════════════════════════════════════════════════════════════════════════ */
+  html.a11y-high-contrast img[src*="logo"] {
+    filter: none !important;
+    background-color: transparent !important;
+  }
+
+  /* Texto SARA al lado del logo en negro */
+  html.a11y-high-contrast a[aria-label*="SARA"] {
+    color: #100c08 !important;
+  }
+
+  html.a11y-high-contrast a[aria-label*="SARA"] span {
+    color: #100c08 !important;
+  }
 }
