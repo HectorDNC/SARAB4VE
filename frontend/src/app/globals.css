@@ -339,6 +339,13 @@ html.a11y-high-contrast a[class*="bg-error"] * {
   color: #F8F8FF !important;
 }
 
+/* Forzar blanco en TODOS los textos/spans dentro de bg-error, sin excepciones */
+html.a11y-high-contrast [class*="bg-error"] span,
+html.a11y-high-contrast [class*="bg-error"] div,
+html.a11y-high-contrast [class*="bg-error"] p {
+  color: #F8F8FF !important;
+}
+
 /* Botones de éxito */
 html.a11y-high-contrast button[class*="bg-success"],
 html.a11y-high-contrast [role="button"][class*="bg-success"] {
