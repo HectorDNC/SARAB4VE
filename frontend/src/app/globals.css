@@ -735,30 +735,30 @@ html.a11y-high-contrast button[aria-label*="Restaurar configuraciones"] span:not
   color: #F8F8FF !important;
 }
 
-/* ── Botón A+ (escala): Transparente con texto/icono BLANCO ── */
+/* ── Botón A+ (escala): Transparente con texto NEGRO ── */
 html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] {
   background-color: transparent !important;
-  color: #F8F8FF !important;
+  color: #100c08 !important;
   border: none !important;
 }
 
-html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] span {
-  color: #F8F8FF !important;
+html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] span:not(.material-symbols-rounded) {
+  color: #100c08 !important;
 }
 
 html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] .material-symbols-rounded {
   color: #F8F8FF !important;
 }
 
-/* ── Opciones de porcentajes (100%, 125%, 150%): Botones NEGROS ── */
+/* ── Opciones de porcentajes (100%, 125%, 150%): Botones NEGROS con texto NEGRO ── */
 html.a11y-high-contrast button:not([aria-label*="Ajustar"]):not([aria-label*="Restaurar"]) {
   background-color: #100c08 !important;
-  color: #F8F8FF !important;
+  color: #100c08 !important;
   border: 1px solid #F8F8FF !important;
 }
 
-html.a11y-high-contrast button:not([aria-label*="Ajustar"]):not([aria-label*="Restaurar"]) span {
-  color: #F8F8FF !important;
+html.a11y-high-contrast button:not([aria-label*="Ajustar"]):not([aria-label*="Restaurar"]) span:not(.material-symbols-rounded) {
+  color: #100c08 !important;
 }
 
 html.a11y-high-contrast button:not([aria-label*="Ajustar"]):not([aria-label*="Restaurar"]) .material-symbols-rounded {
