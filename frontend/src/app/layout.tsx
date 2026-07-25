@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible } from "next/font/google";
 import "./globals.css";
 import LocationProvider from "@/providers/LocationProvider";
@@ -18,7 +18,18 @@ export const metadata: Metadata = {
   description:
     "SARA facilita la comunicación, ayuda y el rescate en situaciones críticas para personas con discapacidad.",
   keywords: ["emergencia", "accesibilidad", "discapacidad", "Venezuela", "voluntarios"],
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SARA — Plataforma Accesible de Emergencia',
+  },
 };
+
+export const viewport: Viewport = {
+  themeColor: '#0040a1',
+  width: 'device-width',
+  initialScale: 1,
+}
 
 export default function RootLayout({
   children,

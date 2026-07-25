@@ -4,6 +4,38 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 First, run the development server:
 
+## PWA (Progressive Web App)
+
+Este proyecto está configurado como PWA (instalable en dispositivos móviles), usando [Serwist](https://serwist.pages.dev/) para generar el service worker.
+
+### Importante: build de producción
+
+`next dev` funciona normal con Turbopack, sin cambios. Pero **`next build` requiere el flag `--webpack`**, porque Serwist todavía no soporta Turbopack de forma estable:
+
+```bash
+pnpm build   # ya incluye --webpack en el script
+pnpm start
+```
+
+Si corrés `next build` manualmente sin pasar por el script de `package.json`, acordate de agregar el flag:
+
+```bash
+pnpm next build --webpack
+```
+
+Sin este flag, el build va a fallar con un error de conflicto entre Turbopack y la configuración de webpack de Serwist.
+
+### Archivos relevantes
+
+- `app/manifest.ts` — configuración del manifest (nombre, íconos, colores)
+- `app/sw.ts` — configuración del service worker
+- `public/icons/` — íconos de la PWA (no editar directamente sin regenerar todos los tamaños)
+- `public/sw.js` — **generado automáticamente en cada build, no se commitea** (está en `.gitignore`)
+
+### Probar la instalación localmente
+
+El service worker requiere HTTPS (excepto en `localhost`), así que para probar la instalación desde un celular hace falta exponer el localhost con un túnel (ngrok, localtunnel) o hacer un deploy de prueba en Vercel.
+
 ```bash
 npm run dev
 # or
