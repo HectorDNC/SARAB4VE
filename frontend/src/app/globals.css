@@ -697,3 +697,25 @@ html.a11y-high-contrast [class*="bg-error"] em {
 html.a11y-high-contrast [class*="bg-error"] .material-symbols-rounded {
   color: #F8F8FF !important;
 }
+
+/* ── Botones del menú de accesibilidad: A+, Restaurar ajustes ── */
+html.a11y-high-contrast button[class*="hover:bg-surface-container"] {
+  background-color: #100c08 !important;
+  color: #F8F8FF !important;
+  border: 2px solid #F8F8FF !important;
+}
+
+html.a11y-high-contrast button[class*="hover:bg-surface-container"] * {
+  color: #F8F8FF !important;
+}
+
+/* ── Botón de escala de fuente ── */
+html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] {
+  background-color: #100c08 !important;
+  color: #F8F8FF !important;
+  border: 2px solid #F8F8FF !important;
+}
+
+html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] * {
+  color: #F8F8FF !important;
+}
