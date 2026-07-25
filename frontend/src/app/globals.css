@@ -263,16 +263,24 @@ html.a11y-high-contrast [style*="gradient"] {
   background-image: none !important;
 }
 
-/* ─ Enlaces ── */
-html.a11y-high-contrast a {
+/* ─ Enlaces (sin subrayado si son botones estilizados) ── */
+html.a11y-high-contrast a:not([class*="bg-error"]):not([class*="bg-primary"]):not([class*="bg-success"]):not([class*="bg-warning"]) {
   color: #100c08 !important;
   text-decoration: underline;
   text-decoration-color: #100c08;
 }
-html.a11y-high-contrast a:hover {
+html.a11y-high-contrast a:not([class*="bg-error"]):not([class*="bg-primary"]):not([class*="bg-success"]):not([class*="bg-warning"]):hover {
   color: #100c08 !important;
   text-decoration-color: #100c08;
   font-weight: 600;
+}
+
+/* ─ Enlaces estilizados como botones (sin subrayado) ── */
+html.a11y-high-contrast a[class*="bg-error"],
+html.a11y-high-contrast a[class*="bg-primary"],
+html.a11y-high-contrast a[class*="bg-success"],
+html.a11y-high-contrast a[class*="bg-warning"] {
+  text-decoration: none !important;
 }
 
 /* ── Botones base: fondo negro, texto blanco, borde blanco ── */
