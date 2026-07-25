@@ -1024,19 +1024,20 @@ export default function ButtonEmergencyVoice() {
             )}
 
             {/* Acciones */}
-            <div className="flex gap-3 pt-2">
+            <div className="w-full md:w-[70%] mx-auto grid grid-cols-6 gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleClosePreview}
-                className="flex-1 px-4 py-3 rounded-xl border border-outline text-on-surface hover:bg-surface-container transition-colors font-medium"
+                className="flex-1 col-span-2 px-4 py-3 rounded-xl border border-outline text-on-surface hover:bg-surface-container transition-colors font-medium"
               >
                 Cerrar
               </button>
               <a
-                href={`/mapa?selected=${encodeURIComponent(serverResponse.data.id)}`}
-                className="flex-1 px-4 py-3 rounded-xl bg-primary text-on-primary hover:bg-primary/90 transition-colors font-bold text-center"
+                href="/chat"
+                className="flex-1 col-span-4 px-4 py-3 rounded-xl bg-primary text-on-primary hover:bg-primary/90 transition-colors font-bold text-center inline-flex items-center justify-center gap-2"
               >
-                Ver en el mapa
+                <span className="material-symbols-rounded" aria-hidden="true">chat</span>
+                Abrir chat
               </a>
             </div>
           </div>
