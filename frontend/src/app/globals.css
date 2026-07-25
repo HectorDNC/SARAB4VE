@@ -698,24 +698,24 @@ html.a11y-high-contrast [class*="bg-error"] .material-symbols-rounded {
   color: #F8F8FF !important;
 }
 
-/* ── Botones del menú de accesibilidad: A+, Restaurar ajustes ── */
-html.a11y-high-contrast button[class*="hover:bg-surface-container"] {
+/* ── Botón Restaurar ajustes SOLO ── */
+html.a11y-high-contrast button[aria-label*="Restaurar configuraciones"] {
   background-color: #100c08 !important;
   color: #F8F8FF !important;
   border: 2px solid #F8F8FF !important;
 }
 
-html.a11y-high-contrast button[class*="hover:bg-surface-container"] * {
+html.a11y-high-contrast button[aria-label*="Restaurar configuraciones"] span:not(.material-symbols-rounded) {
   color: #F8F8FF !important;
 }
 
-/* ── Botón de escala de fuente ── */
+/* ── Botón de escala de fuente SOLO ── */
 html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] {
   background-color: #100c08 !important;
   color: #F8F8FF !important;
   border: 2px solid #F8F8FF !important;
 }
 
-html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] * {
+html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] span:not(.material-symbols-rounded) {
   color: #F8F8FF !important;
 }
