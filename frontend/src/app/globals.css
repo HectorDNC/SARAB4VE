@@ -631,11 +631,6 @@ html.a11y-high-contrast [class*="text-on-surface-variant"] {
   color: #100c08 !important;
 }
 
-/* ── Iconos Material Symbols: forzar negro en Alto Contraste ── */
-html.a11y-high-contrast .material-symbols-rounded {
-  color: #100c08 !important;
-}
-
 /* ── Radio buttons y checkboxes en alto contraste ── */
 html.a11y-high-contrast input[type="radio"],
 html.a11y-high-contrast input[type="checkbox"] {
