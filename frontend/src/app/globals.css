@@ -621,8 +621,22 @@ html.a11y-high-contrast [class*="bg-error"] * {
   color: #F8F8FF !important;
 }
 
-/* ── Asegurar que TODO texto sea negro EXCEPTO en botones estilizados ── */
-html.a11y-high-contrast :not(button):not([role="button"]):not([role="radio"]):not([class*="bg-error"]):not([class*="bg-primary"]):not([class*="bg-success"]) {
+/* ── Textos negros SOLO en párrafos y elementos de contenido específicos ── */
+html.a11y-high-contrast p:not([class*="bg-error"]) {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast h1,
+html.a11y-high-contrast h2,
+html.a11y-high-contrast h3,
+html.a11y-high-contrast h4,
+html.a11y-high-contrast h5,
+html.a11y-high-contrast h6 {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast li {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast label:not([class*="bg-error"]) {
   color: #100c08 !important;
 }
 
