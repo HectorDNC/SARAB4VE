@@ -745,3 +745,10 @@ html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] {
 html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] span:not(.material-symbols-rounded) {
   color: #F8F8FF !important;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** ICONO DEL LOGIN: SIEMPRE NEGRO - ÚLTIMA LÍNEA DEFENSIVA ***
+   ═════════════════════════════════════════════════════════════════════════ */
+html.a11y-high-contrast a[class*="text-primary"] span.material-symbols-rounded[class*="text-primary"] {
+  color: #100c08 !important;
+}
