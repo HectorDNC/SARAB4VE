@@ -640,6 +640,23 @@ html.a11y-high-contrast label:not([class*="bg-error"]) {
   color: #100c08 !important;
 }
 
+/* ── Textos con clases de color específicas: forzar negro ── */
+html.a11y-high-contrast [class*="text-primary"]:not([class*="bg-error"]):not([class*="bg-primary"]) {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast [class*="text-on-surface-variant"]:not([class*="bg-error"]) {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast [class*="text-on-surface"]:not([class*="bg-error"]) {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast span:not([class*="bg-error"]):not(.material-symbols-rounded) {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast div:not([class*="bg-error"]):not([role="button"]) {
+  color: #100c08 !important;
+}
+
 /* ── Radio buttons y checkboxes en alto contraste ── */
 html.a11y-high-contrast input[type="radio"],
 html.a11y-high-contrast input[type="checkbox"] {
