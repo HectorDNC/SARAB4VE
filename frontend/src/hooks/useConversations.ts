@@ -29,8 +29,8 @@ export function useConversations(): UseConversationsReturn {
 
     try {
       const jwt = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      const accessToken = typeof window !== "undefined" ? localStorage.getItem("emergencyAccessToken") : null;
-      const emergencyId = typeof window !== "undefined" ? localStorage.getItem("emergencyId") : undefined;
+      const accessToken = typeof window !== "undefined" ? localStorage.getItem("emergencyAccessToken") : undefined;
+      const emergencyId = typeof window !== "undefined" ? localStorage.getItem("emergencyId") ?? undefined : undefined;
 
       let data: Conversation[] = [];
 
