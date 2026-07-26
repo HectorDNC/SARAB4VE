@@ -1,218 +1,382 @@
-import Link from "next/link";
+"use client";
 
-const conversations = [
-  {
-    id: "maria",
-    name: "Coord. María López",
-    role: "Coordinadora de zona",
-    lastMessage: "Confirmando punto de encuentro...",
-    time: "14:20",
-    unread: 1,
-    online: true,
-    icon: "person",
-  },
-  {
-    id: "grupo",
-    name: "Grupo Apoyo Zona Norte",
-    role: "Grupo · 8 miembros",
-    lastMessage: "Ruta accesible verificada para mañana.",
-    time: "12:05",
-    unread: 0,
-    online: false,
-    icon: "group",
-  },
-  {
-    id: "dr-ricardo",
-    name: "Dr. Ricardo — Salud",
-    role: "Médico voluntario",
-    lastMessage: "¿Pudiste revisar los medicamentos?",
-    time: "Ayer",
-    unread: 0,
-    online: false,
-    icon: "medical_services",
-  },
-  {
-    id: "centro-logistico",
-    name: "Centro Logístico SARA",
-    role: "Centro de operaciones",
-    lastMessage: "Nueva actualización de suministros.",
-    time: "Lun",
-    unread: 0,
-    online: true,
-    icon: "shield_with_heart",
-  },
-];
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useAuth } from "@/providers/AuthProvider";
+import { useConversations } from "@/hooks/useConversations";
+import { useMessages } from "@/hooks/useMessages";
+import { useChatSocket } from "@/providers/ChatSocketProvider";
+import { useFabVisibility } from "@/providers/FabVisibilityProvider";
 
-const messages = [
-  {
-    from: "other",
-    name: "Coord. María López",
-    text: "Hola, estamos coordinando la entrega de suministros de mañana. ¿Tu ubicación actual sigue siendo segura y accesible para sillas de ruedas?",
-    time: "14:15",
-    status: null,
-  },
-  {
-    from: "me",
-    name: "Tú",
-    text: "Sí, la rampa de acceso sur está despejada. Pueden llegar por la calle lateral sin problemas.",
-    time: "14:18",
-    status: "Entregado",
-  },
-  {
-    from: "other",
-    name: "Coord. María López",
-    text: "Confirmando punto de encuentro...",
-    time: "14:20",
-    status: null,
-  },
-];
-
+/**
+ * Vista de chat con layout adaptativo.
+ *
+ * Móvil (<lg): patrón Gmail — muestra la lista de conversaciones por
+ * defecto; al tocar una, se abre el chat a pantalla completa con un
+ * botón "atrás" en el header que regresa a la lista. Sin este flujo,
+ * el usuario queda "atrapado" en una sola conversación sin manera de
+ * cambiar a otra.
+ *
+ * Escritorio (>=lg): layout split — lista a la izquierda, chat a la
+ * derecha, ambos visibles simultáneamente.
+ *
+ * La vista activa (lista vs chat) se gestiona con un único state
+ * `view: "list" | "chat"`. En desktop, ambos paneles se renderizan
+ * siempre y la variable `view` no afecta al render.
+ */
 export default function ChatPage() {
-  return (
-    <div className="max-w-5xl mx-auto h-[calc(100vh-4rem-5rem)] lg:h-[calc(100vh-4rem)] flex flex-col lg:flex-row gap-0 overflow-hidden">
-      {/* Sidebar — conversation list */}
-      <aside className="hidden lg:flex flex-col w-80 flex-shrink-0 border-r border-outline-variant bg-surface-container-low">
-        {/* Sidebar header */}
-        <div className="px-4 py-4 border-b border-outline-variant flex items-center justify-between">
-          <h1 className="font-bold text-base text-on-surface">Mensajes</h1>
-          <button type="button" className="w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors">
-            <span className="material-symbols-rounded text-xl" aria-hidden="true">edit_note</span>
-          </button>
-        </div>
-        {/* Search */}
-        <div className="px-3 py-2 border-b border-outline-variant">
-          <div className="relative">
-            <span className="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-base pointer-events-none" aria-hidden="true">search</span>
-            <input
-              type="search"
-              placeholder="Buscar conversación..."
-              className="w-full rounded-xl bg-surface-container pl-9 pr-4 py-2 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none"
-            />
+  const auth = useAuth();
+  // Ciudadano anónimo: sin JWT → sus propios mensajes tienen senderUserId === null.
+  // Usuario autenticado: sus propios mensajes tienen senderUserId === auth.user.id.
+  const isCitizen = !auth.token;
+  const myUserId = auth.user?.id ?? null;
+
+  const { conversations, isLoading: conversationsLoading, error: conversationsError } = useConversations();
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+
+  // En mobile, controlamos qué panel se muestra ("list" o "chat").
+  // En desktop, este state se ignora visualmente (ambos paneles siempre
+  // visibles) pero se mantiene para que el botón "atrás" tenga un
+  // destino coherente si el viewport cambia de tamaño.
+  const [view, setView] = useState<"list" | "chat">("list");
+
+  // Auto-seleccionar la primera conversación cuando llega la lista.
+  // Importante: NO usar el inicializador de useState (que solo evalúa
+  // en el primer render) porque las conversaciones se cargan de forma
+  // asíncrona tras el fetch del hook.
+  useEffect(() => {
+    if (selectedConversationId === null && conversations.length > 0) {
+      setSelectedConversationId(conversations[0].id);
+    }
+  }, [conversations, selectedConversationId]);
+
+  const {
+    messages,
+    isLoading: messagesLoading,
+    error: messagesError,
+    sendOptimistic,
+    markRead,
+    refresh: refreshMessages,
+  } = useMessages(selectedConversationId);
+  const { status: socketStatus } = useChatSocket();
+  // Ocultamos el FAB de voz por completo en el chat.
+  // El chat ya tiene su propio input + botón de envío, y el FAB
+  // flotante (fixed bottom-24 right-4) se superponía al botón
+  // "Enviar" en mobile, dejándolo inaccesible. Al salir restauramos
+  // el comportamiento por defecto del FAB.
+  const { setHideFAB } = useFabVisibility();
+  useEffect(() => {
+    setHideFAB(true);
+    return () => {
+      setHideFAB(false);
+    };
+  }, [setHideFAB]);
+
+  const [inputValue, setInputValue] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll al final
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Marcar como leídos los mensajes ajenos no leídos al abrir la conversación
+  useEffect(() => {
+    const unread = messages.filter((m) => !m.readAt && !isMe(m));
+    if (unread.length > 0) markRead(unread[unread.length - 1].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedConversationId]);
+
+  function isMe(msg: { senderUserId: string | null; sendStatus: string }) {
+    // Mensajes temporales (optimistas) siempre son míos
+    if (msg.sendStatus !== "sent") return true;
+    return isCitizen ? msg.senderUserId === null : msg.senderUserId === myUserId;
+  }
+
+  const handleSelectConversation = useCallback(
+    (id: string) => {
+      setSelectedConversationId(id);
+      setView("chat");
+    },
+    [],
+  );
+
+  const handleBackToList = useCallback(() => {
+    setView("list");
+  }, []);
+
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    const body = inputValue.trim();
+    if (!body || !selectedConversationId) return;
+    setInputValue("");
+    sendOptimistic(body);
+  };
+
+  const handleRefreshConversation = useCallback(() => {
+    void refreshMessages();
+  }, [refreshMessages]);
+
+  // Auto-cerrar la alerta de WS cerrado a los 10s. Si el socket
+  // sigue caído, el siguiente cambio de status la volverá a mostrar.
+  const [wsAlertDismissed, setWsAlertDismissed] = useState(false);
+  useEffect(() => {
+    if (socketStatus !== "closed") {
+      setWsAlertDismissed(false);
+      return;
+    }
+  }, [socketStatus]);
+
+  const showWsAlert = socketStatus === "closed" && !wsAlertDismissed;
+
+  const selectedConversation = conversations.find((c) => c.id === selectedConversationId);
+
+  // ── Estados de carga ──
+  if (conversationsLoading) {
+    return (
+      <div className="max-w-5xl mx-auto h-[calc(100vh-4rem-5rem)] lg:h-[calc(100vh-4rem)] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-on-surface-variant">
+          <div className="flex gap-1">
+            <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
           </div>
+          Cargando conversaciones...
         </div>
-        {/* List */}
+      </div>
+    );
+  }
+
+  if (conversationsError) {
+    return (
+      <div className="max-w-5xl mx-auto h-[calc(100vh-4rem-5rem)] lg:h-[calc(100vh-4rem)] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="text-6xl">⚠️</div>
+          <h2 className="text-xl font-bold text-on-surface">Error al cargar conversaciones</h2>
+          <p className="text-sm text-on-surface-variant">{conversationsError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (conversations.length === 0) {
+    return (
+      <div className="max-w-5xl mx-auto h-[calc(100vh-4rem-5rem)] lg:h-[calc(100vh-4rem)] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="text-6xl">💬</div>
+          <h2 className="text-xl font-bold text-on-surface">Sin conversaciones</h2>
+          <p className="text-sm text-on-surface-variant">
+            No tienes conversaciones activas. Crea una emergencia o acepta una para comenzar a chatear.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Vista principal ──
+  return (
+    <div className="max-w-5xl mx-auto h-[calc(100vh-4rem-5rem)] lg:h-[calc(100vh-4rem)] flex overflow-hidden">
+      {/* ── Sidebar — lista de hilos ── */}
+      <aside
+        className={[
+          // En mobile: oculto si estamos viendo un chat
+          view === "chat" ? "hidden" : "flex",
+          // En desktop (>=lg): siempre visible, ancho fijo
+          "lg:flex flex-col w-full lg:w-80 flex-shrink-0",
+          "border-r border-outline-variant bg-surface-container-low",
+        ].join(" ")}
+        aria-label="Lista de conversaciones"
+      >
+        <div className="px-4 py-4 border-b border-outline-variant">
+          <h1 className="font-bold text-base text-on-surface">Mensajes</h1>
+          <p className="text-xs text-on-surface-variant mt-0.5">
+            {conversations.length} {conversations.length === 1 ? "conversación" : "conversaciones"}
+          </p>
+        </div>
         <ul className="flex-1 overflow-y-auto divide-y divide-outline-variant" role="list">
-          {conversations.map((conv, i) => (
-            <li key={conv.id}>
-              <button
-                type="button"
-                className={`w-full flex items-start gap-3 px-4 py-3.5 hover:bg-surface-container transition-colors text-left ${i === 0 ? "bg-primary-fixed" : ""}`}
-              >
-                <div className="relative flex-shrink-0">
-                  <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center">
-                    <span className="material-symbols-rounded text-on-surface-variant text-xl" aria-hidden="true">{conv.icon}</span>
+          {conversations.map((conv) => {
+            const isActive = selectedConversationId === conv.id;
+            return (
+              <li key={conv.id}>
+                <button
+                  type="button"
+                  onClick={() => handleSelectConversation(conv.id)}
+                  className={[
+                    "w-full flex items-start gap-3 px-4 py-3.5 transition-colors text-left",
+                    "hover:bg-surface-container",
+                    "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset",
+                    isActive ? "bg-primary-fixed" : "",
+                  ].join(" ")}
+                  aria-current={isActive ? "true" : undefined}
+                >
+                  <div className="relative flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center">
+                      <span className="material-symbols-rounded text-on-surface-variant text-xl" aria-hidden="true">
+                        {conv.emergencyId ? "emergency" : "help"}
+                      </span>
+                    </div>
+                    <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-primary border-2 border-surface-container-low" />
                   </div>
-                  {conv.online && <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-primary border-2 border-surface-container-low" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="font-semibold text-sm text-on-surface truncate">{conv.name}</span>
-                    <span className="text-xs text-on-surface-variant flex-shrink-0">{conv.time}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-semibold text-sm text-on-surface truncate">
+                        {conv.emergencyId ? "Emergencia" : "Solicitud de ayuda"}
+                      </span>
+                      <span className="text-xs text-on-surface-variant flex-shrink-0">
+                        {new Date(conv.updatedAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <p className="text-xs text-on-surface-variant truncate mt-0.5">
+                      {conv.status === "open" ? "Conversación activa" : "Conversación cerrada"}
+                    </p>
                   </div>
-                  <p className="text-xs text-on-surface-variant truncate mt-0.5">{conv.lastMessage}</p>
-                </div>
-                {conv.unread > 0 && (
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary text-on-primary text-xs font-bold flex items-center justify-center">
-                    {conv.unread}
-                  </span>
-                )}
-              </button>
-            </li>
-          ))}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </aside>
 
-      {/* Chat area */}
-      <div className="flex flex-col flex-1 min-w-0">
-        {/* Chat header */}
-        <header className="px-4 py-3 border-b border-outline-variant bg-surface-container-low flex items-center gap-3">
-          <Link href="/" className="lg:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container text-on-surface-variant">
+      {/* ── Área de chat ── */}
+      <div
+        className={[
+          // En mobile: oculto si estamos viendo la lista
+          view === "list" ? "hidden" : "flex",
+          // En desktop: siempre visible
+          "lg:flex flex-col flex-1 min-w-0",
+        ].join(" ")}
+        aria-label="Conversación"
+      >
+        {/* Header */}
+        <header className="px-4 py-3 border-b border-outline-variant bg-surface-container-low flex items-center gap-3 flex-shrink-0">
+          {/* Botón "atrás" para volver a la lista en mobile */}
+          <button
+            type="button"
+            onClick={handleBackToList}
+            className="lg:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+            aria-label="Volver a la lista de conversaciones"
+          >
             <span className="material-symbols-rounded text-xl" aria-hidden="true">arrow_back</span>
-          </Link>
-          <div className="relative flex-shrink-0">
-            <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center">
-              <span className="material-symbols-rounded text-on-surface-variant text-xl" aria-hidden="true">person</span>
-            </div>
-            <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-primary border-2 border-surface-container-low" />
+          </button>
+          <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0">
+            <span className="material-symbols-rounded text-on-surface-variant text-xl" aria-hidden="true">
+              {selectedConversation?.emergencyId ? "emergency" : "help"}
+            </span>
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="font-bold text-sm text-on-surface">Coord. María López</h2>
-            <p className="text-xs text-primary">En línea</p>
+            <h2 className="font-bold text-sm text-on-surface truncate">
+              {selectedConversation?.emergencyId ? "Emergencia" : "Solicitud de ayuda"}
+            </h2>
+            <p className={`text-xs ${selectedConversation?.status === "open" ? "text-primary" : "text-error"}`}>
+              {selectedConversation?.status === "open" ? "Conversación activa" : "Conversación cerrada"}
+            </p>
           </div>
-          <div className="flex items-center gap-1">
-            <button type="button" className="w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors" aria-label="Llamada de voz">
-              <span className="material-symbols-rounded text-xl" aria-hidden="true">call</span>
-            </button>
-            <button type="button" className="w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors" aria-label="Videollamada">
-              <span className="material-symbols-rounded text-xl" aria-hidden="true">videocam</span>
-            </button>
-            <button type="button" className="w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors" aria-label="Ver perfil">
-              <span className="material-symbols-rounded text-xl" aria-hidden="true">person</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleRefreshConversation}
+            disabled={messagesLoading}
+            className="w-9 h-9 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Recargar conversación"
+            title="Recargar conversación"
+          >
+            <span className={`material-symbols-rounded text-xl ${messagesLoading ? "animate-spin" : ""}`} aria-hidden="true">
+              refresh
+            </span>
+          </button>
         </header>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 bg-background">
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`flex flex-col max-w-[78%] ${msg.from === "me" ? "ml-auto items-end" : "items-start"}`}
+        {showWsAlert && (
+          <div className="flex items-center justify-between gap-2 px-3 py-1 bg-error-container text-on-error-container text-xs" role="status">
+            <span className="truncate">Conexión en tiempo real interrumpida.</span>
+            <button
+              type="button"
+              onClick={handleRefreshConversation}
+              className="flex-shrink-0 font-semibold underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <div
-                className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                  msg.from === "me"
-                    ? "bg-primary text-on-primary rounded-br-sm"
-                    : "bg-surface-container text-on-surface rounded-bl-sm"
-                }`}
-              >
-                {msg.text}
-              </div>
-              <div className="flex items-center gap-1.5 mt-1 px-1">
-                <span className="text-xs text-on-surface-variant">{msg.time}</span>
-                {msg.status && (
-                  <span className="text-xs text-on-surface-variant flex items-center gap-0.5">
-                    <span className="material-symbols-rounded text-xs" aria-hidden="true">done_all</span>
-                    {msg.status}
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-          {/* Typing indicator */}
-          <div className="flex items-center gap-2 text-xs text-on-surface-variant">
-            <div className="flex gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-on-surface-variant animate-bounce" style={{ animationDelay: "0ms" }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-on-surface-variant animate-bounce" style={{ animationDelay: "150ms" }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-on-surface-variant animate-bounce" style={{ animationDelay: "300ms" }} />
-            </div>
-            María está escribiendo...
+              Recargar
+            </button>
           </div>
+        )}
+
+        {/* Mensajes */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 bg-background">
+          {messagesLoading && messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-on-surface-variant">Cargando mensajes...</div>
+          ) : messagesError ? (
+            <div className="text-center text-error">Error al cargar mensajes</div>
+          ) : (
+            messages.map((msg) => {
+              const mine = isMe(msg);
+              return (
+                <div key={msg.id} className={`flex flex-col max-w-[78%] ${mine ? "ml-auto items-end" : "items-start"}`}>
+                  <div
+                    className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                      mine ? "bg-primary text-on-primary rounded-br-sm" : "bg-surface-container text-on-surface rounded-bl-sm"
+                    } ${msg.sendStatus === "failed" ? "opacity-70" : ""}`}
+                  >
+                    {msg.body}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1 px-1">
+                    <span className="text-xs text-on-surface-variant">
+                      {new Date(msg.createdAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    {msg.sendStatus === "sending" && (
+                      <span className="text-xs text-on-surface-variant italic">Enviando...</span>
+                    )}
+                    {msg.sendStatus === "failed" && (
+                      <button
+                        type="button"
+                        onClick={() => sendOptimistic(msg.body)}
+                        className="text-xs text-error underline hover:no-underline"
+                      >
+                        Falló — reintentar
+                      </button>
+                    )}
+                    {msg.sendStatus === "sent" && msg.readAt && mine && (
+                      <span className="text-xs text-on-surface-variant flex items-center gap-0.5">
+                        <span className="material-symbols-rounded text-xs" aria-hidden="true">done_all</span>
+                        Leído
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* Input bar */}
-        <div className="px-4 py-3 border-t border-outline-variant bg-surface-container-low">
-          <p className="text-xs text-on-surface-variant text-center mb-2">Presiona Enter para enviar o usa el dictado por voz</p>
-          <form className="flex items-end gap-2">
-            <button type="button" className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors" aria-label="Adjuntar archivo">
-              <span className="material-symbols-rounded text-xl" aria-hidden="true">add_circle</span>
-            </button>
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                placeholder="Escribe un mensaje..."
-                className="w-full rounded-2xl border border-outline-variant bg-surface-container px-4 py-2.5 pr-12 text-sm text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none transition-colors"
-              />
+        {/* Input */}
+        {selectedConversation?.status === "open" ? (
+          <div className="px-4 py-2 border-t border-outline-variant bg-surface-container-low">
+            <form onSubmit={handleSend} className="flex items-end gap-2">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Escribe un mensaje..."
+                  className="w-full rounded-2xl border border-outline-variant bg-surface-container px-4 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none transition-colors"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={!inputValue.trim()}
+                className="flex-shrink-0 w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Enviar mensaje"
+              >
+                <span className="material-symbols-rounded text-xl" aria-hidden="true">send</span>
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="px-4 py-3 border-t border-outline-variant bg-surface-container-low">
+            <div className="text-center text-sm text-on-surface-variant">
+              🔒 Esta conversación está cerrada. No se pueden enviar nuevos mensajes.
             </div>
-            <button type="button" className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors" aria-label="Dictado por voz">
-              <span className="material-symbols-rounded text-xl" aria-hidden="true">mic</span>
-            </button>
-            <button type="submit" className="flex-shrink-0 w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary hover:opacity-90 transition-opacity" aria-label="Enviar mensaje">
-              <span className="material-symbols-rounded text-xl" aria-hidden="true">send</span>
-            </button>
-          </form>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

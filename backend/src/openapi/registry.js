@@ -161,6 +161,28 @@ const AttendeeResponse = z.object({
 }).openapi({ description: "Registro de un usuario atendiendo una emergencia o solicitud" });
 
 // ---------------------------------------------------------------------------
+// Schemas para conversaciones (chat)
+// ---------------------------------------------------------------------------
+
+const ConversationResponse = z.object({
+  id: z.string().uuid(),
+  emergencyId: z.string().uuid().nullable(),
+  helpRequestId: z.string().uuid().nullable(),
+  status: z.enum(["active", "closed"]),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+const MessageResponse = z.object({
+  id: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  senderUserId: z.string().uuid().nullable(),
+  body: z.string(),
+  createdAt: z.string().datetime(),
+  readAt: z.string().datetime().nullable(),
+});
+
+// ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
 
@@ -1104,6 +1126,221 @@ registry.registerPath({
     },
     403: {
       description: "Rol no autorizado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+// =========================================================================
+// CONVERSATIONS (CHAT)
+// =========================================================================
+
+registry.registerPath({
+  method: "get",
+  path: "/api/conversations",
+  summary: "Listar conversaciones del usuario autenticado",
+  description: [
+    "Retorna todas las conversaciones donde el usuario participa como attended_by.",
+    "Requiere autenticación JWT.",
+  ].join(" "),
+  tags: ["Conversations"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      description: "Lista de conversaciones",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.array(ConversationResponse),
+          }),
+        },
+      },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/conversations/mine",
+  summary: "Listar conversaciones del ciudadano anónimo",
+  description: [
+    "Retorna las conversaciones asociadas a la emergencia del ciudadano.",
+    "Requiere token de ciudadano en query param ?t= o header X-Citizen-Token.",
+  ].join(" "),
+  tags: ["Conversations"],
+  parameters: [
+    {
+      name: "t",
+      in: "query",
+      required: false,
+      description: "Token de acceso del ciudadano (alternativa al header)",
+      schema: { type: "string" },
+    },
+  ],
+  responses: {
+    200: {
+      description: "Lista de conversaciones del ciudadano",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.array(ConversationResponse),
+          }),
+        },
+      },
+    },
+    401: {
+      description: "Token inválido o faltante",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/conversations/{id}/messages",
+  summary: "Listar mensajes de una conversación",
+  description: [
+    "Retorna los mensajes de una conversación específica con paginación por cursor.",
+    "Acepta JWT o token de ciudadano. Valida pertenencia a la conversación.",
+  ].join(" "),
+  tags: ["Conversations"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID de la conversación",
+      }),
+    }),
+    query: z.object({
+      cursor: z.string().uuid().optional().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440001",
+        description: "UUID del mensaje desde el cual paginar (exclusivo)",
+      }),
+      limit: z.number().int().min(1).max(100).default(50).openapi({
+        example: 50,
+        description: "Cantidad máxima de mensajes a retornar (1-100, default 50)",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Lista de mensajes",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.array(MessageResponse),
+          }),
+        },
+      },
+    },
+    400: {
+      description: "Error de validación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "No tienes acceso a esta conversación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/conversations/{id}/messages",
+  summary: "Enviar mensaje a una conversación",
+  description: [
+    "Envía un nuevo mensaje a una conversación específica.",
+    "Acepta JWT o token de ciudadano. Valida pertenencia a la conversación.",
+    "El senderUserId se obtiene del JWT o es null si es ciudadano anónimo.",
+  ].join(" "),
+  tags: ["Conversations"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID de la conversación",
+      }),
+    }),
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            body: z.string().min(1).max(5000).openapi({
+              example: "Hola, ya voy en camino",
+              description: "Texto del mensaje (1-5000 caracteres)",
+            }),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: "Mensaje enviado exitosamente",
+      content: {
+        "application/json": {
+          schema: z.object({ data: MessageResponse }),
+        },
+      },
+    },
+    400: {
+      description: "Error de validación o conversación cerrada",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "No tienes acceso a esta conversación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/api/messages/{id}/read",
+  summary: "Marcar mensaje como leído",
+  description: [
+    "Marca un mensaje específico como leído.",
+    "Acepta JWT o token de ciudadano.",
+  ].join(" "),
+  tags: ["Messages"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID del mensaje",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Mensaje marcado como leído",
+      content: {
+        "application/json": {
+          schema: z.object({ data: MessageResponse }),
+        },
+      },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    404: {
+      description: "Mensaje no encontrado o ya marcado como leído",
       content: { "application/json": { schema: ErrorResponse } },
     },
   },

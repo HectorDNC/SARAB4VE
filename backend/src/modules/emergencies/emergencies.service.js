@@ -1,7 +1,29 @@
 /**
  * Servicio — lógica de negocio para el dominio de emergencias.
  */
+const crypto = require("crypto");
+const bcrypt = require("bcrypt");
 const db = require("../../db");
+
+/** Costo del hash bcrypt para access tokens. */
+const BCRYPT_ROUNDS = 10;
+
+/**
+ * Genera un access token aleatorio para ciudadanos anónimos.
+ * @returns {string} token de 32 bytes en hex
+ */
+function generateAccessToken() {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+/**
+ * Hashea un access token usando bcrypt.
+ * @param {string} token — token en texto plano
+ * @returns {Promise<string>} hash bcrypt
+ */
+async function hashAccessToken(token) {
+  return bcrypt.hash(token, BCRYPT_ROUNDS);
+}
 
 /**
  * Normaliza el payload de creación (camelCase → snake_case interno).
@@ -31,11 +53,17 @@ function normalizeCreateEmergency(payload) {
 
 /**
  * Inserta una nueva emergencia en la base de datos.
+ * Genera automáticamente un access_token para que el ciudadano anónimo pueda
+ * acceder al chat sin necesidad de JWT.
  * @param {Object} payload — ya validado
- * @returns {Promise<Object>} fila insertada
+ * @returns {Promise<Object>} fila insertada + accessToken en texto plano
  */
 async function createEmergency(payload) {
   const data = normalizeCreateEmergency(payload);
+
+  // Generar access token para ciudadano anónimo
+  const accessToken = generateAccessToken();
+  const accessTokenHash = await hashAccessToken(accessToken);
 
   const result = await db.query(
     `
@@ -53,9 +81,10 @@ async function createEmergency(payload) {
         longitude,
         urgency,
         need_type,
-        description
+        description,
+        access_token_hash
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING id, requester_name, is_injured, cannot_move, disability_type,
                 communication_mode, disability_subcategory, extra_info,
                 voice_note_url, voice_note_duration_sec, latitude, longitude,
@@ -77,10 +106,15 @@ async function createEmergency(payload) {
       data.urgency,
       data.needType,
       data.description,
+      accessTokenHash,
     ],
   );
 
-  return result.rows[0];
+  const emergency = result.rows[0];
+
+  // Retornar la emergencia + el access token en texto plano (solo una vez)
+  // El ciudadano usará este token para acceder al chat via ?t=<token> o header X-Citizen-Token
+  return { ...emergency, accessToken };
 }
 
 /**
@@ -123,6 +157,8 @@ async function getProcessingStatus(id, repository) {
 }
 
 module.exports = {
+  generateAccessToken,
+  hashAccessToken,
   normalizeCreateEmergency,
   createEmergency,
   listEmergencies,

@@ -6,6 +6,7 @@ const authRouter = require("./modules/auth/auth.routes");
 const usersRouter = require("./modules/users/users.routes");
 const emergencyAttendeesRouter = require("./modules/emergencyAttendees/emergencyAttendees.routes");
 const helpRequestAttendeesRouter = require("./modules/helpRequestAttendees/helpRequestAttendees.routes");
+const { conversationsRoutes, messagesRoutes } = require("./modules/conversations");
 const { nodeEnv } = require("./config");
 
 const app = express();
@@ -23,6 +24,10 @@ app.use("/api/help-requests", helpRequestsRouter);
 app.use("/api/emergencies", emergenciesRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
+
+// Chat module
+app.use("/api/conversations", conversationsRoutes);
+app.use("/api/messages", messagesRoutes);
 
 // Rutas anidadas — attendees
 app.use("/api/emergencies/:emergencyId/attendees", emergencyAttendeesRouter);

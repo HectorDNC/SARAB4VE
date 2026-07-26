@@ -217,6 +217,7 @@ const EmergenciaVozSchema = z.object({
 // ---------------------------------------------------------------------------
 
 const db = require("../../db");
+const { generateAccessToken, hashAccessToken } = require("./emergencies.service");
 const { processVoiceEmergency } = require("./emergencies.processor");
 
 /**
@@ -254,6 +255,10 @@ async function createEmergencyFromVoice(payload, audioFile) {
   const transcript = payload.transcript?.trim() || null;
   const transcriptMethod = transcript ? "cliente-webspeech" : null;
 
+  // ── Generar access token para ciudadano anónimo ──
+  const accessToken = generateAccessToken();
+  const accessTokenHash = await hashAccessToken(accessToken);
+
   // ── INSERT inmediato ──
   const result = await db.query(
     `INSERT INTO emergencies (
@@ -262,9 +267,9 @@ async function createEmergencyFromVoice(payload, audioFile) {
         voice_note_duration_sec,
         latitude, longitude, urgency, need_type, description,
         report_origin, transcript, transcript_method,
-        processing_status
+        processing_status, access_token_hash
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING
         id, requester_name AS "requesterName", is_injured AS "isInjured",
         cannot_move AS "cannotMove", disability_type AS "disabilityType",
@@ -299,10 +304,14 @@ async function createEmergencyFromVoice(payload, audioFile) {
       transcript,
       transcriptMethod,
       "recibida", // processing_status
+      accessTokenHash,
     ],
   );
 
   const emergency = result.rows[0];
+
+  // Adjuntar el access token en texto plano para que el frontend lo guarde
+  emergency.accessToken = accessToken;
 
   // ── Lanzar procesamiento asíncrono en background ──
   // IMPORTANTE: No esperar la promesa. El procesamiento corre en background.

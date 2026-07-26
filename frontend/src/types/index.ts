@@ -258,3 +258,39 @@ export interface WebSocketMessage {
   data?: EmergencyProcessingUpdate;
   timestamp: string;
 }
+
+// ── Módulo de Chat (Conversations + Messages) ───────────────────────────────
+
+export type ConversationStatus = "open" | "closed";
+
+export interface Conversation {
+  id: string;
+  emergencyId: string | null;
+  helpRequestId: string | null;
+  attendedBy: string;
+  status: ConversationStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderUserId: string | null; // null = ciudadano anónimo
+  body: string;
+  createdAt: string;
+  readAt: string | null;
+}
+
+/** Estado de envío del mensaje en el cliente */
+export type MessageSendStatus = "sending" | "sent" | "failed";
+
+export interface MessageWithStatus extends Message {
+  sendStatus: MessageSendStatus;
+}
+
+export interface WebSocketChatMessage {
+  type: "new_message" | "message_read";
+  conversationId: string;
+  message: Message;
+}

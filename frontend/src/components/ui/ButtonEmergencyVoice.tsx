@@ -554,6 +554,18 @@ export default function ButtonEmergencyVoice() {
 
       console.log('[EmergencyVoice] Respuesta inicial:', response);
 
+      // Guardar accessToken + emergencyId en localStorage para que el ciudadano acceda al chat
+      if (response?.data?.accessToken && response?.data?.id) {
+        localStorage.setItem("emergencyAccessToken", response.data.accessToken);
+        localStorage.setItem("emergencyId", response.data.id);
+        // Notificar al ChatSocketProvider (en esta pestaña) para que
+        // establezca la conexión WS. Sin este evento, el provider
+        // nunca se conecta porque al montar no había token.
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("sara:auth-token-changed"));
+        }
+      }
+
       // Guardar la respuesta inicial y el ID para WebSocket
       setServerResponse(response);
       setActiveEmergencyId(response.data.id);
@@ -1024,19 +1036,20 @@ export default function ButtonEmergencyVoice() {
             )}
 
             {/* Acciones */}
-            <div className="flex gap-3 pt-2">
+            <div className="w-full md:w-[70%] mx-auto grid grid-cols-6 gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleClosePreview}
-                className="flex-1 px-4 py-3 rounded-xl border border-outline text-on-surface hover:bg-surface-container transition-colors font-medium"
+                className="flex-1 col-span-2 px-4 py-3 rounded-xl border border-outline text-on-surface hover:bg-surface-container transition-colors font-medium"
               >
                 Cerrar
               </button>
               <a
-                href={`/mapa?selected=${encodeURIComponent(serverResponse.data.id)}`}
-                className="flex-1 px-4 py-3 rounded-xl bg-primary text-on-primary hover:bg-primary/90 transition-colors font-bold text-center"
+                href="/chat"
+                className="flex-1 col-span-4 px-4 py-3 rounded-xl bg-primary text-on-primary hover:bg-primary/90 transition-colors font-bold text-center inline-flex items-center justify-center gap-2"
               >
-                Ver en el mapa
+                <span className="material-symbols-rounded" aria-hidden="true">chat</span>
+                Abrir chat
               </a>
             </div>
           </div>
