@@ -58,16 +58,18 @@ export default function ChatPage() {
     refresh: refreshMessages,
   } = useMessages(selectedConversationId);
   const { status: socketStatus } = useChatSocket();
-  // Minimizamos el FAB de voz al entrar al chat, igual que en /sos y /request.
-  // El chat tiene su propio input de mensaje, por lo que el FAB no debe
-  // estorbar con su tamaño completo.
-  const { setFormFocused } = useFabVisibility();
+  // Ocultamos el FAB de voz por completo en el chat.
+  // El chat ya tiene su propio input + botón de envío, y el FAB
+  // flotante (fixed bottom-24 right-4) se superponía al botón
+  // "Enviar" en mobile, dejándolo inaccesible. Al salir restauramos
+  // el comportamiento por defecto del FAB.
+  const { setHideFAB } = useFabVisibility();
   useEffect(() => {
-    setFormFocused(true);
+    setHideFAB(true);
     return () => {
-      setFormFocused(false);
+      setHideFAB(false);
     };
-  }, [setFormFocused]);
+  }, [setHideFAB]);
 
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
