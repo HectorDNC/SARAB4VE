@@ -1,11 +1,26 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useConversations } from "@/hooks/useConversations";
 import { useMessages } from "@/hooks/useMessages";
 
+/**
+ * Vista de chat con layout adaptativo.
+ *
+ * Móvil (<lg): patrón Gmail — muestra la lista de conversaciones por
+ * defecto; al tocar una, se abre el chat a pantalla completa con un
+ * botón "atrás" en el header que regresa a la lista. Sin este flujo,
+ * el usuario queda "atrapado" en una sola conversación sin manera de
+ * cambiar a otra.
+ *
+ * Escritorio (>=lg): layout split — lista a la izquierda, chat a la
+ * derecha, ambos visibles simultáneamente.
+ *
+ * La vista activa (lista vs chat) se gestiona con un único state
+ * `view: "list" | "chat"`. En desktop, ambos paneles se renderizan
+ * siempre y la variable `view` no afecta al render.
+ */
 export default function ChatPage() {
   const auth = useAuth();
   // Ciudadano anónimo: sin JWT → sus propios mensajes tienen senderUserId === null.
@@ -14,9 +29,23 @@ export default function ChatPage() {
   const myUserId = auth.user?.id ?? null;
 
   const { conversations, isLoading: conversationsLoading, error: conversationsError } = useConversations();
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(
-    conversations.length > 0 ? conversations[0].id : null,
-  );
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+
+  // En mobile, controlamos qué panel se muestra ("list" o "chat").
+  // En desktop, este state se ignora visualmente (ambos paneles siempre
+  // visibles) pero se mantiene para que el botón "atrás" tenga un
+  // destino coherente si el viewport cambia de tamaño.
+  const [view, setView] = useState<"list" | "chat">("list");
+
+  // Auto-seleccionar la primera conversación cuando llega la lista.
+  // Importante: NO usar el inicializador de useState (que solo evalúa
+  // en el primer render) porque las conversaciones se cargan de forma
+  // asíncrona tras el fetch del hook.
+  useEffect(() => {
+    if (selectedConversationId === null && conversations.length > 0) {
+      setSelectedConversationId(conversations[0].id);
+    }
+  }, [conversations, selectedConversationId]);
 
   const {
     messages,
@@ -46,6 +75,18 @@ export default function ChatPage() {
     if (msg.sendStatus !== "sent") return true;
     return isCitizen ? msg.senderUserId === null : msg.senderUserId === myUserId;
   }
+
+  const handleSelectConversation = useCallback(
+    (id: string) => {
+      setSelectedConversationId(id);
+      setView("chat");
+    },
+    [],
+  );
+
+  const handleBackToList = useCallback(() => {
+    setView("list");
+  }, []);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,63 +142,96 @@ export default function ChatPage() {
 
   // ── Vista principal ──
   return (
-    <div className="max-w-5xl mx-auto h-[calc(100vh-4rem-5rem)] lg:h-[calc(100vh-4rem)] flex flex-col lg:flex-row gap-0 overflow-hidden">
-      {/* Sidebar — lista de hilos */}
-      <aside className="hidden lg:flex flex-col w-80 flex-shrink-0 border-r border-outline-variant bg-surface-container-low">
+    <div className="max-w-5xl mx-auto h-[calc(100vh-4rem-5rem)] lg:h-[calc(100vh-4rem)] flex overflow-hidden">
+      {/* ── Sidebar — lista de hilos ── */}
+      <aside
+        className={[
+          // En mobile: oculto si estamos viendo un chat
+          view === "chat" ? "hidden" : "flex",
+          // En desktop (>=lg): siempre visible, ancho fijo
+          "lg:flex flex-col w-full lg:w-80 flex-shrink-0",
+          "border-r border-outline-variant bg-surface-container-low",
+        ].join(" ")}
+        aria-label="Lista de conversaciones"
+      >
         <div className="px-4 py-4 border-b border-outline-variant">
           <h1 className="font-bold text-base text-on-surface">Mensajes</h1>
+          <p className="text-xs text-on-surface-variant mt-0.5">
+            {conversations.length} {conversations.length === 1 ? "conversación" : "conversaciones"}
+          </p>
         </div>
         <ul className="flex-1 overflow-y-auto divide-y divide-outline-variant" role="list">
-          {conversations.map((conv) => (
-            <li key={conv.id}>
-              <button
-                type="button"
-                onClick={() => setSelectedConversationId(conv.id)}
-                className={`w-full flex items-start gap-3 px-4 py-3.5 hover:bg-surface-container transition-colors text-left ${
-                  selectedConversationId === conv.id ? "bg-primary-fixed" : ""
-                }`}
-              >
-                <div className="relative flex-shrink-0">
-                  <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center">
-                    <span className="material-symbols-rounded text-on-surface-variant text-xl" aria-hidden="true">
-                      {conv.emergencyId ? "emergency" : "help"}
-                    </span>
+          {conversations.map((conv) => {
+            const isActive = selectedConversationId === conv.id;
+            return (
+              <li key={conv.id}>
+                <button
+                  type="button"
+                  onClick={() => handleSelectConversation(conv.id)}
+                  className={[
+                    "w-full flex items-start gap-3 px-4 py-3.5 transition-colors text-left",
+                    "hover:bg-surface-container",
+                    "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset",
+                    isActive ? "bg-primary-fixed" : "",
+                  ].join(" ")}
+                  aria-current={isActive ? "true" : undefined}
+                >
+                  <div className="relative flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center">
+                      <span className="material-symbols-rounded text-on-surface-variant text-xl" aria-hidden="true">
+                        {conv.emergencyId ? "emergency" : "help"}
+                      </span>
+                    </div>
+                    <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-primary border-2 border-surface-container-low" />
                   </div>
-                  <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-primary border-2 border-surface-container-low" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="font-semibold text-sm text-on-surface truncate">
-                      {conv.emergencyId ? "Emergencia" : "Solicitud de ayuda"}
-                    </span>
-                    <span className="text-xs text-on-surface-variant flex-shrink-0">
-                      {new Date(conv.updatedAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
-                    </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-semibold text-sm text-on-surface truncate">
+                        {conv.emergencyId ? "Emergencia" : "Solicitud de ayuda"}
+                      </span>
+                      <span className="text-xs text-on-surface-variant flex-shrink-0">
+                        {new Date(conv.updatedAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <p className="text-xs text-on-surface-variant truncate mt-0.5">
+                      {conv.status === "open" ? "Conversación activa" : "Conversación cerrada"}
+                    </p>
                   </div>
-                  <p className="text-xs text-on-surface-variant truncate mt-0.5">
-                    {conv.status === "open" ? "Conversación activa" : "Conversación cerrada"}
-                  </p>
-                </div>
-              </button>
-            </li>
-          ))}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </aside>
 
-      {/* Área de chat */}
-      <div className="flex flex-col flex-1 min-w-0">
+      {/* ── Área de chat ── */}
+      <div
+        className={[
+          // En mobile: oculto si estamos viendo la lista
+          view === "list" ? "hidden" : "flex",
+          // En desktop: siempre visible
+          "lg:flex flex-col flex-1 min-w-0",
+        ].join(" ")}
+        aria-label="Conversación"
+      >
         {/* Header */}
-        <header className="px-4 py-3 border-b border-outline-variant bg-surface-container-low flex items-center gap-3">
-          <Link href="/" className="lg:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container text-on-surface-variant">
+        <header className="px-4 py-3 border-b border-outline-variant bg-surface-container-low flex items-center gap-3 flex-shrink-0">
+          {/* Botón "atrás" para volver a la lista en mobile */}
+          <button
+            type="button"
+            onClick={handleBackToList}
+            className="lg:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+            aria-label="Volver a la lista de conversaciones"
+          >
             <span className="material-symbols-rounded text-xl" aria-hidden="true">arrow_back</span>
-          </Link>
+          </button>
           <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0">
             <span className="material-symbols-rounded text-on-surface-variant text-xl" aria-hidden="true">
               {selectedConversation?.emergencyId ? "emergency" : "help"}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="font-bold text-sm text-on-surface">
+            <h2 className="font-bold text-sm text-on-surface truncate">
               {selectedConversation?.emergencyId ? "Emergencia" : "Solicitud de ayuda"}
             </h2>
             <p className={`text-xs ${selectedConversation?.status === "open" ? "text-primary" : "text-error"}`}>

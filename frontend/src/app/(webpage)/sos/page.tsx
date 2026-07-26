@@ -266,6 +266,12 @@ export default function SOSFlowPage() {
       if (response?.data?.accessToken && response?.data?.id) {
         localStorage.setItem("emergencyAccessToken", response.data.accessToken);
         localStorage.setItem("emergencyId", response.data.id);
+        // Notificar al ChatSocketProvider (en esta pestaña) para que
+        // establezca la conexión WS. Sin este evento, el provider
+        // nunca se conecta porque al montar no había token.
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("sara:auth-token-changed"));
+        }
       }
 
       setSent(true);

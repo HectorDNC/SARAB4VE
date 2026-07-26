@@ -20,6 +20,8 @@ interface ChatSocketContextValue {
   subscribe: (conversationId: string) => () => void;
   /** Registra handler global de mensajes. */
   onMessage: (handler: MessageHandler) => () => void;
+  /** Fuerza una reconexión. Útil tras login/guardado de token en la misma pestaña. */
+  forceReconnect: () => void;
 }
 
 // ── Contexto ─────────────────────────────────────────────────────────────────
@@ -99,6 +101,23 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
         console.log("[ChatWS] Conectado");
         setStatus("open");
         backoffRef.current = 1000; // Reset backoff
+
+        // Re-suscribirse automáticamente a todas las conversaciones
+        // para las que tenemos un refCount > 0. Esto cubre el caso de
+        // reconexión tras cambio de token o tras una desconexión.
+        for (const [conversationId, refCount] of subscriptionsRef.current.entries()) {
+          if (refCount > 0) {
+            try {
+              ws.send(JSON.stringify({
+                type: "subscribe_conversation",
+                conversationId,
+              }));
+              console.log(`[ChatWS] Re-suscrito a conversación ${conversationId}`);
+            } catch (err) {
+              console.error("[ChatWS] Error re-suscribiendo:", err);
+            }
+          }
+        }
       };
 
       ws.onclose = (event) => {
@@ -117,7 +136,9 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
 
       ws.onerror = (err) => {
         console.error("[ChatWS] Error:", err);
-        ws.close(1011, "Error de conexión");
+        // Usar 1000 (cierre normal) para evitar InvalidAccessError,
+        // ya que 1011 no es un código válido en navegadores.
+        try { ws.close(1000, "Error de conexión"); } catch (_) { /* noop */ }
       };
 
       ws.onmessage = (event) => {
@@ -134,11 +155,57 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     }
   }, [getAuthToken]);
 
-  // Conectar al montar
+  // Conectar al montar y reaccionar a cambios en el token
   useEffect(() => {
     connect();
 
+    // ── Reconectar cuando aparezca un token nuevo ──
+    // Caso típico: usuario crea una emergencia por voz → se guarda
+    // `emergencyAccessToken` en localStorage. Sin este listener el WS
+    // nunca se conecta porque al montar no había token.
+    const onStorage = (event: StorageEvent) => {
+      if (
+        event.key === "emergencyAccessToken" ||
+        event.key === "token" ||
+        event.key === null // clear() también dispara con key=null
+      ) {
+        console.log("[ChatWS] Cambio en localStorage, reconectando…", event.key);
+        if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
+        }
+        if (wsRef.current) {
+          try { wsRef.current.close(1000, "Reconectando tras cambio de token"); } catch (_) { /* noop */ }
+          wsRef.current = null;
+        }
+        backoffRef.current = 1000;
+        connect();
+      }
+    };
+    window.addEventListener("storage", onStorage);
+
+    // ── Evento custom en la misma pestaña ──
+    // Disparado por ButtonEmergencyVoice / sos/page cuando guardan
+    // el accessToken. El evento `storage` solo se dispara en otras
+    // pestañas, así que necesitamos este canal adicional.
+    const onAuthTokenChanged = () => {
+      console.log("[ChatWS] sara:auth-token-changed, reconectando…");
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+      if (wsRef.current) {
+        try { wsRef.current.close(1000, "Reconectando tras cambio de token"); } catch (_) { /* noop */ }
+        wsRef.current = null;
+      }
+      backoffRef.current = 1000;
+      connect();
+    };
+    window.addEventListener("sara:auth-token-changed", onAuthTokenChanged);
+
     return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("sara:auth-token-changed", onAuthTokenChanged);
       // Cleanup: cerrar conexión intencionalmente
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
@@ -151,22 +218,28 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
 
   // Suscribirse a una conversación
   const subscribe = useCallback((conversationId: string) => {
-    const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      console.warn("[ChatWS] No se puede suscribir, socket no está abierto");
-      return () => {};
-    }
-
-    // Incrementar refCount
+    // Incrementar refCount aunque el socket no esté abierto todavía.
+    // Cuando (re)conecte, onopen reenviará TODAS las suscripciones
+    // pendientes iterando sobre subscriptionsRef.
     const currentCount = subscriptionsRef.current.get(conversationId) || 0;
     subscriptionsRef.current.set(conversationId, currentCount + 1);
 
-    // Enviar suscripción solo si es la primera vez
-    if (currentCount === 0) {
-      ws.send(JSON.stringify({
-        type: "subscribe_conversation",
+    // Intentar enviar la suscripción inmediatamente si el socket está abierto
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN && currentCount === 0) {
+      try {
+        ws.send(JSON.stringify({
+          type: "subscribe_conversation",
+          conversationId,
+        }));
+      } catch (err) {
+        console.error("[ChatWS] Error al suscribir:", err);
+      }
+    } else if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.warn(
+        "[ChatWS] Socket no abierto aún, suscripción diferida para",
         conversationId,
-      }));
+      );
     }
 
     // Cleanup: desuscribir
@@ -176,10 +249,17 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
 
       if (newCount <= 0) {
         subscriptionsRef.current.delete(conversationId);
-        ws.send(JSON.stringify({
-          type: "unsubscribe_conversation",
-          conversationId,
-        }));
+        const currentWs = wsRef.current;
+        if (currentWs && currentWs.readyState === WebSocket.OPEN) {
+          try {
+            currentWs.send(JSON.stringify({
+              type: "unsubscribe_conversation",
+              conversationId,
+            }));
+          } catch (err) {
+            console.error("[ChatWS] Error al desuscribir:", err);
+          }
+        }
       } else {
         subscriptionsRef.current.set(conversationId, newCount);
       }
@@ -194,8 +274,23 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
+  // Forzar reconexión (p. ej. tras guardar token en la misma pestaña)
+  const forceReconnect = useCallback(() => {
+    console.log("[ChatWS] forceReconnect solicitado");
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    if (wsRef.current) {
+      try { wsRef.current.close(1000, "Reconexión forzada"); } catch (_) { /* noop */ }
+      wsRef.current = null;
+    }
+    backoffRef.current = 1000;
+    connect();
+  }, [connect]);
+
   return (
-    <ChatSocketContext.Provider value={{ status, subscribe, onMessage }}>
+    <ChatSocketContext.Provider value={{ status, subscribe, onMessage, forceReconnect }}>
       {children}
     </ChatSocketContext.Provider>
   );
