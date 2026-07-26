@@ -29,7 +29,7 @@ export function useMessages(conversationId: string | null): UseMessagesReturn {
   const [hasMore, setHasMore] = useState(true);
   const cursorRef = useRef<string | null>(null);
   const tempIdCounter = useRef(0);
-  const { subscribe, onMessage } = useChatSocket();
+  const { subscribe, onMessage, status: socketStatus } = useChatSocket();
 
   // ── Fetch inicial ──
   const fetchMessages = useCallback(async () => {
@@ -152,6 +152,18 @@ export function useMessages(conversationId: string | null): UseMessagesReturn {
     const removeHandler = onMessage(handler);
     return () => { unsubscribe(); removeHandler(); };
   }, [conversationId, subscribe, onMessage]);
+
+  // Si el WebSocket se cierra, vuelve a consultar la conversación para no
+  // dejar la vista desactualizada mientras el provider intenta reconectar.
+  const previousSocketStatus = useRef(socketStatus);
+  useEffect(() => {
+    const wasConnected = previousSocketStatus.current === "open";
+    previousSocketStatus.current = socketStatus;
+
+    if (conversationId && wasConnected && socketStatus === "closed") {
+      void fetchMessages();
+    }
+  }, [conversationId, fetchMessages, socketStatus]);
 
   // ── Efecto al cambiar conversación ──
   useEffect(() => {

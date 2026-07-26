@@ -48,7 +48,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
   const backoffRef = useRef(1000); // 1s inicial
-  const MAX_BACKOFF = 30000; // 30s máximo
+  const MAX_BACKOFF = 15000; // 15s máximo
   const handlersRef = useRef<Set<MessageHandler>>(new Set());
   const subscriptionsRef = useRef<Map<string, number>>(new Map()); // conversationId -> refCount
 

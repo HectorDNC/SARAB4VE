@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useConversations } from "@/hooks/useConversations";
 import { useMessages } from "@/hooks/useMessages";
+import { useChatSocket } from "@/providers/ChatSocketProvider";
+import { useFabVisibility } from "@/providers/FabVisibilityProvider";
 
 /**
  * Vista de chat con layout adaptativo.
@@ -53,7 +55,19 @@ export default function ChatPage() {
     error: messagesError,
     sendOptimistic,
     markRead,
+    refresh: refreshMessages,
   } = useMessages(selectedConversationId);
+  const { status: socketStatus } = useChatSocket();
+  // Minimizamos el FAB de voz al entrar al chat, igual que en /sos y /request.
+  // El chat tiene su propio input de mensaje, por lo que el FAB no debe
+  // estorbar con su tamaño completo.
+  const { setFormFocused } = useFabVisibility();
+  useEffect(() => {
+    setFormFocused(true);
+    return () => {
+      setFormFocused(false);
+    };
+  }, [setFormFocused]);
 
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -95,6 +109,22 @@ export default function ChatPage() {
     setInputValue("");
     sendOptimistic(body);
   };
+
+  const handleRefreshConversation = useCallback(() => {
+    void refreshMessages();
+  }, [refreshMessages]);
+
+  // Auto-cerrar la alerta de WS cerrado a los 10s. Si el socket
+  // sigue caído, el siguiente cambio de status la volverá a mostrar.
+  const [wsAlertDismissed, setWsAlertDismissed] = useState(false);
+  useEffect(() => {
+    if (socketStatus !== "closed") {
+      setWsAlertDismissed(false);
+      return;
+    }
+  }, [socketStatus]);
+
+  const showWsAlert = socketStatus === "closed" && !wsAlertDismissed;
 
   const selectedConversation = conversations.find((c) => c.id === selectedConversationId);
 
@@ -238,7 +268,32 @@ export default function ChatPage() {
               {selectedConversation?.status === "open" ? "Conversación activa" : "Conversación cerrada"}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={handleRefreshConversation}
+            disabled={messagesLoading}
+            className="w-9 h-9 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Recargar conversación"
+            title="Recargar conversación"
+          >
+            <span className={`material-symbols-rounded text-xl ${messagesLoading ? "animate-spin" : ""}`} aria-hidden="true">
+              refresh
+            </span>
+          </button>
         </header>
+
+        {showWsAlert && (
+          <div className="flex items-center justify-between gap-2 px-3 py-1 bg-error-container text-on-error-container text-xs" role="status">
+            <span className="truncate">Conexión en tiempo real interrumpida.</span>
+            <button
+              type="button"
+              onClick={handleRefreshConversation}
+              className="flex-shrink-0 font-semibold underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              Recargar
+            </button>
+          </div>
+        )}
 
         {/* Mensajes */}
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 bg-background">
@@ -290,7 +345,7 @@ export default function ChatPage() {
 
         {/* Input */}
         {selectedConversation?.status === "open" ? (
-          <div className="px-4 py-3 border-t border-outline-variant bg-surface-container-low">
+          <div className="px-4 py-2 border-t border-outline-variant bg-surface-container-low">
             <form onSubmit={handleSend} className="flex items-end gap-2">
               <div className="flex-1 relative">
                 <input
