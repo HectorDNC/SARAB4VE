@@ -115,6 +115,8 @@ export interface EmergencyDetail {
   resolvedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Access token en texto plano (solo se devuelve al crear la emergencia). */
+  accessToken?: string;
 }
 
 export async function getEmergencyById(id: string): Promise<EmergencyDetail> {

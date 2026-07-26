@@ -554,6 +554,12 @@ export default function ButtonEmergencyVoice() {
 
       console.log('[EmergencyVoice] Respuesta inicial:', response);
 
+      // Guardar accessToken + emergencyId en localStorage para que el ciudadano acceda al chat
+      if (response?.data?.accessToken && response?.data?.id) {
+        localStorage.setItem("emergencyAccessToken", response.data.accessToken);
+        localStorage.setItem("emergencyId", response.data.id);
+      }
+
       // Guardar la respuesta inicial y el ID para WebSocket
       setServerResponse(response);
       setActiveEmergencyId(response.data.id);

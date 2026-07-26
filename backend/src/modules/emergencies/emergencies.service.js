@@ -157,6 +157,8 @@ async function getProcessingStatus(id, repository) {
 }
 
 module.exports = {
+  generateAccessToken,
+  hashAccessToken,
   normalizeCreateEmergency,
   createEmergency,
   listEmergencies,
