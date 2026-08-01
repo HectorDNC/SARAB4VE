@@ -1,16 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  useAccessibility,
-  type FontSizeLevel,
-} from "@/providers/AccessibilityProvider";
+import {useAccessibility} from "@/providers/AccessibilityProvider";
+import FontScaleControl from "@/components/ui/FontScaleControl";
 
-const FONT_SIZE_LABELS: Record<FontSizeLevel, string> = {
-  normal: "Normal",
-  large: "Grande",
-  "x-large": "Muy grande",
-};
 
 interface AccessibilityToolbarProps {
   /** Modo compacto para el Navbar (más pequeño). Por defecto usa botón grande. */
@@ -28,7 +21,7 @@ interface AccessibilityToolbarProps {
  * - Etiquetado semántico estricto (aria-label, aria-live)
  */
 export default function AccessibilityToolbar({ compact = false, openUp = false }: AccessibilityToolbarProps) {
-  const { fontSize, highContrast, cycleFontSize, toggleHighContrast, reset } =
+  const { highContrast, toggleHighContrast, reset } =
     useAccessibility();
 
   const [open, setOpen] = useState(false);
@@ -116,8 +109,8 @@ export default function AccessibilityToolbar({ compact = false, openUp = false }
 
           {/* Opciones */}
           <div className="px-2 py-2 space-y-1">
-            {/* Tamaño de fuente */}
-            <div className="px-2 py-2">
+                     {/* Tamaño de fuente */}
+                     <div className="px-2 py-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="material-symbols-rounded text-lg text-on-surface-variant shrink-0" aria-hidden="true">
@@ -128,21 +121,14 @@ export default function AccessibilityToolbar({ compact = false, openUp = false }
                       Tamaño de fuente
                     </p>
                     <p className="text-[11px] text-on-surface-variant">
-                      {FONT_SIZE_LABELS[fontSize]}
+                      Control visual
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={cycleFontSize}
-                  className="shrink-0 min-h-8 px-3 py-1 rounded-lg border border-outline text-xs font-bold text-on-surface hover:bg-surface-container transition-colors"
-                  aria-label={`Cambiar tamaño de fuente. Actual: ${FONT_SIZE_LABELS[fontSize]}. Presiona para alternar.`}
-                  aria-live="polite"
-                >
-                  Alternar
-                </button>
+                <FontScaleControl />
               </div>
             </div>
+
 
             {/* Alto Contraste */}
             <div className="px-2 py-2">
@@ -181,21 +167,6 @@ export default function AccessibilityToolbar({ compact = false, openUp = false }
                   />
                 </button>
               </div>
-              {/* Preview visual del alto contraste */}
-              {highContrast && (
-                <div
-                  className="mt-2 rounded-lg p-2 text-[11px] leading-tight"
-                  style={{
-                    backgroundColor: "#000000",
-                    color: "#FFFF00",
-                    border: "1px solid #FFFFFF",
-                  }}
-                  aria-hidden="true"
-                >
-                  <span style={{ color: "#FFFFFF" }}>T</span>exto blanco{" "}
-                  <span style={{ color: "#FFFF00" }}>T</span>exto amarillo
-                </div>
-              )}
             </div>
           </div>
 

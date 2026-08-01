@@ -189,52 +189,52 @@ html.a11y-font-x-large body {
 
 /* ── Alto Contraste ── */
 html.a11y-high-contrast {
-  /* Fondo negro, texto amarillo/blanco */
-  --color-background:                 #000000;
-  --color-on-background:              #FFFF00;
-  --color-surface:                    #000000;
-  --color-surface-dim:                #1a1a1a;
-  --color-surface-bright:             #0d0d0d;
-  --color-surface-container-lowest:   #000000;
-  --color-surface-container-low:      #0a0a0a;
-  --color-surface-container:          #111111;
-  --color-surface-container-high:     #1a1a1a;
-  --color-surface-container-highest:  #222222;
-  --color-on-surface:                 #FFFF00;
-  --color-on-surface-variant:         #FFFFFF;
-  --color-inverse-surface:            #FFFF00;
-  --color-inverse-on-surface:         #000000;
-  --color-surface-variant:            #222222;
-  --color-surface-tint:               #FFFF00;
-  --color-outline:                    #FFFFFF;
-  --color-outline-variant:            #CCCCCC;
+  /* Fondo dorado, texto negro */
+  --color-background:                 #fdc300;
+  --color-on-background:              #100c08;
+  --color-surface:                    #fdc300;
+  --color-surface-dim:                #e6b300;
+  --color-surface-bright:             #fdd33d;
+  --color-surface-container-lowest:   #fdc300;
+  --color-surface-container-low:      #fdc300;
+  --color-surface-container:          #fdc300;
+  --color-surface-container-high:     #fdc300;
+  --color-surface-container-highest:  #fdc300;
+  --color-on-surface:                 #100c08;
+  --color-on-surface-variant:         #100c08;
+  --color-inverse-surface:            #f9dc87;
+  --color-inverse-on-surface:         #100c08;
+  --color-surface-variant:            #fdc300;
+  --color-surface-tint:               #f9dc87;
+  --color-outline:                    #F8F8FF;
+  --color-outline-variant:            #e6b300;
 
-  /* Primario en amarillo */
-  --color-primary:                    #FFFF00;
-  --color-primary-container:          #333300;
-  --color-on-primary:                 #000000;
-  --color-on-primary-container:       #FFFF00;
-  --color-primary-fixed:              #FFFF00;
-  --color-primary-fixed-dim:          #CCCC00;
-  --color-inverse-primary:            #000000;
+  /* Primario en dorado */
+  --color-primary:                    #fdc300;
+  --color-primary-container:          #e6b300;
+  --color-on-primary:                 #100c08;
+  --color-on-primary-container:       #f9dc87;
+  --color-primary-fixed:              #fdc300;
+  --color-primary-fixed-dim:          #e6b300;
+  --color-inverse-primary:            #100c08;
 
   /* Secundario y terciario */
-  --color-secondary:                  #FFFF00;
-  --color-secondary-container:        #333300;
-  --color-on-secondary:               #000000;
-  --color-on-secondary-container:     #FFFF00;
-  --color-secondary-fixed:            #FFFF00;
-  --color-secondary-fixed-dim:        #CCCC00;
+  --color-secondary:                  #fdc300;
+  --color-secondary-container:        #e6b300;
+  --color-on-secondary:               #100c08;
+  --color-on-secondary-container:     #f9dc87;
+  --color-secondary-fixed:            #fdc300;
+  --color-secondary-fixed-dim:        #e6b300;
 
-  --color-tertiary:                   #FFFF00;
-  --color-tertiary-container:         #333300;
-  --color-on-tertiary:                #000000;
-  --color-on-tertiary-container:      #FFFF00;
+  --color-tertiary:                   #fdc300;
+  --color-tertiary-container:         #e6b300;
+  --color-on-tertiary:                #100c08;
+  --color-on-tertiary-container:      #f9dc87;
 
   /* Estados */
   --color-error:                      #FF4444;
   --color-error-container:            #330000;
-  --color-on-error:                   #000000;
+  --color-on-error:                   #F8F8FF;
   --color-on-error-container:         #FFAAAA;
 
   --color-warning:                    #FFAA00;
@@ -252,35 +252,44 @@ html.a11y-high-contrast {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 html.a11y-high-contrast body {
-  background-color: #000000 !important;
-  color: #FFFF00 !important;
+  background-color: #fdc300 !important;
+  color: #100c08 !important;
 }
 
 /* ─ Eliminar gradientes  */
 html.a11y-high-contrast [class*="bg-gradient"],
 html.a11y-high-contrast [style*="gradient"] {
-  background: #000000 !important;
+  background: #fdc300 !important;
   background-image: none !important;
 }
 
-/* ─ Enlaces ── */
-html.a11y-high-contrast a {
-  color: #FFFF00 !important;
+/* ─ Enlaces (sin subrayado si son botones estilizados) ── */
+html.a11y-high-contrast a:not([class*="bg-error"]):not([class*="bg-primary"]):not([class*="bg-success"]):not([class*="bg-warning"]) {
+  color: #100c08 !important;
   text-decoration: underline;
-  text-decoration-color: #FFFF00;
+  text-decoration-color: #100c08;
 }
-html.a11y-high-contrast a:hover {
-  color: #FFFFFF !important;
-  text-decoration-color: #FFFFFF;
+html.a11y-high-contrast a:not([class*="bg-error"]):not([class*="bg-primary"]):not([class*="bg-success"]):not([class*="bg-warning"]):hover {
+  color: #100c08 !important;
+  text-decoration-color: #100c08;
+  font-weight: 600;
 }
 
-/* ── Botones base: fondo negro, texto amarillo, borde blanco ── */
+/* ─ Enlaces estilizados como botones (sin subrayado) ── */
+html.a11y-high-contrast a[class*="bg-error"],
+html.a11y-high-contrast a[class*="bg-primary"],
+html.a11y-high-contrast a[class*="bg-success"],
+html.a11y-high-contrast a[class*="bg-warning"] {
+  text-decoration: none !important;
+}
+
+/* ── Botones base: fondo negro, texto blanco, borde blanco ── */
 html.a11y-high-contrast button,
 html.a11y-high-contrast [role="button"],
 html.a11y-high-contrast [role="radio"] {
-  background-color: #000000 !important;
-  color: #FFFF00 !important;
-  border: 2px solid #CCCCCC !important;
+  background-color: #100c08 !important;
+  color: #F8F8FF !important;
+  border: 2px solid #F8F8FF !important;
   background-image: none !important;
 }
 
@@ -289,7 +298,7 @@ html.a11y-high-contrast [role="radio"] {
 html.a11y-high-contrast button,
 html.a11y-high-contrast [role="button"],
 html.a11y-high-contrast [role="radio"] {
-  color: #FFFF00 !important;
+  color: #F8F8FF !important;
 }
 
 html.a11y-high-contrast button *,
@@ -302,80 +311,89 @@ html.a11y-high-contrast [role="radio"] * {
 html.a11y-high-contrast button[class*="bg-primary"],
 html.a11y-high-contrast [role="button"][class*="bg-primary"],
 html.a11y-high-contrast [role="radio"][aria-checked="true"] {
-  background-color: #FFFF00 !important;
-  color: #000000 !important;
-  border: 4px solid #FFFFFF !important;
-  box-shadow: 0 0 0 3px #FFFF00, 0 4px 12px rgba(255, 255, 0, 0.6) !important;
+  background-color: #f9dc87 !important;
+  color: #100c08 !important;
+  border: 4px solid #F8F8FF !important;
+  box-shadow: 0 0 0 3px #f9dc87, 0 4px 12px rgba(249, 220, 135, 0.6) !important;
 }
 
 html.a11y-high-contrast button[class*="bg-primary"] *,
 html.a11y-high-contrast [role="button"][class*="bg-primary"] *,
 html.a11y-high-contrast [role="radio"][aria-checked="true"] * {
-  color: #fff !important;
+  color: #100c08 !important;
 }
 
-/* Botones de error seleccionados (Sí herido/a, No puedo moverme) */
+/* Botones de error seleccionados (Sí herido/a, No puedo moverme, Emergencia SOS) */
 html.a11y-high-contrast button[class*="bg-error"],
-html.a11y-high-contrast [role="button"][class*="bg-error"] {
-  background-color: #FF0000 !important;
-  color: #FFFF00 !important;
-  border: 4px solid #FFFF00 !important;
-  box-shadow: 0 0 0 3px #FF0000, 0 4px 12px rgba(255, 0, 0, 0.6) !important;
+html.a11y-high-contrast [role="button"][class*="bg-error"],
+html.a11y-high-contrast a[class*="bg-error"] {
+  background-color: #100c08 !important;
+  color: #F8F8FF !important;
+  border: 4px solid #F8F8FF !important;
+  box-shadow: 0 0 0 3px #100c08, 0 4px 12px rgba(16, 12, 8, 0.6) !important;
 }
 
 html.a11y-high-contrast button[class*="bg-error"] *,
-html.a11y-high-contrast [role="button"][class*="bg-error"] * {
-  color: #FFFF00 !important;
+html.a11y-high-contrast [role="button"][class*="bg-error"] *,
+html.a11y-high-contrast a[class*="bg-error"] * {
+  color: #F8F8FF !important;
+}
+
+/* Forzar blanco en TODOS los textos/spans dentro de bg-error, sin excepciones */
+html.a11y-high-contrast [class*="bg-error"] span,
+html.a11y-high-contrast [class*="bg-error"] div,
+html.a11y-high-contrast [class*="bg-error"] p {
+  color: #F8F8FF !important;
 }
 
 /* Botones de éxito */
 html.a11y-high-contrast button[class*="bg-success"],
 html.a11y-high-contrast [role="button"][class*="bg-success"] {
-  background-color: #00FF00 !important;
-  color: #000000 !important;
-  border: 3px solid #FFFFFF !important;
+  background-color: #100c08 !important;
+  color: #F8F8FF !important;
+  border: 3px solid #F8F8FF !important;
 }
 
 html.a11y-high-contrast button[class*="bg-success"] *,
 html.a11y-high-contrast [role="button"][class*="bg-success"] * {
-  color: #000000 !important;
+  color: #F8F8FF !important;
 }
 
 /* ── Botones NO seleccionados (borde outline, fondo negro) ── */
 html.a11y-high-contrast button[class*="border-outline"]:not([class*="bg-primary"]):not([class*="bg-error"]):not([class*="bg-success"]),
 html.a11y-high-contrast [role="button"][class*="border-outline"]:not([class*="bg-primary"]):not([class*="bg-error"]):not([class*="bg-success"]),
 html.a11y-high-contrast [role="radio"][aria-checked="false"] {
-  background-color: #000000 !important;
-  color: #FFFF00 !important;
-  border: 2px solid #CCCCCC !important;
+  background-color: #100c08 !important;
+  color: #F8F8FF !important;
+  border: 2px solid #F8F8FF !important;
 }
 
 html.a11y-high-contrast button[class*="border-outline"]:not([class*="bg-primary"]):not([class*="bg-error"]):not([class*="bg-success"]) *,
 html.a11y-high-contrast [role="button"][class*="border-outline"]:not([class*="bg-primary"]):not([class*="bg-error"]):not([class*="bg-success"]) *,
 html.a11y-high-contrast [role="radio"][aria-checked="false"] * {
-  color: #FFFF00 !important;
+  color: #F8F8FF !important;
 }
 
 /* ── Textos dentro de botones de emergencia (SOS) ── */
-/* Botones no seleccionados - textos amarillos */
+/* Botones no seleccionados - textos blancos */
 html.a11y-high-contrast button[class*="border-outline"]:not([class*="bg-primary"]) p,
 html.a11y-high-contrast button[class*="border-outline"]:not([class*="bg-primary"]) span:not(.material-symbols-rounded),
 html.a11y-high-contrast [role="radio"][aria-checked="false"] p,
 html.a11y-high-contrast [role="radio"][aria-checked="false"] span:not(.material-symbols-rounded) {
-  color: #FFFF00 !important;
+  color: #F8F8FF !important;
 }
 
 /* Textos secundarios dentro de botones no seleccionados */
 html.a11y-high-contrast button[class*="border-outline"]:not([class*="bg-primary"]) [class*="text-on-surface-variant"],
 html.a11y-high-contrast [role="radio"][aria-checked="false"] [class*="text-on-surface-variant"] {
-  color: #FFFFFF !important;
+  color: #F8F8FF !important;
 }
 
 /* Subtítulos y descripciones generales */
 html.a11y-high-contrast [class*="text-on-surface-variant"],
 html.a11y-high-contrast p[class*="text-sm"],
 html.a11y-high-contrast p[class*="text-xs"] {
-  color: #FFFFFF !important;
+  color: #100c08 !important;
 }
 
 /* Botones con opacidad */
@@ -383,7 +401,7 @@ html.a11y-high-contrast [class*="bg-primary/"],
 html.a11y-high-contrast [class*="bg-error/"],
 html.a11y-high-contrast [class*="bg-success/"],
 html.a11y-high-contrast [class*="bg-warning/"] {
-  background-color: #000000 !important;
+  background-color: #fdc300 !important;
 }
 
 /* ── Tarjetas y contenedores ── */
@@ -392,24 +410,24 @@ html.a11y-high-contrast [class*="bg-background"],
 html.a11y-high-contrast [class*="bg-primary-fixed"],
 html.a11y-high-contrast [class*="bg-primary-container"],
 html.a11y-high-contrast [class*="bg-secondary-container"] {
-  background-color: #000000 !important;
+  background-color: #fdc300 !important;
 }
 
 html.a11y-high-contrast [class*="border-primary/"],
 html.a11y-high-contrast [class*="border-error/"],
 html.a11y-high-contrast [class*="border-outline-variant"] {
-  border-color: #FFFFFF !important;
+  border-color: #F8F8FF !important;
 }
 
 /* ── Tarjetas de sección (rounded-2xl border-2) en alto contraste ── */
 html.a11y-high-contrast [class*="rounded-2xl"][class*="border-2"] {
-  border-color: #FFFFFF !important;
-  background-color: #0a0a0a !important;
+  border-color: #F8F8FF !important;
+  background-color: #fdc300 !important;
 }
 
 /* ── Textos con opacidad ── */
 html.a11y-high-contrast [class*="text-on-surface-variant"] {
-  color: #FFFFFF !important;
+  color: #100c08 !important;
 }
 
 html.a11y-high-contrast [class*="text-primary/"],
@@ -426,13 +444,13 @@ html.a11y-high-contrast [class*="text-red-"],
 html.a11y-high-contrast [class*="text-gray-"],
 html.a11y-high-contrast [class*="text-slate-"],
 html.a11y-high-contrast [class*="text-zinc-"] {
-  color: #FFFF00 !important;
+  color: #100c08 !important;
 }
 
 /* ── Placeholders ── */
 html.a11y-high-contrast input::placeholder,
 html.a11y-high-contrast textarea::placeholder {
-  color: #AAAAAA !important;
+  color: #6b5f00 !important;
   opacity: 1 !important;
 }
 
@@ -440,23 +458,23 @@ html.a11y-high-contrast textarea::placeholder {
 html.a11y-high-contrast input,
 html.a11y-high-contrast textarea,
 html.a11y-high-contrast select {
-  background-color: #000000 !important;
-  color: #FFFF00 !important;
-  border: 2px solid #FFFFFF !important;
+  background-color: #fdc300 !important;
+  color: #100c08 !important;
+  border: 2px solid #100c08 !important;
 }
 
 html.a11y-high-contrast input:focus,
 html.a11y-high-contrast textarea:focus,
 html.a11y-high-contrast select:focus {
-  border-color: #FFFF00 !important;
-  box-shadow: 0 0 0 3px #FFFF00 !important;
+  border-color: #100c08 !important;
+  box-shadow: 0 0 0 3px #e6b300 !important;
   outline: none !important;
 }
 
 /* ── Labels y textos de formulario ── */
 html.a11y-high-contrast label,
 html.a11y-high-contrast .label {
-  color: #FFFF00 !important;
+  color: #100c08 !important;
   font-weight: 600 !important;
 }
 
@@ -469,15 +487,15 @@ html.a11y-high-contrast [class*="text-error"] {
 
 /* ── Enlaces dentro de botones o tarjetas ── */
 html.a11y-high-contrast a[class*="bg-primary"] {
-  background-color: #FFFF00 !important;
-  color: #000000 !important;
-  border: 3px solid #FFFFFF !important;
+  background-color: #f9dc87 !important;
+  color: #100c08 !important;
+  border: 3px solid #F8F8FF !important;
 }
 
 html.a11y-high-contrast a[class*="border-outline"] {
-  background-color: #000000 !important;
-  color: #FFFF00 !important;
-  border: 2px solid #CCCCCC !important;
+  background-color: #100c08 !important;
+  color: #F8F8FF !important;
+  border: 2px solid #F8F8FF !important;
 }
 
 /* ── Imágenes y video ── */
@@ -503,7 +521,7 @@ html.a11y-high-contrast textarea::placeholder {
 
 /* ── Focus ── */
 html.a11y-high-contrast :focus-visible {
-  outline: 3px solid #FFFF00 !important;
+  outline: 3px solid #100c08 !important;
   outline-offset: 2px;
 }
 
@@ -518,34 +536,34 @@ html.a11y-high-contrast [class*="ring-secondary/"] {
   --tw-ring-color: #FFFFFF !important;
 }
 
-/* ── Cards con fondo amarillo: texto debe ser NEGRO ── */
+/* ── Cards con fondo dorado: texto debe ser oscuro ── */
 html.a11y-high-contrast [class*="bg-primary-fixed"],
 html.a11y-high-contrast [class*="bg-yellow"],
-html.a11y-high-contrast [style*="background: #FFFF00"],
-html.a11y-high-contrast [style*="background-color: #FFFF00"] {
-  color: #fff !important;
+html.a11y-high-contrast [style*="background: #fdc300"],
+html.a11y-high-contrast [style*="background-color: #fdc300"] {
+  color: #100c08 !important;
 }
 
 html.a11y-high-contrast [class*="bg-primary-fixed"] *,
 html.a11y-high-contrast [class*="bg-yellow"] *,
-html.a11y-high-contrast [style*="background: #FFFF00"] *,
-html.a11y-high-contrast [style*="background-color: #FFFF00"] * {
-  color: #fff !important;
+html.a11y-high-contrast [style*="background: #fdc300"] *,
+html.a11y-high-contrast [style*="background-color: #fdc300"] * {
+  color: #100c08 !important;
 }
 
 /* ── Iconos Material Symbols en alto contraste ── */
 html.a11y-high-contrast .material-symbols-rounded {
-  color: #FFFF00 !important;
+  color: #F8F8FF !important;
 }
 
 html.a11y-high-contrast [class*="bg-primary-fixed"] .material-symbols-rounded,
 html.a11y-high-contrast [class*="bg-yellow"] .material-symbols-rounded,
-html.a11y-high-contrast [style*="background: #FFFF00"] .material-symbols-rounded {
-  color: #000000 !important;
+html.a11y-high-contrast [style*="background: #fdc300"] .material-symbols-rounded {
+  color: #100c08 !important;
 }
 
 html.a11y-high-contrast [class*="bg-error"] .material-symbols-rounded {
-  color: #FFFF00 !important;
+  color: #F8F8FF !important;
 }
 
 /* ── Enlaces: subrayar siempre para identificarlos ── */
@@ -558,14 +576,14 @@ html.a11y-high-contrast a:hover {
   text-decoration-thickness: 3px;
 }
 
-/* ─ Headings: siempre amarillos brillantes ── */
+/* ─ Headings: siempre negros ── */
 html.a11y-high-contrast h1,
 html.a11y-high-contrast h2,
 html.a11y-high-contrast h3,
 html.a11y-high-contrast h4,
 html.a11y-high-contrast h5,
 html.a11y-high-contrast h6 {
-  color: #FFFF00 !important;
+  color: #100c08 !important;
   font-weight: 700 !important;
 }
 
@@ -583,41 +601,388 @@ html.a11y-high-contrast * {
   text-shadow: none !important;
 }
 
+/* ── Textos negros SOLO en elementos ESPECÍFICOS (sin :not) ── */
+html.a11y-high-contrast p {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast h1,
+html.a11y-high-contrast h2,
+html.a11y-high-contrast h3,
+html.a11y-high-contrast h4,
+html.a11y-high-contrast h5,
+html.a11y-high-contrast h6 {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast li {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast label {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast strong {
+  color: #100c08 !important;
+}
+
+/* ── Textos con clases de color: forzar negro ── */
+html.a11y-high-contrast [class*="text-primary"] {
+  color: #100c08 !important;
+}
+html.a11y-high-contrast [class*="text-on-surface-variant"] {
+  color: #100c08 !important;
+}
+
+/* ── EXCEPCIÓN: text-on-error debe ser BLANCO en Alto Contraste ── */
+html.a11y-high-contrast .text-on-error,
+html.a11y-high-contrast [class*="text-on-error"] {
+  color: #F8F8FF !important;
+}
+
 /* ── Radio buttons y checkboxes en alto contraste ── */
 html.a11y-high-contrast input[type="radio"],
 html.a11y-high-contrast input[type="checkbox"] {
-  accent-color: #FFFF00 !important;
-  border: 2px solid #FFFFFF !important;
+  accent-color: #f9dc87 !important;
+  border: 2px solid #F8F8FF !important;
 }
 
 /* ── Separadores ── */
 html.a11y-high-contrast hr,
 html.a11y-high-contrast [class*="border-b"],
 html.a11y-high-contrast [class*="border-t"] {
-  border-color: #FFFFFF !important;
+  border-color: #F8F8FF !important;
 }
 
-/* ── Badge de progreso ── */
-html.a11y-high-contrast [class*="text-on-surface-variant"] {
-  color: #FFFFFF !important;
-  font-weight: 700 !important;
-}
 
 /* ── Botones deshabilitados ── */
 html.a11y-high-contrast button:disabled,
 html.a11y-high-contrast [role="button"][aria-disabled="true"] {
   opacity: 0.5 !important;
-  border: 2px dashed #555555 !important;
+  border: 2px dashed #e6b300 !important;
 }
 
-/* ── Garantizar contraste en textos dentro de botones rojos (error) ── */
+/* ── Garantizar contraste en textos dentro de botones negros (error) ── */
 html.a11y-high-contrast button[class*="bg-error"] span,
-html.a11y-high-contrast [role="button"][class*="bg-error"] span {
-  color: #000000 !important;
+html.a11y-high-contrast [role="button"][class*="bg-error"] span,
+html.a11y-high-contrast a[class*="bg-error"] span {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast button[class*="bg-error"] .material-symbols-rounded,
+html.a11y-high-contrast [role="button"][class*="bg-error"] .material-symbols-rounded,
+html.a11y-high-contrast a[class*="bg-error"] .material-symbols-rounded {
+  color: #F8F8FF !important;
 }
 
 /* ── Garantizar contraste en textos dentro de botones amarillos (primary) ── */
 html.a11y-high-contrast button[class*="bg-primary"] span,
 html.a11y-high-contrast [role="button"][class*="bg-primary"] span {
-  color: #000000 !important;
+  color: #100c08 !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** ÚLTIMA LÍNEA DEFENSIVA: BOTONES SOS SIEMPRE BLANCOS ***
+   Estas reglas están al FINAL para asegurar máxima prioridad
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Apunta a TODOS los elementos con bg-error: links, buttons, divs */
+html.a11y-high-contrast a.bg-error,
+html.a11y-high-contrast a[class*="bg-error"],
+html.a11y-high-contrast button.bg-error,
+html.a11y-high-contrast button[class*="bg-error"],
+html.a11y-high-contrast div.bg-error,
+html.a11y-high-contrast div[class*="bg-error"] {
+  color: #F8F8FF !important;
+}
+
+/* Todo lo dentro de bg-error: spans, divs, etc */
+html.a11y-high-contrast a.bg-error span,
+html.a11y-high-contrast a[class*="bg-error"] span,
+html.a11y-high-contrast a.bg-error div,
+html.a11y-high-contrast a[class*="bg-error"] div,
+html.a11y-high-contrast button.bg-error span,
+html.a11y-high-contrast button[class*="bg-error"] span,
+html.a11y-high-contrast button.bg-error div,
+html.a11y-high-contrast button[class*="bg-error"] div {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast [class*="bg-error"] * {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast [class*="bg-error"] span,
+html.a11y-high-contrast [class*="bg-error"] div,
+html.a11y-high-contrast [class*="bg-error"] p,
+html.a11y-high-contrast [class*="bg-error"] a,
+html.a11y-high-contrast [class*="bg-error"] strong,
+html.a11y-high-contrast [class*="bg-error"] em {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast [class*="bg-error"] .material-symbols-rounded {
+  color: #F8F8FF !important;
+}
+
+/* ── Login: texto e icono NEGRO ── */
+html.a11y-high-contrast a[class*="text-primary"] {
+  color: #100c08 !important;
+}
+
+html.a11y-high-contrast a[class*="text-primary"] span {
+  color: #100c08 !important;
+}
+
+html.a11y-high-contrast a[class*="text-primary"] .material-symbols-rounded {
+  color: #100c08 !important;
+}
+
+/* ── Plataforma de Accesibilidad: NEGRO ── */
+html.a11y-high-contrast div[class*="text-primary"] {
+  color: #100c08 !important;
+}
+
+html.a11y-high-contrast div[class*="text-primary"] span {
+  color: #100c08 !important;
+}
+
+html.a11y-high-contrast div[class*="text-primary"] .material-symbols-rounded {
+  color: #100c08 !important;
+}
+
+/* ── Botón Restaurar ajustes SOLO ── */
+html.a11y-high-contrast button[aria-label*="Restaurar configuraciones"] {
+  background-color: #100c08 !important;
+  color: #F8F8FF !important;
+  border: 2px solid #F8F8FF !important;
+}
+
+html.a11y-high-contrast button[aria-label*="Restaurar configuraciones"] span:not(.material-symbols-rounded) {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast button[aria-label*="Restaurar configuraciones"] .material-symbols-rounded {
+  color: #F8F8FF !important;
+}
+
+/* ── Botón A+ (escala): Transparente con texto NEGRO ── */
+html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] {
+  background-color: transparent !important;
+  color: #100c08 !important;
+  border: none !important;
+}
+
+html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] span:not(.material-symbols-rounded) {
+  color: #100c08 !important;
+}
+
+html.a11y-high-contrast button[aria-label*="Ajustar tamaño"] .material-symbols-rounded {
+  color: #100c08 !important;
+}
+
+/* ── Opciones de porcentajes (100%, 125%, 150%): Botones NEGROS con texto NEGRO ── */
+html.a11y-high-contrast button:not([aria-label*="Ajustar"]):not([aria-label*="Restaurar"]) {
+  background-color: #100c08 !important;
+  color: #100c08 !important;
+  border: 1px solid #F8F8FF !important;
+}
+
+/* Excluir bg-error para que no afecte al botón SOS */
+html.a11y-high-contrast button:not([aria-label*="Ajustar"]):not([aria-label*="Restaurar"]):not([class*="bg-error"]) span:not(.material-symbols-rounded) {
+  color: #100c08 !important;
+}
+
+html.a11y-high-contrast button:not([aria-label*="Ajustar"]):not([aria-label*="Restaurar"]) .material-symbols-rounded {
+  color: #F8F8FF !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** TODOS LOS ICONOS NEGROS POR DEFECTO ***
+   Excepto los que están dentro de bg-error (que son blancos)
+   ═════════════════════════════════════════════════════════════════════════ */
+html.a11y-high-contrast .material-symbols-rounded {
+  color: #100c08 !important;
+}
+
+/* EXCEPCIÓN: Iconos dentro de bg-error son BLANCOS */
+html.a11y-high-contrast [class*="bg-error"] .material-symbols-rounded {
+  color: #F8F8FF !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** TEXTO DE PORCENTAJES: BLANCO (SEPARADO) ***
+   Solo aplica a texto, NO a iconos
+   ═════════════════════════════════════════════════════════════════════════ */
+html.a11y-high-contrast button:not([aria-label]):not([class*="bg-error"]) {
+  color: #F8F8FF !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** BOTÓN SOS CHAT DE VOZ: TRANSFORMACIÓN INDEPENDIENTE ***
+   Ultra-específico: Solo para button.bg-error (sin otros selectores)
+   ═════════════════════════════════════════════════════════════════════════ */
+html.a11y-high-contrast button.bg-error {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast button.bg-error span {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast button.bg-error .material-symbols-rounded {
+  color: #F8F8FF !important;
+}
+
+/* ÚLTIMA LÍNEA DEFENSIVA: Forzar blanco en TODOS los bg-error */
+html.a11y-high-contrast [class*="bg-error"] {
+  color: #F8F8FF !important;
+}
+
+/* MÁXIMA ESPECIFICIDAD: Spans y divs dentro de bg-error */
+html.a11y-high-contrast button[class*="bg-error"] > span,
+html.a11y-high-contrast button[class*="bg-error"] > div,
+html.a11y-high-contrast button[class*="bg-error"] > div > span {
+  color: #F8F8FF !important;
+}
+
+/* Todos los spans/divs sin importar nivel de profundidad */
+html.a11y-high-contrast button.bg-error,
+html.a11y-high-contrast [class*="bg-error"] {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast [class*="bg-error"] span,
+html.a11y-high-contrast [class*="bg-error"] div,
+html.a11y-high-contrast [class*="bg-error"] p,
+html.a11y-high-contrast [class*="bg-error"] a {
+  color: #F8F8FF !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** NUCLEAR OPTION: Todos los elementos con text-on-error en Alto Contraste ***
+   ═════════════════════════════════════════════════════════════════════════ */
+html.a11y-high-contrast *[class*="text-on-error"] {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast *[class*="bg-error"] *[class*="text-on-error"] {
+  color: #F8F8FF !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** BOTÓN FAB DE EMERGENCIA (bg-red-*, text-white) ***
+   El botón SOS flotante usa bg-red-800, bg-red-900, bg-yellow-600, text-white
+   ═════════════════════════════════════════════════════════════════════════ */
+html.a11y-high-contrast [class*="bg-red-"] {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast [class*="bg-red-"] * {
+  color: #F8F8FF !important;
+}
+
+html.a11y-high-contrast [class*="text-white"] {
+  color: #F8F8FF !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   *** LAYER UTILITIES: Máxima prioridad para Alto Contraste ***
+   Esto garantiza que sobreescriba a Tailwind
+   ═════════════════════════════════════════════════════════════════════════ */
+@layer utilities {
+  html.a11y-high-contrast button[class*="bg-red"] {
+    color: #F8F8FF !important;
+  }
+
+  html.a11y-high-contrast button[class*="bg-red"] span {
+    color: #F8F8FF !important;
+  }
+
+  html.a11y-high-contrast [class*="bg-red-800"],
+  html.a11y-high-contrast [class*="bg-red-900"],
+  html.a11y-high-contrast [class*="bg-yellow"] {
+    color: #F8F8FF !important;
+  }
+
+  html.a11y-high-contrast [class*="text-white"] {
+    color: #F8F8FF !important;
+  }
+
+  /* Overrides brutales para el botón SOS FAB */
+  html.a11y-high-contrast button[class*="shadow-lg"][class*="bg-red"] {
+    color: #F8F8FF !important;
+  }
+
+  html.a11y-high-contrast button[class*="shadow-lg"] span {
+    color: #F8F8FF !important;
+  }
+
+  /* Último recurso: todos los botones fixed en Alto Contraste */
+  html.a11y-high-contrast button[class*="fixed"] {
+    color: #F8F8FF !important;
+  }
+
+  html.a11y-high-contrast button[class*="fixed"] * {
+    color: #F8F8FF !important;
+  }
+
+  /* ═════════════════════════════════════════════════════════════════════════
+     *** Secciones principales con fondo amarillo (#f9dc87) ***
+     ═════════════════════════════════════════════════════════════════════════ */
+
+  /* Recursos de Guía */
+  html.a11y-high-contrast [class*="bg-secondary-fixed"] {
+    background-color: #f9dc87 !important;
+    color: #100c08 !important;
+  }
+
+  html.a11y-high-contrast [class*="bg-secondary-fixed"] * {
+    color: #100c08 !important;
+  }
+
+  /* Directorio */
+  html.a11y-high-contrast [class*="bg-surface-container-high"] {
+    background-color: #f9dc87 !important;
+    color: #100c08 !important;
+  }
+
+  html.a11y-high-contrast [class*="bg-surface-container-high"] * {
+    color: #100c08 !important;
+  }
+
+  /* ¿Quieres colaborar en la red de apoyo? */
+  html.a11y-high-contrast section [class*="bg-primary"] {
+    background-color: #f9dc87 !important;
+    color: #100c08 !important;
+  }
+
+  html.a11y-high-contrast section [class*="bg-primary"] * {
+    color: #100c08 !important;
+  }
+
+  /* ═════════════════════════════════════════════════════════════════════════
+     *** Placeholders de input en Alto Contraste ***
+     ═════════════════════════════════════════════════════════════════════════ */
+  html.a11y-high-contrast input::placeholder {
+    color: #100c08 !important;
+  }
+
+  html.a11y-high-contrast input[type="search"]::placeholder {
+    color: #100c08 !important;
+  }
+
+  /* ═════════════════════════════════════════════════════════════════════════
+     *** Logo SARA: mantener fondo blanco ***
+     ═════════════════════════════════════════════════════════════════════════ */
+  html.a11y-high-contrast img[src*="logo"] {
+    filter: none !important;
+    background-color: transparent !important;
+  }
+
+  /* Texto SARA al lado del logo en negro */
+  html.a11y-high-contrast a[aria-label*="SARA"] {
+    color: #100c08 !important;
+  }
+
+  html.a11y-high-contrast a[aria-label*="SARA"] span {
+    color: #100c08 !important;
+  }
 }
