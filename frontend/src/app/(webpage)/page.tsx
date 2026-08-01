@@ -32,8 +32,8 @@ export default function HomePage() {
         className="relative bg-surface-container-low border-b border-outline-variant"
         aria-labelledby="hero-heading"
       >
-        <div className="max-w-5xl min-h-[90dvh] mx-auto px-5 lg:px-10 py-14 lg:py-24 flex flex-col items-center gap-10">
-          <div className="flex-1 text-center">
+        <div className="max-w-5xl min-h-[90dvh] mx-auto px-5 lg:px-10 py-10 lg:py-24 flex flex-col items-center justify-center gap-10">
+          <div className="text-center">
             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
               <span className="material-symbols-rounded text-base" aria-hidden="true">emergency_home</span>
               Plataforma de Emergencia Accesible
@@ -53,7 +53,7 @@ export default function HomePage() {
             <div className="mt-8 flex justify-center">
               <Link
                 href="/sos"
-                className="flex items-center justify-center gap-3 bg-error text-on-error px-10 py-5 rounded-full font-extrabold text-3xl shadow-2xl hover:opacity-90 transition-all hover:scale-110 active:scale-100 focus-visible:outline-3 focus-visible:outline-error border-2 border-error-container animate-pulse"
+                className="flex items-center justify-center mt-2 lg:mt-1 gap-3 bg-error text-on-error px-10 py-5 rounded-full font-extrabold text-4xl shadow-2xl hover:opacity-90 transition-all hover:scale-110 active:scale-100 focus-visible:outline-3 focus-visible:outline-error border-2 border-error-container animate-pulse"
               >
                 <span className="material-symbols-rounded text-4xl" aria-hidden="true">emergency</span>
                 SOS — Emergencia
