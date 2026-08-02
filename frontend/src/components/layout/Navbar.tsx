@@ -11,17 +11,18 @@ import type { ROLES_USER } from "@/types";
 type NavLink = {
   href: string;
   label: string;
+  icon: string;
   /** Si se define, el link solo es visible para usuarios autenticados con uno de estos roles. */
   roles?: ROLES_USER[];
 };
 
 const navLinks: NavLink[] = [
-  { href: "/", label: "Inicio" },
-  { href: "/mapa", label: "Mapa", roles: ["admin", "organization", "volunteer"] },
-  { href: "/refugios", label: "Refugios" },
-  { href: "/recursos", label: "Recursos" },
-  { href: "/directorio", label: "Directorio" },
-  { href: "/chat", label: "Chat" },
+  { href: "/", label: "Inicio", icon: "home" },
+  { href: "/mapa", label: "Mapa", icon: "map", roles: ["admin", "organization", "volunteer"] },
+  { href: "/refugios", label: "Refugios", icon: "holiday_village" },
+  { href: "/recursos", label: "Recursos", icon: "inventory_2" },
+  { href: "/directorio", label: "Directorio", icon: "contact_page" },
+  { href: "/chat", label: "Chat", icon: "chat" },
 ];
 
 export default function Navbar() {
@@ -73,22 +74,7 @@ export default function Navbar() {
           <span className="hidden md:inline">SARA</span>
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden lg:flex items-center gap-1" aria-label="Navegación principal">
-          {visibleNavLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`px-4 py-2 flex items-center rounded-lg text-sm font-semibold transition-colors min-h-0 ${pathname === link.href
-                ? "bg-primary-fixed text-primary"
-                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                }`}
-              aria-current={pathname === link.href ? "page" : undefined}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        
 
         {/* Desktop SOS CTA */}
         <div className="flex items-center gap-2">
@@ -196,7 +182,7 @@ export default function Navbar() {
 
         {/* Mobile menu button */}
         <button
-          className="lg:hidden flex items-center justify-center w-12 h-12 rounded-xl text-on-surface-variant hover:bg-surface-container transition-colors"
+          className="flex items-center justify-center w-12 h-12 rounded-xl text-on-surface-variant hover:bg-surface-container transition-colors"
           onClick={() => setMenuOpen((v) => !v)}
           aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
           aria-expanded={menuOpen}
@@ -207,78 +193,92 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile dropdown */}
+      {/* Mobile dropdown - Sidebar */}
       {menuOpen && (
-        <nav
-          className="lg:hidden border-t border-outline-variant bg-surface-container-low"
-          aria-label="Menú móvil"
-        >
-          <ul className="flex flex-col divide-y divide-outline-variant">
-            {visibleNavLinks.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className={`block px-5 py-4 text-base font-medium transition-colors ${pathname === link.href
-                    ? "text-primary bg-primary-fixed"
-                    : "text-on-surface hover:bg-surface-container"
-                    }`}
-                  aria-current={pathname === link.href ? "page" : undefined}
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-            <li>
-              <Link
-                href="/sos"
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center justify-center gap-3 mx-4 my-2 px-5 py-3 rounded-full bg-error text-on-error font-extrabold text-base shadow-lg shadow-error/25 active:scale-95 animate-pulse transition-all"
-              >
-                <span className="material-symbols-rounded text-2xl" aria-hidden="true">
-                  crisis_alert
-                </span>
-                NECESITO AYUDA - SOS
-              </Link>
-            </li>
-            {user ? (
-              <>
-                <li>
+        <>
+          {/* Overlay semitransparente que cubre el resto de la pantalla */}
+          <div
+            className="fixed inset-0 top-16 bg-black/40 z-40 animate-in fade-in duration-200"
+            onClick={() => setMenuOpen(false)}
+            aria-hidden="true"
+          />
+          {/* Panel del menú alineado a la derecha */}
+          <div className="fixed top-16 right-0 left-0 lg:left-auto lg:w-[30dvw] z-50 bg-surface-container-low shadow-xl animate-in slide-in-from-top-2 duration-200 p-3">
+            <nav
+              className="border-t border-outline-variant "
+              aria-label="Menú móvil"
+            >
+            <ul className="flex flex-col divide-y divide-outline-variant">
+              {visibleNavLinks.map((link) => (
+                <li key={link.href}>
                   <Link
-                    href="/perfil"
+                    href={link.href}
                     onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 px-5 py-4 text-base font-medium text-on-surface hover:bg-surface-container transition-colors"
+                    className={`flex items-center gap-3 px-5 py-4 text-base font-medium transition-colors rounded-lg ${pathname === link.href
+                      ? "text-primary bg-primary-fixed"
+                      : "text-on-surface hover:bg-surface-container"
+                      }`}
+                    aria-current={pathname === link.href ? "page" : undefined}
                   >
-                    <span className="material-symbols-rounded" aria-hidden="true">person</span>
-                    Perfil
+                    <span className="material-symbols-rounded text-2xl" aria-hidden="true">
+                      {link.icon}
+                    </span>
+                    {link.label}
                   </Link>
                 </li>
-                <li>
-                  {user && (
-                    <button
-                      onClick={() => { handleLogout(); setMenuOpen(false); }}
-                      className="flex items-center gap-3 w-full px-5 py-4 text-base font-medium text-error hover:bg-surface-container transition-colors"
-                    >
-                      <span className="material-symbols-rounded" aria-hidden="true">logout</span>
-                      Cerrar sesión
-                    </button>
-                  )}
-                </li>
-              </>
-            ) : (
+              ))}
               <li>
                 <Link
-                  href="/login"
+                  href="/sos"
                   onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-3 px-5 py-4 text-base font-medium text-primary hover:bg-surface-container transition-colors"
+                  className="flex items-center justify-center gap-3 mx-4 my-2 px-5 py-3 rounded-full bg-error text-on-error font-extrabold text-base shadow-lg shadow-error/25 active:scale-95 animate-pulse transition-all"
                 >
-                  <span className="material-symbols-rounded text-primary" aria-hidden="true">contacts_product</span>
-                  Iniciar sesión
+                  <span className="material-symbols-rounded text-2xl" aria-hidden="true">
+                    crisis_alert
+                  </span>
+                  NECESITO AYUDA - SOS
                 </Link>
               </li>
-            )}
-          </ul>
-        </nav>
+              {user ? (
+                <>
+                  <li>
+                    <Link
+                      href="/perfil"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-3 px-5 py-4 text-base font-medium text-on-surface hover:bg-surface-container transition-colors"
+                    >
+                      <span className="material-symbols-rounded" aria-hidden="true">person</span>
+                      Perfil
+                    </Link>
+                  </li>
+                  <li>
+                    {user && (
+                      <button
+                        onClick={() => { handleLogout(); setMenuOpen(false); }}
+                        className="flex items-center gap-3 w-full px-5 py-4 text-base font-medium text-error hover:bg-surface-container transition-colors"
+                      >
+                        <span className="material-symbols-rounded" aria-hidden="true">logout</span>
+                        Cerrar sesión
+                      </button>
+                    )}
+                  </li>
+                </>
+              ) : (
+                <li>
+                  <Link
+                    href="/login"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-5 py-4 text-base font-medium text-primary hover:bg-surface-container transition-colors"
+                  >
+                    <span className="material-symbols-rounded text-primary" aria-hidden="true">contacts_product</span>
+                    Iniciar sesión
+                  </Link>
+                </li>
+              )}
+            </ul>
+          </nav>
+        </div>
+        </>
       )}
     </header>
   );
