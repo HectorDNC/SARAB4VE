@@ -147,7 +147,7 @@ export default function Login() {
                 <p className="text-center text-sm text-on-surface-variant mt-6">
                     ¿No tienes una cuenta?{" "}
                     <Link
-                        href="/registro-user"
+                        href="/registro"
                         className="font-semibold text-primary hover:opacity-80"
                     >
                         Regístrate aquí

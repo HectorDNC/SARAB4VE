@@ -273,6 +273,14 @@ export default function Navbar() {
                     <span className="material-symbols-rounded text-primary" aria-hidden="true">contacts_product</span>
                     Iniciar sesión
                   </Link>
+                  <Link
+                    href="/registro"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-5 py-4 text-base font-medium text-primary hover:bg-surface-container transition-colors"
+                  >
+                    <span className="material-symbols-rounded text-primary" aria-hidden="true">person_add</span>
+                    Registrarse
+                  </Link>
                 </li>
               )}
             </ul>
