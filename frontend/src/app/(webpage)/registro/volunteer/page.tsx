@@ -1,7 +1,8 @@
-"use client"
+"use client";
 
 import Label from "@/components/ui/Label";
-import { useState } from 'react'
+import Button from "@/components/ui/Button";
+import { useId, useState } from 'react'
 import { iVolunteerForm, SKILLS, DAYS_WEEKEND } from "@/types/index";
 import { sendVolunteer } from "@/api/volunteer";
 import { volunteerSchema, getFieldErrors, type VolunteerFormData } from "./schema";
@@ -13,7 +14,7 @@ import PhoneField from "@/components/ui/PhoneField";
 
 const Location = dynamic(() => import("@/components/ui/Location"), {
     ssr: false,
-    loading: () => <div className="h-[300px] rounded-xl bg-surface-container animate-pulse" />,
+    loading: () => <div className="h-[300px] md:h-[360px] rounded-xl bg-surface-container animate-pulse" />,
 });
 
 const InitVolunteerForm: iVolunteerForm = {
@@ -29,11 +30,29 @@ const InitVolunteerForm: iVolunteerForm = {
     acceptedTerms: false,
 }
 
-export default function VolunteerRegister() {
+const fieldClass =
+    "w-full rounded-xl border border-outline-variant bg-background px-4 py-3 " +
+    "focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-1 " +
+    "focus:border-primary transition-colors";
 
+const errorClass = "text-error text-sm mt-1";
+
+export default function VolunteerRegister() {
     const [formData, setFormData] = useState<iVolunteerForm>(InitVolunteerForm);
     const [errors, setErrors] = useState<Partial<Record<keyof VolunteerFormData, string>>>({});
     const [showTermsModal, setShowTermsModal] = useState(false);
+
+    const ids = {
+        fullName: useId(),
+        email: useId(),
+        phone: useId(),
+        password: useId(),
+        location: useId(),
+        zone: useId(),
+        skills: useId(),
+        availableHours: useId(),
+        availableDays: useId(),
+    } as const;
 
     function toggleArray<T>(array: T[], value: T): T[] {
         return array.includes(value)
@@ -93,156 +112,241 @@ export default function VolunteerRegister() {
 
 
     return (
-
-        <section className="px-5 lg:px-10 py-8 lg:py-12 ">
+        <section className="px-5 lg:px-10 py-8 lg:py-12">
             <div className="max-w-3xl mx-auto">
-                <h1 className="text-3xl font-bold text-on-surface">
-                    Registro de Voluntario
-                </h1>
-                <p className="text-on-surface-variant mt-2">
-                    Formulario inicial para unirte a la red SARA.
-                </p>
+                <header className="mb-8">
+                    <h1 className="text-3xl lg:text-4xl font-bold text-on-surface">
+                        Registro de Voluntario
+                    </h1>
+                    <p className="text-on-surface-variant mt-2 text-base">
+                        Formulario inicial para unirte a la red SARA.
+                    </p>
+                </header>
 
                 <form
                     onSubmit={handleSubmit}
-                    className="mt-6 grid grid-cols-1 gap-4 rounded-2xl border border-outline-variant bg-surface-container-low p-6"
+                    noValidate
+                    className="rounded-2xl border border-outline-variant bg-surface-container-low p-5 sm:p-6 lg:p-8 space-y-8"
                 >
-                    <div>
-                        <input
-                            className="w-full rounded-xl border border-outline-variant bg-background px-4 py-3"
-                            placeholder="Nombre completo"
-                            value={formData.fullName}
-                            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                        />
-                        {errors.fullName && (
-                            <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>
-                        )}
-                    </div>
-                    <div>
-                        <input
-                            type="email"
-                            className="w-full rounded-xl border border-outline-variant bg-background px-4 py-3"
-                            placeholder="Correo electrónico"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        />
-                        {errors.email && (
-                            <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-                        )}
-                    </div>
+                    {/* DATOS PERSONALES */}
+                    <fieldset className="space-y-4">
+                        <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
+                            Datos personales
+                        </legend>
 
-                    <div>
-                        <PhoneField
-                            value={formData.phone}
-                            onChange={(phone) => setFormData({ ...formData, phone })}
-                        />
-                        {errors.phone && (
-                            <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-                        )}
-                    </div>
+                        <div>
+                            <Label htmlFor={ids.fullName} name="Nombre completo" />
+                            <input
+                                id={ids.fullName}
+                                className={`${fieldClass} mt-2 ${errors.fullName ? "border-error" : ""}`}
+                                placeholder="Ej. María González"
+                                value={formData.fullName}
+                                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                aria-invalid={!!errors.fullName}
+                                aria-describedby={errors.fullName ? `${ids.fullName}-err` : undefined}
+                            />
+                            {errors.fullName && (
+                                <p id={`${ids.fullName}-err`} className={errorClass}>{errors.fullName}</p>
+                            )}
+                        </div>
 
-                    <div>
-                        <input
-                            type="password"
-                            className="w-full rounded-xl border border-outline-variant bg-background px-4 py-3"
-                            placeholder="Contraseña"
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        />
-                        {errors.password && (
-                            <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-                        )}
-                    </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor={ids.email} name="Correo electrónico" />
+                                <input
+                                    id={ids.email}
+                                    type="email"
+                                    className={`${fieldClass} mt-2 ${errors.email ? "border-error" : ""}`}
+                                    placeholder="correo@ejemplo.com"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    aria-invalid={!!errors.email}
+                                    aria-describedby={errors.email ? `${ids.email}-err` : undefined}
+                                />
+                                {errors.email && (
+                                    <p id={`${ids.email}-err`} className={errorClass}>{errors.email}</p>
+                                )}
+                            </div>
 
-                    <div>
-                        <Label name={'Ubicación donde puedes operar'}></Label>
-                        <div className="mt-2">
+                            <div>
+                                <Label htmlFor={ids.phone} name="Teléfono" />
+                                <div id={ids.phone} className="mt-2">
+                                    <PhoneField
+                                        value={formData.phone}
+                                        onChange={(phone) => setFormData({ ...formData, phone })}
+                                    />
+                                </div>
+                                {errors.phone && (
+                                    <p className={errorClass}>{errors.phone}</p>
+                                )}
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    {/* CREDENCIALES */}
+                    <fieldset className="space-y-4">
+                        <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
+                            Credenciales
+                        </legend>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor={ids.password} name="Contraseña" />
+                                <input
+                                    id={ids.password}
+                                    type="password"
+                                    className={`${fieldClass} mt-2 ${errors.password ? "border-error" : ""}`}
+                                    placeholder="Mínimo 8 caracteres"
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    aria-invalid={!!errors.password}
+                                    aria-describedby={errors.password ? `${ids.password}-err` : undefined}
+                                />
+                                {errors.password && (
+                                    <p id={`${ids.password}-err`} className={errorClass}>{errors.password}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <Label htmlFor={ids.zone} name="Zona donde puede operar" />
+                                <input
+                                    id={ids.zone}
+                                    className={`${fieldClass} mt-2 ${errors.zone ? "border-error" : ""}`}
+                                    placeholder="Ej. Chacao, Caracas"
+                                    value={formData.zone}
+                                    onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
+                                    aria-invalid={!!errors.zone}
+                                    aria-describedby={errors.zone ? `${ids.zone}-err` : undefined}
+                                />
+                                {errors.zone && (
+                                    <p id={`${ids.zone}-err`} className={errorClass}>{errors.zone}</p>
+                                )}
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    {/* UBICACIÓN */}
+                    <fieldset>
+                        <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
+                            Ubicación
+                        </legend>
+                        <Label htmlFor={ids.location} name="Marca en el mapa la zona donde puedes operar" />
+                        <div id={ids.location} className="mt-2">
                             <Location
                                 value={formData.location}
                                 onChange={(loc) => setFormData({ ...formData, location: loc })}
                             />
                         </div>
                         {errors.location && (
-                            <p className="text-red-500 text-sm mt-1">{errors.location}</p>
+                            <p className={errorClass}>{errors.location}</p>
                         )}
-                    </div>
-                    <div>
-                        <input
-                            className="w-full rounded-xl border border-outline-variant bg-background px-4 py-3 "
-                            placeholder="Zona donde puede operar"
-                            value={formData.zone}
-                            onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
-                        />
-                        {errors.zone && (
-                            <p className="text-red-500 text-sm mt-1">{errors.zone}</p>
-                        )}
-                    </div>
+                    </fieldset>
 
-                    <div>
-                        <Label name={'Habilidades'}></Label>
-                        <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {SKILLS.map((skill) => (
-                                <label
-                                    key={skill.value}
-                                    className="flex items-center gap-2 rounded-xl border border-outline-variant bg-background px-3 py-2 text-sm"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.skills.includes(skill.value)}
-                                        onChange={() => toggleSkill(skill.value)}
-                                    />
-                                    {skill.label}
-                                </label>
-                            ))}
+                    {/* HABILIDADES Y DISPONIBILIDAD */}
+                    <fieldset className="space-y-6">
+                        <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
+                            Habilidades y disponibilidad
+                        </legend>
+
+                        <div>
+                            <Label htmlFor={ids.skills} name="Habilidades" />
+                            <div
+                                id={ids.skills}
+                                role="group"
+                                aria-labelledby={ids.skills}
+                                className="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2"
+                            >
+                                {SKILLS.map((skill) => {
+                                    const checked = formData.skills.includes(skill.value);
+                                    return (
+                                        <label
+                                            key={skill.value}
+                                            className={[
+                                                "flex items-center gap-2 rounded-xl border bg-background px-3 py-2.5 text-sm cursor-pointer transition-colors",
+                                                checked
+                                                    ? "border-primary bg-primary-fixed"
+                                                    : "border-outline-variant hover:border-primary/60",
+                                            ].join(" ")}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={() => toggleSkill(skill.value)}
+                                                className="accent-primary shrink-0"
+                                            />
+                                            <span className="leading-tight">{skill.label}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            {errors.skills && (
+                                <p className={errorClass}>{errors.skills}</p>
+                            )}
                         </div>
-                        {errors.skills && (
-                            <p className="text-red-500 text-sm mt-1">{errors.skills}</p>
-                        )}
-                    </div>
 
-                    <div className="grid gap-2">
-                        <Label name={'Horas Disponibles a la semana'}></Label>
-                        <input
-                            type="number"
-                            min={0}
-                            className="rounded-xl border border-outline-variant bg-background px-4 py-3"
-                            placeholder="Horas disponibles a la semana"
-                            value={formData.availableHours}
-                            onChange={(e) =>
-                                setFormData({ ...formData, availableHours: parseInt(e.target.value) || 0 })
-                            }
-                        />
-                        {errors.availableHours && (
-                            <p className="text-red-500 text-sm mt-1">{errors.availableHours}</p>
-                        )}
-                    </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <Label htmlFor={ids.availableHours} name="Horas / semana" />
+                                <input
+                                    id={ids.availableHours}
+                                    type="number"
+                                    min={0}
+                                    max={168}
+                                    className={`${fieldClass} mt-2 ${errors.availableHours ? "border-error" : ""}`}
+                                    placeholder="Ej. 10"
+                                    value={formData.availableHours || ""}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, availableHours: parseInt(e.target.value) || 0 })
+                                    }
+                                    aria-invalid={!!errors.availableHours}
+                                    aria-describedby={errors.availableHours ? `${ids.availableHours}-err` : undefined}
+                                />
+                                {errors.availableHours && (
+                                    <p id={`${ids.availableHours}-err`} className={errorClass}>{errors.availableHours}</p>
+                                )}
+                            </div>
 
-                    <div>
-                        <Label name={'Días disponibles'}></Label>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                            {DAYS_WEEKEND.map((dia) => (
-                                <label
-                                    key={dia.value}
-                                    className="flex items-center gap-2 rounded-xl border border-outline-variant bg-background px-3 py-2 text-sm"
+                            <div className="sm:col-span-2">
+                                <Label htmlFor={ids.availableDays} name="Días disponibles" />
+                                <div
+                                    id={ids.availableDays}
+                                    role="group"
+                                    aria-labelledby={ids.availableDays}
+                                    className="mt-2 flex flex-wrap gap-2"
                                 >
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.availableDays.includes(dia.value)}
-                                        onChange={() =>
-                                            toggleAvailableDay(dia.value)
-                                        }
-                                    />
-                                    {dia.label}
-                                </label>
-                            ))}
+                                    {DAYS_WEEKEND.map((dia) => {
+                                        const checked = formData.availableDays.includes(dia.value);
+                                        return (
+                                            <label
+                                                key={dia.value}
+                                                className={[
+                                                    "flex items-center gap-2 rounded-full border bg-background px-3 py-2 text-sm cursor-pointer transition-colors",
+                                                    checked
+                                                        ? "border-primary bg-primary-fixed"
+                                                        : "border-outline-variant hover:border-primary/60",
+                                                ].join(" ")}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    onChange={() => toggleAvailableDay(dia.value)}
+                                                    className="accent-primary shrink-0"
+                                                />
+                                                {dia.label}
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                                {errors.availableDays && (
+                                    <p className={errorClass}>{errors.availableDays}</p>
+                                )}
+                            </div>
                         </div>
-                        {errors.availableDays && (
-                            <p className="text-red-500 text-sm mt-1">{errors.availableDays}</p>
-                        )}
-                    </div>
+                    </fieldset>
 
+                    {/* TÉRMINOS */}
                     <div>
-                        <label className="flex items-start gap-2 text-sm text-on-surface-variant">
+                        <label className="flex items-start gap-3 text-sm text-on-surface-variant cursor-pointer">
                             <input
                                 type="checkbox"
                                 checked={formData.acceptedTerms}
@@ -255,7 +359,7 @@ export default function VolunteerRegister() {
                                         setFormData({ ...formData, acceptedTerms: false });
                                     }
                                 }}
-                                className="mt-0.5 shrink-0"
+                                className="mt-0.5 shrink-0 accent-primary"
                             />
                             <span className="leading-relaxed">
                                 Acepto los{" "}
@@ -280,9 +384,10 @@ export default function VolunteerRegister() {
                             </span>
                         </label>
                         {errors.acceptedTerms && (
-                            <p className="text-red-500 text-sm mt-1">{errors.acceptedTerms}</p>
+                            <p className={errorClass}>{errors.acceptedTerms}</p>
                         )}
                     </div>
+
                     <TermsModal
                         open={showTermsModal}
                         onClose={() => setShowTermsModal(false)}
@@ -292,12 +397,11 @@ export default function VolunteerRegister() {
                         }}
                     />
 
-                    <button
-                        type="submit"
-                        className="rounded-full bg-primary text-on-primary px-6 py-3 font-semibold hover:opacity-90 transition-opacity"
-                    >
-                        Enviar solicitud
-                    </button>
+                    <div className="pt-2 flex justify-end">
+                        <Button type="submit" variant="filled" size="lg" icon="send">
+                            Enviar solicitud
+                        </Button>
+                    </div>
                 </form>
             </div>
         </section>
