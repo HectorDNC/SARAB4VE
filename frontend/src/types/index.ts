@@ -134,7 +134,57 @@ export interface iOrganizationForm extends BaseUserForm {
     legalDocument: string;
     workArea: string[];
     acceptedTerms: boolean;
+
+    // Identificación fiscal
+    countryFiscal: string;
+    fiscalIdType: string;
+    fiscalNumber: string;
+
+    // Tipo de entidad
+    entityType: string;
+    otherEntityType: string;
+
+    // Datos legales
+    registrationNumber: number;
+    constitutionDate: string;
+    legalAddress: string;
+    legalCountry: string;
+    province: string;
+    city: string;
+
+    // Representante legal
+    legalRepresentativeName: string;
+    legalRepresentativePosition: string;
+    legalRepresentativePhone: string;
+    legalRepresentativeEmail: string;
+
+    // Información institucional
+    website: string;
+    socialMedia: string;
+    mission: string;
+    vision: string;
+    scope: string;
+    collectiveServed: string;
+
+    // Discapacidades y servicios
+    disabilityTypes: string[];
+    services: string;
+
+    // Documentos
+    documents: {
+        cif: string;
+        estatutos: string;
+        inscripcion: string;
+        id_representante: string;
+        certificado_fiscal: string;
+        seguro_responsabilidad: string;
+        politica_proteccion_datos: string;
+        codigo_etico: string;
+        politica_accesibilidad: string;
+    };
 }
+
+
 
 export const WORK_AREAS = [
     { value: "alimentacion", label: "Alimentación" },

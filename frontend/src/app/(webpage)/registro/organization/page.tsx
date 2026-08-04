@@ -4,6 +4,12 @@ import Label from "@/components/ui/Label";
 import Button from "@/components/ui/Button";
 import { useId, useState } from 'react';
 import { iOrganizationForm, WORK_AREAS } from "@/types/index";
+import {
+    COUNTRIES_FISCAL_ID,
+    ENTITY_TYPES,
+    DISABILITY_TYPES,
+    REQUIRED_DOCUMENTS,
+} from "./constants";
 import { sendOrganization } from "@/api/organization";
 import { organizationSchema, getFieldErrors, type OrganizationFormData } from "./schema";
 import { alertService } from "@/services/alertService";
@@ -28,7 +34,44 @@ const InitOrganizationForm: iOrganizationForm = {
     legalDocument: "",
     workArea: [],
     acceptedTerms: false,
+
+    countryFiscal: "",
+    fiscalIdType: "",
+    fiscalNumber: "",
+    entityType: "",
+    otherEntityType: "",
+    registrationNumber: 0,
+    constitutionDate: "",
+    legalAddress: "",
+    legalCountry: "",
+    province: "",
+    city: "",
+    legalRepresentativeName: "",
+    legalRepresentativePosition: "",
+    legalRepresentativePhone: "",
+    legalRepresentativeEmail: "",
+    website: "",
+    socialMedia: "",
+    mission: "",
+    vision: "",
+    scope: "",
+    collectiveServed: "",
+    disabilityTypes: [],
+    services: "",
+    documents: {
+        cif: "",
+        estatutos: "",
+        inscripcion: "",
+        id_representante: "",
+        certificado_fiscal: "",
+        seguro_responsabilidad: "",
+        politica_proteccion_datos: "",
+        codigo_etico: "",
+        politica_accesibilidad: "",
+    },
 }
+
+
 
 const fieldClass =
     "w-full rounded-xl border border-outline-variant bg-background px-4 py-3 " +
@@ -42,6 +85,14 @@ export default function OrganizationRegister() {
     const [formData, setFormData] = useState<iOrganizationForm>(InitOrganizationForm);
     const [errors, setErrors] = useState<Partial<Record<keyof OrganizationFormData, string>>>({});
     const [showTermsModal, setShowTermsModal] = useState(false);
+    const [documentFiles, setDocumentFiles] = useState<Record<string, File | null>>(
+        Object.fromEntries(REQUIRED_DOCUMENTS.map((doc) => [doc.id, null]))
+    );
+    const [documentErrors, setDocumentErrors] = useState<Record<string, string>>({});
+
+    const handleDocumentChange = (docId: string, file: File | null) => {
+        setDocumentFiles((prev) => ({ ...prev, [docId]: file }));
+    };
 
     const ids = {
         fullName: useId(),
@@ -53,7 +104,33 @@ export default function OrganizationRegister() {
         location: useId(),
         zone: useId(),
         workArea: useId(),
+
+        countryFiscal: useId(),
+        fiscalIdType: useId(),
+        fiscalNumber: useId(),
+        entityType: useId(),
+        otherEntityType: useId(),
+        registrationNumber: useId(),
+        constitutionDate: useId(),
+        legalAddress: useId(),
+        legalCountry: useId(),
+        province: useId(),
+        city: useId(),
+        legalRepresentativeName: useId(),
+        legalRepresentativePosition: useId(),
+        legalRepresentativePhone: useId(),
+        legalRepresentativeEmail: useId(),
+        website: useId(),
+        socialMedia: useId(),
+        mission: useId(),
+        vision: useId(),
+        scope: useId(),
+        collectiveServed: useId(),
+        disabilityTypes: useId(),
+        services: useId(),
     } as const;
+
+    
 
     function toggleArray<T>(array: T[], value: T): T[] {
         return array.includes(value)
@@ -68,6 +145,14 @@ export default function OrganizationRegister() {
         }));
     };
 
+    const toggleDisabilityType = (type: string) => {
+        setFormData(prev => ({
+            ...prev,
+            disabilityTypes: toggleArray(prev.disabilityTypes, type),
+        }));
+    };
+
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -80,6 +165,20 @@ export default function OrganizationRegister() {
         }
 
         setErrors({});
+        const missingDocs: Record<string, string> = {};
+        REQUIRED_DOCUMENTS.forEach((doc) => {
+            if (doc.required && !documentFiles[doc.id]) {
+                missingDocs[doc.id] = "Este documento es obligatorio";
+            }
+        });
+
+        if (Object.keys(missingDocs).length > 0) {
+            setDocumentErrors(missingDocs);
+            alertService.warning("Adjunta todos los documentos obligatorios.");
+            return;
+        }
+
+        setDocumentErrors({});
 
         try {
             await sendOrganization({
@@ -94,6 +193,8 @@ export default function OrganizationRegister() {
                 workArea: result.data.workArea,
                 acceptedTerms: result.data.acceptedTerms,
             });
+
+            
 
             alertService.success("Tu solicitud fue enviada. Te contactaremos pronto.");
             setFormData(InitOrganizationForm);
@@ -144,19 +245,189 @@ export default function OrganizationRegister() {
                         </div>
 
                         <div>
-                            <Label htmlFor={ids.legalDocument} name="Documento legal (RIF o equivalente)" />
-                            <input
-                                id={ids.legalDocument}
-                                className={`${fieldClass} mt-2 ${errors.legalDocument ? "border-error" : ""}`}
-                                placeholder="Ej. J-12345678-9"
-                                value={formData.legalDocument}
-                                onChange={(e) => setFormData({ ...formData, legalDocument: e.target.value })}
-                                aria-invalid={!!errors.legalDocument}
-                                aria-describedby={errors.legalDocument ? `${ids.legalDocument}-err` : undefined}
-                            />
-                            {errors.legalDocument && (
-                                <p id={`${ids.legalDocument}-err`} className={errorClass}>{errors.legalDocument}</p>
+                            <Label htmlFor={ids.fiscalIdType} name="Tipo de identificador fiscal" />
+                            <select
+                                id={ids.fiscalIdType}
+                                className={`${fieldClass} mt-2 ${errors.fiscalIdType ? "border-error" : ""}`}
+                                value={formData.countryFiscal ? `${formData.countryFiscal}|${formData.fiscalIdType}` : ""}
+                                onChange={(e) => {
+                                    const [countryFiscal, fiscalIdType] = e.target.value.split("|");
+                                    setFormData({ ...formData, countryFiscal, fiscalIdType });
+                                }}
+                                aria-invalid={!!errors.fiscalIdType}
+                                aria-describedby={errors.fiscalIdType ? `${ids.fiscalIdType}-err` : undefined}
+                            >
+                                <option value="">Selecciona un tipo de identificador fiscal</option>
+                                {COUNTRIES_FISCAL_ID.map((c) => (
+                                    <option key={c.code} value={`${c.name}|${c.fiscalId}`}>
+                                        {c.fiscalId} ({c.name})
+                                    </option>
+                                ))}
+                            </select>
+                            {errors.fiscalIdType && (
+                                <p id={`${ids.fiscalIdType}-err`} className={errorClass}>{errors.fiscalIdType}</p>
                             )}
+                        </div>
+
+                        <div>
+                            <Label htmlFor={ids.fiscalNumber} name="Número de identificación fiscal" />
+                            <input
+                                id={ids.fiscalNumber}
+                                className={`${fieldClass} mt-2 ${errors.fiscalNumber ? "border-error" : ""}`}
+                                placeholder="Ej. J-12345678-9"
+                                value={formData.fiscalNumber}
+                                onChange={(e) => setFormData({ ...formData, fiscalNumber: e.target.value })}
+                                aria-invalid={!!errors.fiscalNumber}
+                                aria-describedby={errors.fiscalNumber ? `${ids.fiscalNumber}-err` : undefined}
+                            />
+                            {errors.fiscalNumber && (
+                                <p id={`${ids.fiscalNumber}-err`} className={errorClass}>{errors.fiscalNumber}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <Label htmlFor={ids.entityType} name="Tipo de entidad" />
+                            <select
+                                id={ids.entityType}
+                                className={`${fieldClass} mt-2 ${errors.entityType ? "border-error" : ""}`}
+                                value={formData.entityType}
+                                onChange={(e) => setFormData({ ...formData, entityType: e.target.value, otherEntityType: e.target.value === "Otra (cual)" ? formData.otherEntityType : "" })}
+                                aria-invalid={!!errors.entityType}
+                                aria-describedby={errors.entityType ? `${ids.entityType}-err` : undefined}
+                            >
+                                <option value="">Selecciona un tipo de entidad</option>
+                                {ENTITY_TYPES.map((type) => (
+                                    <option key={type} value={type}>{type}</option>
+                                ))}
+                            </select>
+                            {errors.entityType && (
+                                <p id={`${ids.entityType}-err`} className={errorClass}>{errors.entityType}</p>
+                            )}
+                        </div>
+
+                        {formData.entityType === "Otra (cual)" && (
+                            <div>
+                                <Label htmlFor={ids.otherEntityType} name="Especifica el tipo de entidad" />
+                                <input
+                                    id={ids.otherEntityType}
+                                    className={`${fieldClass} mt-2`}
+                                    placeholder="Ej. Cooperativa"
+                                    value={formData.otherEntityType}
+                                    onChange={(e) => setFormData({ ...formData, otherEntityType: e.target.value })}
+                                />
+                            </div>
+                        )}
+
+                    </fieldset>
+                    {/* DATOS LEGALES */}
+                    <fieldset className="space-y-4">
+                        <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
+                            Datos legales
+                        </legend>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor={ids.registrationNumber} name="Número de registro" />
+                                <input
+                                    id={ids.registrationNumber}
+                                    type="number"
+                                    className={`${fieldClass} mt-2 ${errors.registrationNumber ? "border-error" : ""}`}
+                                    placeholder="Ej. 123456"
+                                    value={formData.registrationNumber || ""}
+                                    onChange={(e) => setFormData({ ...formData, registrationNumber: Number(e.target.value) })}
+                                    aria-invalid={!!errors.registrationNumber}
+                                    aria-describedby={errors.registrationNumber ? `${ids.registrationNumber}-err` : undefined}
+                                />
+                                {errors.registrationNumber && (
+                                    <p id={`${ids.registrationNumber}-err`} className={errorClass}>{errors.registrationNumber}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <Label htmlFor={ids.constitutionDate} name="Fecha de constitución" />
+                                <input
+                                    id={ids.constitutionDate}
+                                    type="date"
+                                    className={`${fieldClass} mt-2 ${errors.constitutionDate ? "border-error" : ""}`}
+                                    value={formData.constitutionDate}
+                                    onChange={(e) => setFormData({ ...formData, constitutionDate: e.target.value })}
+                                    aria-invalid={!!errors.constitutionDate}
+                                    aria-describedby={errors.constitutionDate ? `${ids.constitutionDate}-err` : undefined}
+                                />
+                                {errors.constitutionDate && (
+                                    <p id={`${ids.constitutionDate}-err`} className={errorClass}>{errors.constitutionDate}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <Label htmlFor={ids.legalAddress} name="Dirección" />
+                            <input
+                                id={ids.legalAddress}
+                                className={`${fieldClass} mt-2 ${errors.legalAddress ? "border-error" : ""}`}
+                                placeholder="Ej. Av. Principal, Edificio X, Piso 2"
+                                value={formData.legalAddress}
+                                onChange={(e) => setFormData({ ...formData, legalAddress: e.target.value })}
+                                aria-invalid={!!errors.legalAddress}
+                                aria-describedby={errors.legalAddress ? `${ids.legalAddress}-err` : undefined}
+                            />
+                            {errors.legalAddress && (
+                                <p id={`${ids.legalAddress}-err`} className={errorClass}>{errors.legalAddress}</p>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <Label htmlFor={ids.legalCountry} name="País" />
+                                <select
+                                    id={ids.legalCountry}
+                                    className={`${fieldClass} mt-2 ${errors.legalCountry ? "border-error" : ""}`}
+                                    value={formData.legalCountry}
+                                    onChange={(e) => setFormData({ ...formData, legalCountry: e.target.value })}
+                                    aria-invalid={!!errors.legalCountry}
+                                    aria-describedby={errors.legalCountry ? `${ids.legalCountry}-err` : undefined}
+                                >
+                                    <option value="">Selecciona un país</option>
+                                    {COUNTRIES_FISCAL_ID.map((c) => (
+                                        <option key={c.code} value={c.name}>{c.name}</option>
+                                    ))}
+                                </select>
+                                {errors.legalCountry && (
+                                    <p id={`${ids.legalCountry}-err`} className={errorClass}>{errors.legalCountry}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <Label htmlFor={ids.province} name="Provincia" />
+                                <input
+                                    id={ids.province}
+                                    className={`${fieldClass} mt-2 ${errors.province ? "border-error" : ""}`}
+                                    placeholder="Ej. Miranda"
+                                    value={formData.province}
+                                    onChange={(e) => setFormData({ ...formData, province: e.target.value })}
+                                    aria-invalid={!!errors.province}
+                                    aria-describedby={errors.province ? `${ids.province}-err` : undefined}
+                                />
+                                {errors.province && (
+                                    <p id={`${ids.province}-err`} className={errorClass}>{errors.province}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <Label htmlFor={ids.city} name="Ciudad" />
+                                <input
+                                    id={ids.city}
+                                    className={`${fieldClass} mt-2 ${errors.city ? "border-error" : ""}`}
+                                    placeholder="Ej. Caracas"
+                                    value={formData.city}
+                                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                    aria-invalid={!!errors.city}
+                                    aria-describedby={errors.city ? `${ids.city}-err` : undefined}
+                                />
+                                {errors.city && (
+                                    <p id={`${ids.city}-err`} className={errorClass}>{errors.city}</p>
+                                )}
+                            </div>
                         </div>
                     </fieldset>
 
@@ -210,6 +481,78 @@ export default function OrganizationRegister() {
                                 </div>
                                 {errors.phone && (
                                     <p className={errorClass}>{errors.phone}</p>
+                                )}
+                            </div>
+                        </div>
+                    </fieldset>
+                    {/* REPRESENTANTE LEGAL (PERSONA ENCARGADA) */}
+                    <fieldset className="space-y-4">
+                        <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
+                            Representante legal (persona encargada)
+                        </legend>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor={ids.legalRepresentativeName} name="Nombre" />
+                                <input
+                                    id={ids.legalRepresentativeName}
+                                    className={`${fieldClass} mt-2 ${errors.legalRepresentativeName ? "border-error" : ""}`}
+                                    placeholder="Ej. María Fernández"
+                                    value={formData.legalRepresentativeName}
+                                    onChange={(e) => setFormData({ ...formData, legalRepresentativeName: e.target.value })}
+                                    aria-invalid={!!errors.legalRepresentativeName}
+                                    aria-describedby={errors.legalRepresentativeName ? `${ids.legalRepresentativeName}-err` : undefined}
+                                />
+                                {errors.legalRepresentativeName && (
+                                    <p id={`${ids.legalRepresentativeName}-err`} className={errorClass}>{errors.legalRepresentativeName}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <Label htmlFor={ids.legalRepresentativePosition} name="Cargo" />
+                                <input
+                                    id={ids.legalRepresentativePosition}
+                                    className={`${fieldClass} mt-2 ${errors.legalRepresentativePosition ? "border-error" : ""}`}
+                                    placeholder="Ej. Directora Ejecutiva"
+                                    value={formData.legalRepresentativePosition}
+                                    onChange={(e) => setFormData({ ...formData, legalRepresentativePosition: e.target.value })}
+                                    aria-invalid={!!errors.legalRepresentativePosition}
+                                    aria-describedby={errors.legalRepresentativePosition ? `${ids.legalRepresentativePosition}-err` : undefined}
+                                />
+                                {errors.legalRepresentativePosition && (
+                                    <p id={`${ids.legalRepresentativePosition}-err`} className={errorClass}>{errors.legalRepresentativePosition}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor={ids.legalRepresentativePhone} name="Teléfono" />
+                                <div id={ids.legalRepresentativePhone} className="mt-2">
+                                    <PhoneField
+                                        value={formData.legalRepresentativePhone}
+                                        onChange={(phone) => setFormData({ ...formData, legalRepresentativePhone: phone })}
+                                    />
+                                </div>
+                                {errors.legalRepresentativePhone && (
+                                    <p className={errorClass}>{errors.legalRepresentativePhone}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <Label htmlFor={ids.legalRepresentativeEmail} name="Email" />
+                                <input
+                                    id={ids.legalRepresentativeEmail}
+                                    type="email"
+                                    className={`${fieldClass} mt-2 ${errors.legalRepresentativeEmail ? "border-error" : ""}`}
+                                    placeholder="representante@organizacion.org"
+                                    value={formData.legalRepresentativeEmail}
+                                    onChange={(e) => setFormData({ ...formData, legalRepresentativeEmail: e.target.value })}
+                                    aria-invalid={!!errors.legalRepresentativeEmail}
+                                    aria-describedby={errors.legalRepresentativeEmail ? `${ids.legalRepresentativeEmail}-err` : undefined}
+                                />
+                                {errors.legalRepresentativeEmail && (
+                                    <p id={`${ids.legalRepresentativeEmail}-err`} className={errorClass}>{errors.legalRepresentativeEmail}</p>
                                 )}
                             </div>
                         </div>
@@ -312,6 +655,218 @@ export default function OrganizationRegister() {
                         {errors.workArea && (
                             <p className={errorClass}>{errors.workArea}</p>
                         )}
+                    </fieldset>
+                    {/* INFORMACIÓN INSTITUCIONAL */}
+                    <fieldset className="space-y-4">
+                        <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
+                            Información institucional
+                        </legend>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor={ids.website} name="Página web" />
+                                <input
+                                    id={ids.website}
+                                    className={`${fieldClass} mt-2 ${errors.website ? "border-error" : ""}`}
+                                    placeholder="https://www.organizacion.org"
+                                    value={formData.website}
+                                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                                    aria-invalid={!!errors.website}
+                                    aria-describedby={errors.website ? `${ids.website}-err` : undefined}
+                                />
+                                {errors.website && (
+                                    <p id={`${ids.website}-err`} className={errorClass}>{errors.website}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <Label htmlFor={ids.socialMedia} name="Redes sociales" />
+                                <input
+                                    id={ids.socialMedia}
+                                    className={`${fieldClass} mt-2 ${errors.socialMedia ? "border-error" : ""}`}
+                                    placeholder="Ej. @organizacion (Instagram, Facebook, X)"
+                                    value={formData.socialMedia}
+                                    onChange={(e) => setFormData({ ...formData, socialMedia: e.target.value })}
+                                    aria-invalid={!!errors.socialMedia}
+                                    aria-describedby={errors.socialMedia ? `${ids.socialMedia}-err` : undefined}
+                                />
+                                {errors.socialMedia && (
+                                    <p id={`${ids.socialMedia}-err`} className={errorClass}>{errors.socialMedia}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <Label htmlFor={ids.mission} name="Misión" />
+                            <textarea
+                                id={ids.mission}
+                                rows={3}
+                                className={`${fieldClass} mt-2 ${errors.mission ? "border-error" : ""}`}
+                                placeholder="Describe la misión de la organización"
+                                value={formData.mission}
+                                onChange={(e) => setFormData({ ...formData, mission: e.target.value })}
+                                aria-invalid={!!errors.mission}
+                                aria-describedby={errors.mission ? `${ids.mission}-err` : undefined}
+                            />
+                            {errors.mission && (
+                                <p id={`${ids.mission}-err`} className={errorClass}>{errors.mission}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <Label htmlFor={ids.vision} name="Visión" />
+                            <textarea
+                                id={ids.vision}
+                                rows={3}
+                                className={`${fieldClass} mt-2 ${errors.vision ? "border-error" : ""}`}
+                                placeholder="Describe la visión de la organización"
+                                value={formData.vision}
+                                onChange={(e) => setFormData({ ...formData, vision: e.target.value })}
+                                aria-invalid={!!errors.vision}
+                                aria-describedby={errors.vision ? `${ids.vision}-err` : undefined}
+                            />
+                            {errors.vision && (
+                                <p id={`${ids.vision}-err`} className={errorClass}>{errors.vision}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <Label htmlFor={ids.scope} name="Ámbito de actuación" />
+                            <textarea
+                                id={ids.scope}
+                                rows={2}
+                                className={`${fieldClass} mt-2 ${errors.scope ? "border-error" : ""}`}
+                                placeholder="Ej. Nacional, regional, local..."
+                                value={formData.scope}
+                                onChange={(e) => setFormData({ ...formData, scope: e.target.value })}
+                                aria-invalid={!!errors.scope}
+                                aria-describedby={errors.scope ? `${ids.scope}-err` : undefined}
+                            />
+                            {errors.scope && (
+                                <p id={`${ids.scope}-err`} className={errorClass}>{errors.scope}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <Label htmlFor={ids.collectiveServed} name="Colectivos atendidos" />
+                            <textarea
+                                id={ids.collectiveServed}
+                                rows={2}
+                                className={`${fieldClass} mt-2 ${errors.collectiveServed ? "border-error" : ""}`}
+                                placeholder="Ej. Personas con discapacidad visual, adultos mayores..."
+                                value={formData.collectiveServed}
+                                onChange={(e) => setFormData({ ...formData, collectiveServed: e.target.value })}
+                                aria-invalid={!!errors.collectiveServed}
+                                aria-describedby={errors.collectiveServed ? `${ids.collectiveServed}-err` : undefined}
+                            />
+                            {errors.collectiveServed && (
+                                <p id={`${ids.collectiveServed}-err`} className={errorClass}>{errors.collectiveServed}</p>
+                            )}
+                        </div>
+                    </fieldset>
+                    {/* TIPOS DE DISCAPACIDAD */}
+                    <fieldset>
+                        <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
+                            Tipos de discapacidad con las que trabaja
+                        </legend>
+                        <Label htmlFor={ids.disabilityTypes} name="Selecciona todas las que apliquen" />
+                        <div
+                            id={ids.disabilityTypes}
+                            role="group"
+                            aria-labelledby={ids.disabilityTypes}
+                            className="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2"
+                        >
+                            {DISABILITY_TYPES.map((type) => {
+                                const checked = formData.disabilityTypes.includes(type);
+                                return (
+                                    <label
+                                        key={type}
+                                        className={[
+                                            "flex items-center gap-2 rounded-xl border bg-background px-3 py-2.5 text-sm cursor-pointer transition-colors",
+                                            checked
+                                                ? "border-primary bg-primary-fixed"
+                                                : "border-outline-variant hover:border-primary/60",
+                                        ].join(" ")}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            onChange={() => toggleDisabilityType(type)}
+                                            className="accent-primary shrink-0"
+                                        />
+                                        <span className="leading-tight">{type}</span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                        {errors.disabilityTypes && (
+                            <p className={errorClass}>{errors.disabilityTypes}</p>
+                        )}
+                    </fieldset>
+                    {/* SERVICIOS OFRECIDOS */}
+                    <fieldset>
+                        <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
+                            Servicios ofrecidos
+                        </legend>
+                        <Label htmlFor={ids.services} name="Describe los servicios que ofrece la organización" />
+                        <textarea
+                            id={ids.services}
+                            rows={4}
+                            className={`${fieldClass} mt-2 ${errors.services ? "border-error" : ""}`}
+                            placeholder="Ej. Transporte adaptado, terapias de rehabilitación, apoyo psicosocial, entrega de ayudas técnicas..."
+                            value={formData.services}
+                            onChange={(e) => setFormData({ ...formData, services: e.target.value })}
+                            aria-invalid={!!errors.services}
+                            aria-describedby={errors.services ? `${ids.services}-err` : undefined}
+                        />
+                        {errors.services && (
+                            <p id={`${ids.services}-err`} className={errorClass}>{errors.services}</p>
+                        )}
+                    </fieldset>
+                    {/* DOCUMENTACIÓN REQUERIDA */}
+                    <fieldset className="space-y-3">
+                        <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
+                            Documentación requerida (adjuntar)
+                        </legend>
+
+                        {REQUIRED_DOCUMENTS.map((doc) => {
+                            const fileId = `doc-${doc.id}`;
+                            const selectedFile = documentFiles[doc.id];
+                            return (
+                                <div
+                                    key={doc.id}
+                                    className="rounded-xl border border-outline-variant bg-background px-4 py-3"
+                                >
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                        <Label htmlFor={fileId} name={`${doc.name}${doc.required ? " *" : ""}`} />
+                                        {'hasTemplate' in doc && doc.hasTemplate && (
+                                            <a
+                                                href="/documentos/politica-proteccion-datos-plantilla.pdf"
+                                                download
+                                                className="text-xs font-semibold text-primary underline hover:opacity-80"
+                                            >
+                                                Descargar plantilla
+                                            </a>
+                                        )}
+                                    </div>
+                                    <input
+                                        id={fileId}
+                                        type="file"
+                                        accept=".pdf,.jpg,.jpeg,.png"
+                                        className="mt-2 w-full text-sm text-on-surface-variant file:mr-3 file:rounded-lg file:border-0 file:bg-primary-fixed file:px-3 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:opacity-90"
+                                        onChange={(e) => handleDocumentChange(doc.id, e.target.files?.[0] ?? null)}
+                                    />
+                                    {selectedFile && (
+                                        <p className="mt-1 text-xs text-on-surface-variant">
+                                            Archivo seleccionado: {selectedFile.name}
+                                        </p>
+                                    )}
+                                    {documentErrors[doc.id] && (
+                                        <p className={errorClass}>{documentErrors[doc.id]}</p>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </fieldset>
 
                     {/* TÉRMINOS */}
