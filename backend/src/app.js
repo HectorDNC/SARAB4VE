@@ -6,6 +6,7 @@ const authRouter = require("./modules/auth/auth.routes");
 const usersRouter = require("./modules/users/users.routes");
 const emergencyAttendeesRouter = require("./modules/emergencyAttendees/emergencyAttendees.routes");
 const helpRequestAttendeesRouter = require("./modules/helpRequestAttendees/helpRequestAttendees.routes");
+const verificationRouter = require("./modules/verification/verification.routes");
 const { conversationsRoutes, messagesRoutes } = require("./modules/conversations");
 const { nodeEnv } = require("./config");
 
@@ -32,6 +33,9 @@ app.use("/api/messages", messagesRoutes);
 // Rutas anidadas — attendees
 app.use("/api/emergencies/:emergencyId/attendees", emergencyAttendeesRouter);
 app.use("/api/help-requests/:helpRequestId/attendees", helpRequestAttendeesRouter);
+
+// Verificación de organizaciones y voluntarios
+app.use("/api", verificationRouter);
 
 // 📚 Documentación OpenAPI
 const { setupDocs } = require("./openapi");

@@ -13,6 +13,9 @@ const BCRYPT_ROUNDS = 12;
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Duración del access token: 8 horas. */
+const TOKEN_EXPIRATION = "8h";
+
 /**
  * Hashea un password en texto plano usando bcrypt.
  * @param {string} plainPassword
@@ -20,6 +23,27 @@ const BCRYPT_ROUNDS = 12;
  */
 async function hashPassword(plainPassword) {
   return bcrypt.hash(plainPassword, BCRYPT_ROUNDS);
+}
+
+/**
+ * Emite un JWT para un usuario recién registrado.
+ * Permite que el usuario acceda inmediatamente a endpoints protegidos
+ * (ej: completar su perfil de verificación) sin pasar por login,
+ * que bloquearía a usuarios en estado 'pending'.
+ *
+ * @param {Object} user — fila de users con id, role, status
+ * @returns {string} — token JWT firmado
+ */
+function issueToken(user) {
+  if (!jwtSecret) {
+    throw new Error("JWT_SECRET no está configurado en el entorno");
+  }
+
+  return jwt.sign(
+    { userId: user.id, role: user.role, status: user.status },
+    jwtSecret,
+    { expiresIn: TOKEN_EXPIRATION },
+  );
 }
 
 /**
@@ -69,7 +93,9 @@ async function registerCitizen(payload, schema, repository) {
       });
     });
 
-    return { data: user, status: 201 };
+    const token = issueToken(user);
+
+    return { data: { token, user }, status: 201 };
   } catch (error) {
     const { isUniqueViolation, field } = parseUniqueViolation(error);
     if (isUniqueViolation) {
@@ -116,7 +142,9 @@ async function registerVolunteer(payload, schema, repository) {
       return { ...user, details };
     });
 
-    return { data: result, status: 201 };
+    const token = issueToken(result);
+
+    return { data: { token, user: result }, status: 201 };
   } catch (error) {
     const { isUniqueViolation, field } = parseUniqueViolation(error);
     if (isUniqueViolation) {
@@ -163,7 +191,9 @@ async function registerOrganization(payload, schema, repository) {
       return { ...user, details };
     });
 
-    return { data: result, status: 201 };
+    const token = issueToken(result);
+
+    return { data: { token, user: result }, status: 201 };
   } catch (error) {
     const { isUniqueViolation, field } = parseUniqueViolation(error);
     if (isUniqueViolation) {
@@ -221,9 +251,6 @@ async function registerAdmin(payload, schema, repository) {
 // Autenticación — Login
 // ---------------------------------------------------------------------------
 
-/** Duración del access token: 8 horas. */
-const TOKEN_EXPIRATION = "8h";
-
 /** Estados de registro que NO pueden iniciar sesión. */
 const BLOCKED_STATUSES = new Set(["pending", "rejected", "suspended"]);
 
@@ -275,17 +302,7 @@ async function login(email, password, repository) {
   }
 
   // Generar JWT
-  if (!jwtSecret) {
-    throw new Error("JWT_SECRET no está configurado en el entorno");
-  }
-
-  const payload = {
-    userId: user.id,
-    role: user.role,
-    status: user.status,
-  };
-
-  const token = jwt.sign(payload, jwtSecret, { expiresIn: TOKEN_EXPIRATION });
+  const token = issueToken(user);
 
   // Eliminar passwordHash de la respuesta
   const { passwordHash, ...safeUser } = user;
@@ -331,4 +348,5 @@ module.exports = {
   registerAdmin,
   login,
   verifyToken,
+  issueToken,
 };
