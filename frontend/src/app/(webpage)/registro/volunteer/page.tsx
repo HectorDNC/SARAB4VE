@@ -17,7 +17,6 @@ import { sendVolunteer } from "@/api/volunteer";
 import { volunteerSchema, getFieldErrors, type VolunteerFormData } from "./schema";
 import { alertService } from "@/services/alertService";
 import dynamic from "next/dynamic";
-import TermsModal from "@/components/ui/TermsModal";
 import "react-phone-number-input/style.css"
 import PhoneField from "@/components/ui/PhoneField";
 
@@ -67,10 +66,21 @@ const fieldClass =
 
 const errorClass = "text-error text-sm mt-1";
 
+// Genera una contraseña temporal para cuentas creadas sin el campo de
+// credenciales visible en la UI (ver handleSubmit).
+function generateTempPassword(): string {
+    const bytes = new Uint8Array(12);
+    if (typeof window !== "undefined" && window.crypto) {
+        window.crypto.getRandomValues(bytes);
+    } else {
+        for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export default function VolunteerRegister() {
     const [formData, setFormData] = useState<iVolunteerForm>(InitVolunteerForm);
     const [errors, setErrors] = useState<Partial<Record<keyof VolunteerFormData, string>>>({});
-    const [showTermsModal, setShowTermsModal] = useState(false);
 
     const ids = {
         fullName: useId(),
@@ -168,10 +178,18 @@ export default function VolunteerRegister() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const result = volunteerSchema.safeParse(formData);
+        // password y acceptedTerms ya no se piden en la UI de este formulario;
+        // se autocompletan aquí para que la validación y el envío sigan funcionando.
+        const dataToValidate = {
+            ...formData,
+            password: formData.password || generateTempPassword(),
+            acceptedTerms: true as const,
+        };
+
+        const result = volunteerSchema.safeParse(dataToValidate);
 
         if (!result.success) {
-            setErrors(getFieldErrors(formData));
+            setErrors(getFieldErrors(dataToValidate));
             alertService.warning("Revisa los campos marcados en rojo.");
             return;
         }
@@ -201,16 +219,16 @@ export default function VolunteerRegister() {
 
         try {
             await sendVolunteer({
-                fullName: formData.fullName,
-                email: formData.email,
-                phone: formData.phone,
-                password: formData.password,
-                location: formData.location,
-                zone: formData.zone,
-                skills: formData.skills,
-                availableHours: Number(formData.availableHours),
-                availableDays: formData.availableDays,
-                acceptedTerms: formData.acceptedTerms,
+                fullName: result.data.fullName,
+                email: result.data.email,
+                phone: result.data.phone,
+                password: result.data.password,
+                location: result.data.location,
+                zone: result.data.zone,
+                skills: result.data.skills,
+                availableHours: Number(result.data.availableHours),
+                availableDays: result.data.availableDays,
+                acceptedTerms: result.data.acceptedTerms,
             })
 
             alertService.success("Tu solicitud fue enviada. Te contactaremos pronto.");
@@ -345,45 +363,26 @@ export default function VolunteerRegister() {
                         </div>
                     </fieldset>
 
-                    {/* CREDENCIALES */}
+                    {/* COBERTURA */}
                     <fieldset className="space-y-4">
                         <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
-                            Credenciales
+                            Cobertura
                         </legend>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor={ids.password} name="Contraseña" />
-                                <input
-                                    id={ids.password}
-                                    type="password"
-                                    className={`${fieldClass} mt-2 ${errors.password ? "border-error" : ""}`}
-                                    placeholder="Mínimo 8 caracteres"
-                                    value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    aria-invalid={!!errors.password}
-                                    aria-describedby={errors.password ? `${ids.password}-err` : undefined}
-                                />
-                                {errors.password && (
-                                    <p id={`${ids.password}-err`} className={errorClass}>{errors.password}</p>
-                                )}
-                            </div>
-
-                            <div>
-                                <Label htmlFor={ids.zone} name="Zona donde puede operar" />
-                                <input
-                                    id={ids.zone}
-                                    className={`${fieldClass} mt-2 ${errors.zone ? "border-error" : ""}`}
-                                    placeholder="Ej. Chacao, Caracas"
-                                    value={formData.zone}
-                                    onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
-                                    aria-invalid={!!errors.zone}
-                                    aria-describedby={errors.zone ? `${ids.zone}-err` : undefined}
-                                />
-                                {errors.zone && (
-                                    <p id={`${ids.zone}-err`} className={errorClass}>{errors.zone}</p>
-                                )}
-                            </div>
+                        <div>
+                            <Label htmlFor={ids.zone} name="Zona donde puede operar" />
+                            <input
+                                id={ids.zone}
+                                className={`${fieldClass} mt-2 ${errors.zone ? "border-error" : ""}`}
+                                placeholder="Ej. Chacao, Caracas"
+                                value={formData.zone}
+                                onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
+                                aria-invalid={!!errors.zone}
+                                aria-describedby={errors.zone ? `${ids.zone}-err` : undefined}
+                            />
+                            {errors.zone && (
+                                <p id={`${ids.zone}-err`} className={errorClass}>{errors.zone}</p>
+                            )}
                         </div>
                     </fieldset>
 
@@ -840,59 +839,6 @@ export default function VolunteerRegister() {
                                 })}
                         </fieldset>
                     )}
-
-                    {/* TÉRMINOS */}
-                    <div>
-                        <label className="flex items-start gap-3 text-sm text-on-surface-variant cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={formData.acceptedTerms}
-                                readOnly
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    if (!formData.acceptedTerms) {
-                                        setShowTermsModal(true);
-                                    } else {
-                                        setFormData({ ...formData, acceptedTerms: false });
-                                    }
-                                }}
-                                className="mt-0.5 shrink-0 accent-primary"
-                            />
-                            <span className="leading-relaxed">
-                                Acepto los{" "}
-                                <span
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowTermsModal(true);
-                                    }}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                            e.preventDefault();
-                                            setShowTermsModal(true);
-                                        }
-                                    }}
-                                    className="underline font-semibold text-primary hover:opacity-80 cursor-pointer"
-                                >
-                                    términos y el código de conducta
-                                </span>{" "}
-                                de SARA.
-                            </span>
-                        </label>
-                        {errors.acceptedTerms && (
-                            <p className={errorClass}>{errors.acceptedTerms}</p>
-                        )}
-                    </div>
-
-                    <TermsModal
-                        open={showTermsModal}
-                        onClose={() => setShowTermsModal(false)}
-                        onAccept={() => {
-                            setFormData({ ...formData, acceptedTerms: true });
-                            setShowTermsModal(false);
-                        }}
-                    />
 
                     <div className="pt-2 flex justify-end">
                         <Button type="submit" variant="filled" size="lg" icon="send">
