@@ -13,7 +13,23 @@ export type OrganizationPayload = {
   acceptedTerms: boolean;
 };
 
-export async function sendOrganization(payload: OrganizationPayload) {
+// Rama feat/verificaciones-users-back (aún no mergeada a main, pero ya
+// desplegada): este endpoint ahora devuelve { token, user } en vez de solo
+// el user, para permitir llamar de inmediato a /api/organizations/register
+// sin pasar por login. Ver frontend/src/api/verification.ts.
+export type OrganizationRegisterResponse = {
+  token: string;
+  user: {
+    id: string;
+    fullName: string;
+    email: string;
+    role: string;
+    status: string;
+    [key: string]: unknown;
+  };
+};
+
+export async function sendOrganization(payload: OrganizationPayload): Promise<OrganizationRegisterResponse | null> {
   const res = await fetch(`${API}/api/auth/register/organization`, {
     method: "POST",
     headers: getAuthHeaders(),
