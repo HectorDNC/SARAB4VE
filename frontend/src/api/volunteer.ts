@@ -11,6 +11,20 @@ export type VolunteerPayload = {
   availableHours?: number | null;
   availableDays?: string[] | null;
   acceptedTerms: boolean;
+
+  // Nuevos campos
+  documentNumber: string;
+  birthDate: string;
+  address: string;
+  volunteerType: string;
+  profession?: string;
+  languages?: string[];
+  experienceCategories?: string[];
+  scheduleHours: number[];
+  modalityPresential: boolean;
+  modalityOnline: boolean;
+  interestAreas: string[];
+  hasPriorExperience?: boolean | null;
 };
 
 export async function sendVolunteer(payload: VolunteerPayload) {
