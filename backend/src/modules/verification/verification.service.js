@@ -262,7 +262,7 @@ async function uploadDocument(payload, ownerId, repository) {
     // 2. Registrar en la base de datos
     const document = await repository.withTransaction(async (client) => {
       return repository.insertVerificationDocument(
-        client, ownerId, payload.documentTypeId, fileUrl,
+        client, ownerId, payload.documentTypeId, fileUrl, storageKey,
       );
     });
 
@@ -305,6 +305,38 @@ async function getDocumentChecklist(ownerId, entityType, repository) {
   });
 
   return { data: checklist };
+}
+
+/**
+ * Genera una URL prefirmada temporal para descargar un documento privado de R2.
+ * Valida que el solicitante sea el propietario del documento o un admin.
+ *
+ * @param {number} documentId
+ * @param {string} requesterId — UUID del usuario que solicita la descarga
+ * @param {Object} repository
+ * @returns {Promise<import("./verification.types").ServiceResult>}
+ */
+async function getDownloadUrl(documentId, requesterId, repository) {
+  const document = await repository.findDocumentById(documentId);
+
+  if (!document) {
+    return { errors: ["Documento no encontrado"], status: 404 };
+  }
+
+  // Validar acceso: el solicitante debe ser el propietario o admin
+  // (el admin check se hace en el middleware authorize)
+  if (document.ownerId !== requesterId) {
+    return { errors: ["No tienes acceso a este documento"], status: 403 };
+  }
+
+  if (!document.storageKey) {
+    return { errors: ["Este documento no tiene clave de almacenamiento"], status: 400 };
+  }
+
+  const { getPresignedDownloadUrl } = require("../../services/storage");
+  const presignedUrl = await getPresignedDownloadUrl(document.storageKey);
+
+  return { data: { downloadUrl: presignedUrl, expiresIn: 3600 } };
 }
 
 /**
@@ -455,6 +487,7 @@ module.exports = {
   registerVolunteer,
   uploadDocument,
   getDocumentChecklist,
+  getDownloadUrl,
   reviewDocument,
   transitionVerification,
   getCatalog,

@@ -30,6 +30,7 @@ const VERIFICATION_DOCUMENT_SELECT = `
   owner_id AS "ownerId",
   document_type_id AS "documentTypeId",
   file_url AS "fileUrl",
+  storage_key AS "storageKey",
   status,
   rejection_reason AS "rejectionReason",
   uploaded_at AS "uploadedAt",
@@ -444,8 +445,8 @@ async function approveUser(client, userId) {
 // ---------------------------------------------------------------------------
 
 const INSERT_VERIFICATION_DOCUMENT = `
-  INSERT INTO verification_documents (owner_id, document_type_id, file_url, status)
-  VALUES ($1, $2, $3, 'pending')
+  INSERT INTO verification_documents (owner_id, document_type_id, file_url, storage_key, status)
+  VALUES ($1, $2, $3, $4, 'pending')
   RETURNING ${VERIFICATION_DOCUMENT_SELECT}
 `;
 
@@ -455,13 +456,15 @@ const INSERT_VERIFICATION_DOCUMENT = `
  * @param {string} ownerId
  * @param {number} documentTypeId
  * @param {string} fileUrl
+ * @param {string} storageKey
  * @returns {Promise<Object>}
  */
-async function insertVerificationDocument(client, ownerId, documentTypeId, fileUrl) {
+async function insertVerificationDocument(client, ownerId, documentTypeId, fileUrl, storageKey) {
   const result = await client.query(INSERT_VERIFICATION_DOCUMENT, [
     ownerId,
     documentTypeId,
     fileUrl,
+    storageKey,
   ]);
   return result.rows[0];
 }
@@ -496,6 +499,19 @@ const FIND_DOCUMENT_BY_ID = `
  */
 async function findDocumentById(id) {
   const result = await db.query(FIND_DOCUMENT_BY_ID, [id]);
+  return result.rows[0] || null;
+}
+
+/**
+ * Busca un documento por su storage_key en R2.
+ * @param {string} storageKey
+ * @returns {Promise<Object|null>}
+ */
+async function findDocumentByStorageKey(storageKey) {
+  const result = await db.query(
+    `SELECT ${VERIFICATION_DOCUMENT_SELECT} FROM verification_documents WHERE storage_key = $1`,
+    [storageKey],
+  );
   return result.rows[0] || null;
 }
 
@@ -581,6 +597,7 @@ module.exports = {
   insertVerificationDocument,
   findDocumentsByOwner,
   findDocumentById,
+  findDocumentByStorageKey,
   updateDocumentStatus,
 
   withTransaction,

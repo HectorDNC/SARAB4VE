@@ -247,6 +247,40 @@ function getDocumentChecklist(service, repository) {
 }
 
 // ---------------------------------------------------------------------------
+// GET /api/verification-documents/:id/download — URL prefirmada temporal
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {Object} service
+ * @param {Object} repository
+ * @returns {(req, res, next) => Promise<void>}
+ */
+function getDownloadUrl(service, repository) {
+  return async (req, res, next) => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ errors: ["id debe ser un número entero"] });
+    }
+
+    try {
+      const result = await service.getDownloadUrl(
+        id,
+        req.user.userId,
+        repository,
+      );
+
+      if (result.errors) {
+        return res.status(result.status).json({ errors: result.errors });
+      }
+
+      return res.json({ data: result.data });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
 // PATCH /api/verification-documents/:id/review (admin)
 // ---------------------------------------------------------------------------
 
@@ -365,6 +399,7 @@ module.exports = {
   getMyVerificationStatus,
   uploadDocument,
   getDocumentChecklist,
+  getDownloadUrl,
   reviewDocument,
   listAdminVerifications,
   transitionVerification,

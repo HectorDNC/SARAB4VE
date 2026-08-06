@@ -107,6 +107,13 @@ router.patch(
   controller.reviewDocument(service, repository),
 );
 
+// Descargar documento (URL prefirmada temporal)
+router.get(
+  "/verification-documents/:id/download",
+  authenticate,
+  controller.getDownloadUrl(service, repository),
+);
+
 // ---------------------------------------------------------------------------
 // Panel de administración (solo admin)
 // ---------------------------------------------------------------------------
