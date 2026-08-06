@@ -50,10 +50,75 @@ export const volunteerSchema = z.object({
     .array(z.string())
     .min(1, "Selecciona al menos un día disponible"),
 
+  // ── Datos personales adicionales ──
+  documentNumber: z
+    .string()
+    .trim()
+    .min(5, "Ingresa un número de documento de identidad válido"),
+
+  birthDate: z
+    .string()
+    .refine((date) => !isNaN(Date.parse(date)), "Ingresa una fecha de nacimiento válida"),
+
+  address: z
+    .string()
+    .trim()
+    .min(5, "Ingresa una dirección válida"),
+
+  // ── Tipo de perfil ──
+  volunteerType: z
+    .string()
+    .refine((val) => val === "professional" || val === "non_professional", {
+      message: "Selecciona si eres voluntario profesional o no profesional",
+    }),
+
+  // ── Perfil profesional (validado condicionalmente en superRefine) ──
+  profession: z.string().trim().optional(),
+  languages: z.array(z.string()).optional(),
+  experienceCategories: z.array(z.string()).optional(),
+
+  // ── Disponibilidad (compartido) ──
+  scheduleHours: z
+    .array(z.number())
+    .min(1, "Selecciona al menos un horario disponible"),
+
+  modalityPresential: z.boolean(),
+  modalityOnline: z.boolean(),
+
+  // ── Áreas de interés (compartido) ──
+  interestAreas: z
+    .array(z.string())
+    .min(1, "Selecciona al menos un área de interés"),
+
+  // ── Perfil no profesional (validado condicionalmente en superRefine) ──
+  hasPriorExperience: z.boolean().nullable(),
+
   acceptedTerms: z
     .literal(true, {
       error: () => ({ message: "Debes aceptar los términos y el código de conducta" }),
     }),
+}).superRefine((data, ctx) => {
+  if (data.volunteerType === "professional") {
+    if (!data.profession || data.profession.trim().length < 2) {
+      ctx.addIssue({ code: "custom", path: ["profession"], message: "Ingresa tu profesión o formación" });
+    }
+    if (!data.languages || data.languages.length === 0) {
+      ctx.addIssue({ code: "custom", path: ["languages"], message: "Ingresa al menos un idioma" });
+    }
+    if (!data.experienceCategories || data.experienceCategories.length === 0) {
+      ctx.addIssue({ code: "custom", path: ["experienceCategories"], message: "Selecciona al menos una categoría de experiencia" });
+    }
+  }
+
+  if (data.volunteerType === "non_professional") {
+    if (data.hasPriorExperience === null || data.hasPriorExperience === undefined) {
+      ctx.addIssue({ code: "custom", path: ["hasPriorExperience"], message: "Indica si tienes experiencia previa en voluntariado" });
+    }
+  }
+
+  if (!data.modalityPresential && !data.modalityOnline) {
+    ctx.addIssue({ code: "custom", path: ["modalityPresential"], message: "Selecciona al menos una modalidad (presencial u online)" });
+  }
 });
 
 export type VolunteerFormData = z.infer<typeof volunteerSchema>;

@@ -118,7 +118,31 @@ export interface iVolunteerForm extends BaseUserForm {
     availableDays: string[];
     acceptedTerms: boolean;
 
+    // Datos personales adicionales
+    documentNumber: string;
+    birthDate: string;
+    address: string;
+
+    // Tipo de perfil
+    volunteerType: "professional" | "non_professional" | "";
+
+    // Perfil profesional
+    profession: string;
+    languages: string[];
+    experienceCategories: string[];
+
+    // Disponibilidad (compartido entre ambos perfiles)
+    scheduleHours: number[];
+    modalityPresential: boolean;
+    modalityOnline: boolean;
+
+    // Áreas de interés (compartido, opciones varían según perfil)
+    interestAreas: string[];
+
+    // Perfil no profesional
+    hasPriorExperience: boolean | null;
 }
+
 
 export interface iInfoVolunteer extends Omit<iVolunteerForm, "password"> {
     id: string;
