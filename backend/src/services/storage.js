@@ -105,7 +105,7 @@ async function uploadAudio(fileBuffer, fileName, mimeType) {
  * @param {string} fileName  — nombre original del archivo (se usa para extensión)
  * @param {string} mimeType  — MIME type del archivo (ej: "application/pdf", "image/jpeg")
  * @param {string} ownerId   — UUID del propietario (se usa como sub-carpeta)
- * @returns {Promise<{ url: string, storageKey: string }>} URL pública y key de R2
+ * @returns {Promise<{ storageKey: string }>} Key de R2 del documento subido
  * @throws {Error} si R2 no está configurado o falla la subida
  */
 async function uploadDocument(fileBuffer, fileName, mimeType, ownerId) {
@@ -133,11 +133,7 @@ async function uploadDocument(fileBuffer, fileName, mimeType, ownerId) {
     }),
   );
 
-  const publicUrl = R2_PUBLIC_URL
-    ? `${R2_PUBLIC_URL.replace(/\/$/, "")}/${uniqueName}`
-    : `${R2_ENDPOINT.replace(/\/$/, "")}/${R2_BUCKET}/${uniqueName}`;
-
-  return { url: publicUrl, storageKey: uniqueName };
+  return { storageKey: uniqueName };
 }
 
 // ---------------------------------------------------------------------------

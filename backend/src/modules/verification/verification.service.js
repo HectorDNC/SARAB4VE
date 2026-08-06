@@ -252,7 +252,7 @@ async function uploadDocument(payload, ownerId, repository) {
 
   try {
     // 1. Subir archivo a R2 → carpeta documents_verifications/<ownerId>/
-    const { url: fileUrl, storageKey } = await uploadToR2(
+    const { storageKey } = await uploadToR2(
       payload.fileBuffer,
       payload.fileName,
       payload.mimeType,
@@ -262,14 +262,13 @@ async function uploadDocument(payload, ownerId, repository) {
     // 2. Registrar en la base de datos
     const document = await repository.withTransaction(async (client) => {
       return repository.insertVerificationDocument(
-        client, ownerId, payload.documentTypeId, fileUrl, storageKey,
+        client, ownerId, payload.documentTypeId, storageKey,
       );
     });
 
     return {
       data: {
         ...document,
-        uploadUrl: fileUrl,
         storageKey,
       },
       status: 201,

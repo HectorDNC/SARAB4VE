@@ -29,7 +29,6 @@ const VERIFICATION_DOCUMENT_SELECT = `
   id,
   owner_id AS "ownerId",
   document_type_id AS "documentTypeId",
-  file_url AS "fileUrl",
   storage_key AS "storageKey",
   status,
   rejection_reason AS "rejectionReason",
@@ -445,8 +444,8 @@ async function approveUser(client, userId) {
 // ---------------------------------------------------------------------------
 
 const INSERT_VERIFICATION_DOCUMENT = `
-  INSERT INTO verification_documents (owner_id, document_type_id, file_url, storage_key, status)
-  VALUES ($1, $2, $3, $4, 'pending')
+  INSERT INTO verification_documents (owner_id, document_type_id, storage_key, status)
+  VALUES ($1, $2, $3, 'pending')
   RETURNING ${VERIFICATION_DOCUMENT_SELECT}
 `;
 
@@ -455,15 +454,13 @@ const INSERT_VERIFICATION_DOCUMENT = `
  * @param {import("pg").PoolClient} client
  * @param {string} ownerId
  * @param {number} documentTypeId
- * @param {string} fileUrl
  * @param {string} storageKey
  * @returns {Promise<Object>}
  */
-async function insertVerificationDocument(client, ownerId, documentTypeId, fileUrl, storageKey) {
+async function insertVerificationDocument(client, ownerId, documentTypeId, storageKey) {
   const result = await client.query(INSERT_VERIFICATION_DOCUMENT, [
     ownerId,
     documentTypeId,
-    fileUrl,
     storageKey,
   ]);
   return result.rows[0];

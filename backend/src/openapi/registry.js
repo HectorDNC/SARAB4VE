@@ -1552,13 +1552,10 @@ registry.registerPath({
   },
   responses: {
     201: {
-      description: "Documento registrado y URL de subida generada",
+      description: "Documento subido a R2 y registrado en la base de datos",
       content: {
         "application/json": {
-          schema: z.object({ data: VerificationDocumentResponse.extend({
-            uploadUrl: z.string(),
-            storageKey: z.string(),
-          }) }),
+          schema: z.object({ data: VerificationDocumentResponse }),
         },
       },
     },

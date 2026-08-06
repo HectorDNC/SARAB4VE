@@ -138,7 +138,7 @@
  * @property {number} id
  * @property {string} ownerId
  * @property {number} documentTypeId
- * @property {string} fileUrl
+ * @property {string} storageKey
  * @property {DocumentStatus} status
  * @property {string|null} rejectionReason
  * @property {string} uploadedAt

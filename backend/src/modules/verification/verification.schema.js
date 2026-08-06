@@ -325,7 +325,7 @@ const VerificationDocumentResponse = z.object({
   id: z.number().int().openapi({ example: 1 }),
   ownerId: z.string().uuid().openapi({ example: "550e8400-e29b-41d4-a716-446655440000" }),
   documentTypeId: z.number().int(),
-  fileUrl: z.string(),
+  storageKey: z.string().openapi({ example: "documents_verifications/uuid/17385980149240-abc123.pdf" }),
   status: z.string().openapi({ example: "pending" }),
   rejectionReason: z.string().nullable().optional(),
   uploadedAt: z.string().datetime(),

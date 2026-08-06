@@ -206,7 +206,7 @@ CREATE TABLE verification_documents (
   id SERIAL PRIMARY KEY,
   owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   document_type_id INT NOT NULL REFERENCES document_types(id),
-  file_url TEXT NOT NULL,
+  storage_key TEXT NOT NULL,
   status document_status NOT NULL DEFAULT 'pending',
   rejection_reason TEXT,
   uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
