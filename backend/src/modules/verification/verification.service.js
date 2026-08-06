@@ -239,26 +239,27 @@ async function registerVolunteer(payload, userId, schema, repository) {
 // ---------------------------------------------------------------------------
 
 /**
- * Genera una URL prefirmada de subida y crea el registro en verification_documents.
- * Nota: en una implementación real esto generaría una URL prefirmada de S3/R2.
- * Por ahora se usa la URL pública del storage como placeholder.
+ * Sube un documento de verificación a Cloudflare R2 (carpeta `documents_verifications/`)
+ * y crea el registro en verification_documents.
  *
- * @param {import("./verification.types").DocumentUploadInput} payload
+ * @param {import("./verification.types").DocumentUploadInput & { fileBuffer: Buffer }} payload
  * @param {string} ownerId
  * @param {Object} repository
  * @returns {Promise<import("./verification.types").ServiceResult>}
  */
 async function uploadDocument(payload, ownerId, repository) {
-  // TODO: Integrar con @aws-sdk/s3-request-presigner para generar URL prefirmada real.
-  // Por ahora generamos una URL prefabricada basada en la configuración de R2.
-  const { r2PublicUrl, r2Bucket } = require("../../config");
-
-  const storageKey = `verification/${ownerId}/${Date.now()}-${payload.fileName}`;
-  const fileUrl = r2PublicUrl
-    ? `${r2PublicUrl.replace(/\/$/, "")}/${storageKey}`
-    : `https://${r2Bucket}.s3.amazonaws.com/${storageKey}`;
+  const { uploadDocument: uploadToR2 } = require("../../services/storage");
 
   try {
+    // 1. Subir archivo a R2 → carpeta documents_verifications/<ownerId>/
+    const { url: fileUrl, storageKey } = await uploadToR2(
+      payload.fileBuffer,
+      payload.fileName,
+      payload.mimeType,
+      ownerId,
+    );
+
+    // 2. Registrar en la base de datos
     const document = await repository.withTransaction(async (client) => {
       return repository.insertVerificationDocument(
         client, ownerId, payload.documentTypeId, fileUrl,
@@ -268,7 +269,7 @@ async function uploadDocument(payload, ownerId, repository) {
     return {
       data: {
         ...document,
-        uploadUrl: fileUrl, // En producción: URL prefirmada PUT
+        uploadUrl: fileUrl,
         storageKey,
       },
       status: 201,

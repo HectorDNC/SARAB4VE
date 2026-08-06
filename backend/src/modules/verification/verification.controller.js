@@ -166,7 +166,22 @@ function getMyVerificationStatus(service, repository) {
  */
 function uploadDocument(service, repository) {
   return async (req, res, next) => {
-    const validation = DocumentUploadBody.safeParse(req.body);
+    // req.file viene de multer
+    if (!req.file) {
+      return res.status(400).json({ errors: ["El archivo es requerido (campo 'file')"] });
+    }
+
+    // documentTypeId viene como campo de texto en multipart/form-data
+    const documentTypeId = parseInt(req.body?.documentTypeId, 10);
+    if (isNaN(documentTypeId) || documentTypeId <= 0) {
+      return res.status(400).json({ errors: ["documentTypeId debe ser un entero positivo"] });
+    }
+
+    const validation = DocumentUploadBody.safeParse({
+      documentTypeId,
+      fileName: req.file.originalname,
+      mimeType: req.file.mimetype,
+    });
 
     if (!validation.success) {
       return res.status(400).json({ errors: formatZodErrors(validation.error) });
@@ -174,7 +189,10 @@ function uploadDocument(service, repository) {
 
     try {
       const result = await service.uploadDocument(
-        validation.data,
+        {
+          ...validation.data,
+          fileBuffer: req.file.buffer,
+        },
         req.user.userId,
         repository,
       );
