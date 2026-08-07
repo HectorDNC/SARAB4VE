@@ -60,6 +60,7 @@ export const COUNTRIES_FISCAL_ID = [
     "Enfermedades raras",
     "Multidiscapacidad",
     "Otras",
+    "Logística",
   ] as const;
   
   // Documentación requerida (adjuntos)

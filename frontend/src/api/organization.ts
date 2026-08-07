@@ -9,7 +9,7 @@ export type OrganizationPayload = {
   zone: string;
   organizationName: string;
   legalDocument: string;
-  workArea: string[];
+  workArea?: string[];
   acceptedTerms: boolean;
 
   // Nuevos campos
