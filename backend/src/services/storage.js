@@ -3,6 +3,7 @@
  *
  * Expone:
  *   - uploadAudio(fileBuffer, fileName, mimeType): sube un audio a R2 y retorna la URL pública.
+ *   - uploadDocument(fileBuffer, fileName, mimeType, ownerId): sube un documento de verificación a R2.
  *
  * Requiere las variables de entorno:
  *   R2_ENDPOINT       — endpoint S3 de R2 (ej: https://<id>.r2.cloudflarestorage.com)
@@ -12,7 +13,8 @@
  *   R2_PUBLIC_URL     — URL pública base para los objetos (ej: https://pub-<hash>.r2.dev)
  */
 
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 // ---------------------------------------------------------------------------
 // Configuración del cliente R2 (S3-compatible)
@@ -91,4 +93,76 @@ async function uploadAudio(fileBuffer, fileName, mimeType) {
   return `${R2_ENDPOINT.replace(/\/$/, "")}/${R2_BUCKET}/${uniqueName}`;
 }
 
-module.exports = { uploadAudio };
+// ---------------------------------------------------------------------------
+// uploadDocument
+// ---------------------------------------------------------------------------
+
+/**
+ * Sube un documento de verificación a Cloudflare R2 en la carpeta
+ * `documents_verifications/<ownerId>/`.
+ *
+ * @param {Buffer} fileBuffer — contenido binario del archivo
+ * @param {string} fileName  — nombre original del archivo (se usa para extensión)
+ * @param {string} mimeType  — MIME type del archivo (ej: "application/pdf", "image/jpeg")
+ * @param {string} ownerId   — UUID del propietario (se usa como sub-carpeta)
+ * @returns {Promise<{ storageKey: string }>} Key de R2 del documento subido
+ * @throws {Error} si R2 no está configurado o falla la subida
+ */
+async function uploadDocument(fileBuffer, fileName, mimeType, ownerId) {
+  const client = getClient();
+
+  if (!client) {
+    throw new Error(
+      "R2 no está configurado. Revisa R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.",
+    );
+  }
+
+  if (!fileBuffer || fileBuffer.length === 0) {
+    throw new Error("El archivo está vacío.");
+  }
+
+  const ext = fileName.includes(".") ? fileName.split(".").pop() : "bin";
+  const uniqueName = `documents_verifications/${ownerId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+  await client.send(
+    new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: uniqueName,
+      Body: fileBuffer,
+      ContentType: mimeType || "application/octet-stream",
+    }),
+  );
+
+  return { storageKey: uniqueName };
+}
+
+// ---------------------------------------------------------------------------
+// getPresignedDownloadUrl
+// ---------------------------------------------------------------------------
+
+/**
+ * Genera una URL prefirmada temporal para descargar un documento privado de R2.
+ * La URL expira automáticamente después del tiempo especificado.
+ *
+ * @param {string} storageKey — Key del objeto en R2 (ej: "documents_verifications/uuid/file.pdf")
+ * @param {number} expiresIn — Segundos hasta expiración (default: 3600 = 1 hora)
+ * @returns {Promise<string>} URL prefirmada temporal
+ * @throws {Error} si R2 no está configurado
+ */
+async function getPresignedDownloadUrl(storageKey, expiresIn = 3600) {
+  const client = getClient();
+
+  if (!client) {
+    throw new Error("R2 no está configurado.");
+  }
+
+  const command = new GetObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: storageKey,
+  });
+
+  const signedUrl = await getSignedUrl(client, command, { expiresIn });
+  return signedUrl;
+}
+
+module.exports = { uploadAudio, uploadDocument, getPresignedDownloadUrl };

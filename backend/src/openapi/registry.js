@@ -31,6 +31,23 @@ const {
 } = require("../modules/auth/auth.schema");
 
 // ---------------------------------------------------------------------------
+// Schemas del módulo verification (ya tienen .openapi() definido en verification.schema.js)
+// ---------------------------------------------------------------------------
+const {
+  OrganizationRegisterBody,
+  VolunteerRegisterBody,
+  DocumentUploadBody,
+  TransitionRequestBody,
+  DocumentReviewBody,
+  CatalogQuery,
+  AdminVerificationsQuery,
+  CatalogItemResponse,
+  DocumentTypeResponse,
+  VerificationRequestResponse,
+  VerificationDocumentResponse,
+} = require("../modules/verification/verification.schema");
+
+// ---------------------------------------------------------------------------
 // Schemas del módulo users (ya tienen .openapi() definido en users.schema.js)
 // ---------------------------------------------------------------------------
 const {
@@ -225,7 +242,7 @@ registry.registerPath({
   responses: {
     201: {
       description: "Ciudadano registrado exitosamente",
-      content: { "application/json": { schema: z.object({ data: UserProfile }) } },
+      content: { "application/json": { schema: z.object({ data: z.object({ token: z.string(), user: UserProfile }) }) } },
     },
     400: {
       description: "Error de validación (campos requeridos, formato inválido)",
@@ -258,7 +275,7 @@ registry.registerPath({
   responses: {
     201: {
       description: "Voluntario registrado (pendiente de aprobación)",
-      content: { "application/json": { schema: z.object({ data: UserProfile }) } },
+      content: { "application/json": { schema: z.object({ data: z.object({ token: z.string(), user: UserProfile }) }) } },
     },
     400: {
       description: "Error de validación",
@@ -291,7 +308,7 @@ registry.registerPath({
   responses: {
     201: {
       description: "Organización registrada (pendiente de aprobación)",
-      content: { "application/json": { schema: z.object({ data: UserProfile }) } },
+      content: { "application/json": { schema: z.object({ data: z.object({ token: z.string(), user: UserProfile }) }) } },
     },
     400: {
       description: "Error de validación",
@@ -1341,6 +1358,412 @@ registry.registerPath({
     },
     404: {
       description: "Mensaje no encontrado o ya marcado como leído",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+// =========================================================================
+// VERIFICATION — Catálogo, Registro, Documentos, Revisión
+// =========================================================================
+
+// ── Catálogo unificado ──────────────────────────────────────────────────
+
+registry.registerPath({
+  method: "get",
+  path: "/api/catalog",
+  summary: "Listar entradas del catálogo unificado",
+  description: [
+    "Devuelve todas las entradas del catálogo para un tipo específico.",
+    "Tipos disponibles: organization_type, disability_type, service,",
+    "interest_area, experience_category.",
+  ].join(" "),
+  tags: ["Verification"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    query: CatalogQuery,
+  },
+  responses: {
+    200: {
+      description: "Lista de entradas del catálogo",
+      content: {
+        "application/json": {
+          schema: z.object({ data: z.array(CatalogItemResponse) }),
+        },
+      },
+    },
+    400: {
+      description: "Error de validación — type inválido o faltante",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+// ── Registro de Organización ────────────────────────────────────────────
+
+registry.registerPath({
+  method: "post",
+  path: "/api/organizations/register",
+  summary: "Registrar organización",
+  description: [
+    "Crea el perfil de organización, representantes legales, relaciones",
+    "many-to-many y una solicitud de verificación con status 'entregada'.",
+    "Requiere autenticación. El userId se obtiene del JWT.",
+  ].join(" "),
+  tags: ["Verification"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: { "application/json": { schema: OrganizationRegisterBody } },
+      description: "Datos del perfil de la organización",
+      required: true,
+    },
+  },
+  responses: {
+    201: {
+      description: "Organización registrada y solicitud de verificación creada",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.object({
+              profile: z.object({}).openapi({ description: "Perfil de organización creado" }),
+              verification: VerificationRequestResponse,
+            }),
+          }),
+        },
+      },
+    },
+    400: {
+      description: "Error de validación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    409: {
+      description: "Conflicto — ya existe un perfil o solicitud para este usuario",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+// ── Registro de Voluntario ──────────────────────────────────────────────
+
+registry.registerPath({
+  method: "post",
+  path: "/api/volunteers/register",
+  summary: "Registrar voluntario",
+  description: [
+    "Crea el perfil de voluntario (profesional o no profesional), relaciones",
+    "many-to-many y una solicitud de verificación con status 'entregada'.",
+    "Requiere autenticación. El userId se obtiene del JWT.",
+  ].join(" "),
+  tags: ["Verification"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: { "application/json": { schema: VolunteerRegisterBody } },
+      description: "Datos del perfil del voluntario",
+      required: true,
+    },
+  },
+  responses: {
+    201: {
+      description: "Voluntario registrado y solicitud de verificación creada",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.object({
+              profile: z.object({}).openapi({ description: "Perfil de voluntario creado" }),
+              verification: VerificationRequestResponse,
+            }),
+          }),
+        },
+      },
+    },
+    400: {
+      description: "Error de validación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    409: {
+      description: "Conflicto — ya existe un perfil o solicitud para este usuario",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+// ── Estado de verificación del usuario autenticado ──────────────────────
+
+registry.registerPath({
+  method: "get",
+  path: "/api/verification/status",
+  summary: "Consultar mi estado de verificación",
+  description: "Devuelve la solicitud de verificación activa del usuario autenticado.",
+  tags: ["Verification"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      description: "Solicitud de verificación encontrada",
+      content: {
+        "application/json": {
+          schema: z.object({ data: VerificationRequestResponse }),
+        },
+      },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    404: {
+      description: "No se encontró solicitud de verificación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+// ── Documentos de verificación ──────────────────────────────────────────
+
+registry.registerPath({
+  method: "post",
+  path: "/api/verification-documents",
+  summary: "Subir documento de verificación",
+  description: [
+    "Genera una URL prefirmada de subida (S3/R2) y crea el registro",
+    "en verification_documents con status 'pending'.",
+    "Requiere autenticación.",
+  ].join(" "),
+  tags: ["Verification"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: { "application/json": { schema: DocumentUploadBody } },
+      description: "Tipo de documento y nombre de archivo",
+      required: true,
+    },
+  },
+  responses: {
+    201: {
+      description: "Documento subido a R2 y registrado en la base de datos",
+      content: {
+        "application/json": {
+          schema: z.object({ data: VerificationDocumentResponse }),
+        },
+      },
+    },
+    400: {
+      description: "Error de validación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/verification-documents/{ownerId}",
+  summary: "Checklist de documentos de verificación",
+  description: [
+    "Devuelve los tipos de documentos requeridos según document_types.entity_type",
+    "con el estado actual de cada uno (pendiente, subido, aprobado, rechazado).",
+    "Requiere autenticación.",
+  ].join(" "),
+  tags: ["Verification"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      ownerId: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID del usuario dueño de los documentos",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Checklist de documentos con su estado",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.array(
+              z.object({
+                documentType: DocumentTypeResponse,
+                submission: VerificationDocumentResponse.nullable(),
+                isComplete: z.boolean(),
+              }),
+            ),
+          }),
+        },
+      },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    404: {
+      description: "No se encontró solicitud de verificación para este usuario",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/api/verification-documents/{id}/review",
+  summary: "Revisar documento (admin)",
+  description: [
+    "Aprueba o rechaza un documento de verificación.",
+    "Solo accesible por administradores.",
+  ].join(" "),
+  tags: ["Verification"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().openapi({
+        example: "1",
+        description: "ID numérico del documento",
+      }),
+    }),
+    body: {
+      content: { "application/json": { schema: DocumentReviewBody } },
+      description: "Decisión de revisión",
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      description: "Documento revisado exitosamente",
+      content: {
+        "application/json": {
+          schema: z.object({ data: VerificationDocumentResponse }),
+        },
+      },
+    },
+    400: {
+      description: "Error de validación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Acceso denegado — solo administradores",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    404: {
+      description: "Documento no encontrado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+// ── Panel de administración ─────────────────────────────────────────────
+
+registry.registerPath({
+  method: "get",
+  path: "/api/admin/verifications",
+  summary: "Cola de revisión (admin)",
+  description: [
+    "Lista solicitudes de verificación con filtros opcionales por status y entityType.",
+    "Solo accesible por administradores.",
+  ].join(" "),
+  tags: ["Verification"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    query: AdminVerificationsQuery,
+  },
+  responses: {
+    200: {
+      description: "Lista de solicitudes de verificación",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.array(VerificationRequestResponse.extend({
+              ownerName: z.string(),
+              ownerEmail: z.string().email(),
+            })),
+          }),
+        },
+      },
+    },
+    400: {
+      description: "Error de validación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Acceso denegado — solo administradores",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/api/admin/verifications/{id}/transition",
+  summary: "Transicionar estado de verificación (admin)",
+  description: [
+    "Cambia el estado de una solicitud de verificación aplicando la máquina de estados:",
+    "entregada → en_estudio → aceptada | rechazada; rechazada → entregada (reenvío).",
+    "Si transiciona a 'aceptada', activa la cuenta del usuario (status = 'approved').",
+    "Solo accesible por administradores.",
+  ].join(" "),
+  tags: ["Verification"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().openapi({
+        example: "1",
+        description: "ID numérico de la solicitud de verificación",
+      }),
+    }),
+    body: {
+      content: { "application/json": { schema: TransitionRequestBody } },
+      description: "Nuevo estado y motivo opcional",
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      description: "Transición aplicada exitosamente",
+      content: {
+        "application/json": {
+          schema: z.object({ data: VerificationRequestResponse }),
+        },
+      },
+    },
+    400: {
+      description: "Error de validación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Acceso denegado — solo administradores",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    404: {
+      description: "Solicitud de verificación no encontrada",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    422: {
+      description: "Transición no permitida por la máquina de estados",
       content: { "application/json": { schema: ErrorResponse } },
     },
   },
