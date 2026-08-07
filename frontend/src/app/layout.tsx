@@ -5,6 +5,7 @@ import LocationProvider from "@/providers/LocationProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { AccessibilityProvider } from "@/providers/AccessibilityProvider";
 import AlertsHost from "@/components/ui/AlertsHost";
+import { InstallPromptProvider } from "@/providers/InstallPromptProvider";
 
 const atkinson = Atkinson_Hyperlegible({
   variable: "--font-sara",
@@ -47,10 +48,12 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-on-surface">
         <AccessibilityProvider>
           <AuthProvider>
-            <LocationProvider>
-              <AlertsHost />
-              {children}
-            </LocationProvider>
+            <InstallPromptProvider>
+              <LocationProvider>
+                <AlertsHost />
+                {children}
+              </LocationProvider>
+            </InstallPromptProvider>
           </AuthProvider>
         </AccessibilityProvider>
       </body>

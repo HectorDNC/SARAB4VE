@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { alertService } from "@/services/alertService";
 import AccessibilityToolbar from "@/components/layout/AccessibilityToolbar";
+import { InstallPwaButton } from "@/components/ui/InstallPwaButton";
 import type { ROLES_USER } from "@/types";
 
 type NavLink = {
@@ -90,6 +91,7 @@ export default function Navbar() {
               <span>AYUDA - SOS</span>
             </div>
           </Link>
+            <InstallPwaButton compact />
           <AccessibilityToolbar compact />
         </div>
 
@@ -238,6 +240,9 @@ export default function Navbar() {
                   </span>
                   NECESITO AYUDA - SOS
                 </Link>
+              </li>
+              <li className="flex justify-center px-4 py-2">
+                <InstallPwaButton />
               </li>
               {user ? (
                 <>

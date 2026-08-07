@@ -5,7 +5,8 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'SARA - Sistema de Alertas y Respuesta Asistida',
     short_name: 'SARA',
     description: 'SARA facilita la comunicación, ayuda y el rescate en situaciones críticas para personas con discapacidad.',
-    start_url: '/',
+    start_url: '/?utm_source=pwa',
+
     display: 'standalone',
     background_color: '#fcf9f8', 
     theme_color: '#0040a1',
