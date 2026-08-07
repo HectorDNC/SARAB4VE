@@ -11,6 +11,31 @@ export type OrganizationPayload = {
   legalDocument: string;
   workArea: string[];
   acceptedTerms: boolean;
+
+  // Nuevos campos
+  countryFiscal: string;
+  fiscalIdType: string;
+  fiscalNumber: string;
+  entityType: string;
+  otherEntityType?: string;
+  registrationNumber: number;
+  constitutionDate: string;
+  legalAddress: string;
+  legalCountry: string;
+  province: string;
+  city: string;
+  legalRepresentativeName: string;
+  legalRepresentativePosition: string;
+  legalRepresentativePhone: string;
+  legalRepresentativeEmail: string;
+  website?: string;
+  socialMedia?: string;
+  mission: string;
+  vision: string;
+  scope: string;
+  collectiveServed: string;
+  disabilityTypes: string[];
+  services: string;
 };
 
 // Rama feat/verificaciones-users-back (aún no mergeada a main, pero ya

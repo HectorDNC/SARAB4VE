@@ -181,18 +181,7 @@ export default function OrganizationRegister() {
         setDocumentErrors({});
 
         try {
-            await sendOrganization({
-                fullName: result.data.fullName,
-                email: result.data.email,
-                phone: result.data.phone,
-                password: result.data.password,
-                location: result.data.location,
-                zone: result.data.zone,
-                organizationName: result.data.organizationName,
-                legalDocument: result.data.legalDocument,
-                workArea: result.data.workArea,
-                acceptedTerms: result.data.acceptedTerms,
-            });
+            await sendOrganization(result.data);
 
             
 

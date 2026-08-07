@@ -218,18 +218,7 @@ export default function VolunteerRegister() {
         setDocumentErrors({});
 
         try {
-            await sendVolunteer({
-                fullName: result.data.fullName,
-                email: result.data.email,
-                phone: result.data.phone,
-                password: result.data.password,
-                location: result.data.location,
-                zone: result.data.zone,
-                skills: result.data.skills,
-                availableHours: Number(result.data.availableHours),
-                availableDays: result.data.availableDays,
-                acceptedTerms: result.data.acceptedTerms,
-            })
+            await sendVolunteer(result.data);
 
             alertService.success("Tu solicitud fue enviada. Te contactaremos pronto.");
             setFormData(InitVolunteerForm)
