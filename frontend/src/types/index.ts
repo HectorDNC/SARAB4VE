@@ -275,7 +275,88 @@ export interface IdParam {
     id: string;
 }
 
+// ── Perfil completo de organización (GET /api/users/:id/organization-profile) ─────────────
 
+/** Ítem del catálogo unificado (disability_types, services, etc.). */
+export interface CatalogItem {
+    id: number;
+    name: string;
+    type: string;
+}
+
+/** Representante legal de una organización. */
+export interface LegalRepresentative {
+    id: number;
+    fullName: string;
+    position: string;
+    phone: string;
+    email: string;
+    createdAt: string;
+}
+
+/** Perfil extendido de organización (organization_profiles). */
+export interface OrganizationProfile {
+    userId: string;
+    organizationTypeId: number;
+    taxId: string | null;
+    registryNumber: string | null;
+    foundedAt: string | null;
+    country: string | null;
+    province: string | null;
+    city: string | null;
+    address: string | null;
+    website: string | null;
+    socialLinks: Record<string, string> | null;
+    mission: string | null;
+    vision: string | null;
+    scope: string | null;
+    servedGroups: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** Estados de una solicitud de verificación. */
+export type VerificationStatus = "entregada" | "en_estudio" | "rechazada" | "aceptada";
+
+/** Estados de un documento de verificación. */
+export type DocumentStatus = "pending" | "approved" | "rejected";
+
+/** Solicitud de verificación de una organización. */
+export interface VerificationRequest {
+    id: number;
+    ownerId: string;
+    entityType: string;
+    status: VerificationStatus;
+    rejectionReason: string | null;
+    submittedAt: string;
+    reviewedBy: string | null;
+    reviewedAt: string | null;
+}
+
+/** Documento cargado en el proceso de verificación. */
+export interface VerificationDocument {
+    id: number;
+    documentTypeId: number;
+    storageKey: string;
+    status: DocumentStatus;
+    rejectionReason: string | null;
+    uploadedAt: string;
+    reviewedBy: string | null;
+    reviewedAt: string | null;
+    documentTypeCode: string;
+    documentTypeName: string;
+}
+
+/** Respuesta completa del endpoint de perfil de organización. */
+export interface OrganizationProfileResponse {
+    user: ApiUser;
+    organizationProfile: OrganizationProfile | null;
+    legalRepresentatives: LegalRepresentative[];
+    disabilityTypes: CatalogItem[];
+    services: CatalogItem[];
+    verification: VerificationRequest | null;
+    documents: VerificationDocument[];
+}
 
 // -------- Perfil administrador - Registro ----------------------
 

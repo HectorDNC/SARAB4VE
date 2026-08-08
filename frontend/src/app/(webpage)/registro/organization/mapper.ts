@@ -53,6 +53,23 @@ export const SERVICE_CATALOG_IDS: Record<string, number> = {
     "Comedor / alimentación": 50,
 };
 
+// Mapeo de IDs de documentos del formulario a document_types del backend
+// Seed del backend (verification_schema.sql):
+//   ID 1: estatutos | ID 2: rif | ID 3: acta_constitutiva
+//   ID 4: identificacion_representante | ID 5: certificado_bancario
+//   ID 6: declaracion_impuestos | ID 7: memoria_actividades
+export const DOCUMENT_TYPE_IDS: Record<string, number> = {
+    "cif": 2,              // RIF
+    "estatutos": 1,        // Estatutos
+    "inscripcion": 3,      // Acta constitutiva / Inscripción registral
+    "id_representante": 4, // Identificación del representante legal
+    "certificado_fiscal": 6, // Declaración de impuestos
+    "seguro_responsabilidad": 5, // Certificado bancario (aproximación)
+    "politica_proteccion_datos": 7, // No existe exacto — reutiliza 7
+    "codigo_etico": 7,     // No existe exacto — reutiliza 7
+    "politica_accesibilidad": 7, // No existe exacto — reutiliza 7
+};
+
 /**
  * Construye el payload para POST /api/organizations/register a partir
  * del formData de nuestro formulario.
@@ -88,6 +105,16 @@ export function buildOrganizationRegisterPayload(
         .filter((id): id is number => typeof id === "number");
 
     return {
+        // Campos básicos requeridos por el backend (CommonFields + organización)
+        fullName: formData.legalRepresentativeName || formData.fullName,
+        email: formData.legalRepresentativeEmail || formData.email,
+        phone: formData.legalRepresentativePhone || formData.phone,
+        password: formData.password,
+        organizationName: formData.organizationName,
+        legalDocument: formData.fiscalNumber,
+        acceptedTerms: true as const,
+        
+        // Campos extendidos del perfil de organización
         organizationTypeId,
         taxId: formData.fiscalNumber || undefined,
         registryNumber: formData.registrationNumber ? String(formData.registrationNumber) : undefined,

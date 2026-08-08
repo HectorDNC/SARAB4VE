@@ -15,6 +15,8 @@ import { organizationSchema, getFieldErrors, type OrganizationFormData } from ".
 import { alertService } from "@/services/alertService";
 import dynamic from "next/dynamic";
 import PhoneField from "@/components/ui/PhoneField";
+import { buildOrganizationRegisterPayload, DOCUMENT_TYPE_IDS } from "./mapper";
+import { uploadVerificationDocument } from "@/api/verification";
 
 
 const Location = dynamic(() => import("@/components/ui/Location"), {
@@ -159,10 +161,8 @@ export default function OrganizationRegister() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // fullName/email/phone/password/acceptedTerms ya no se piden por
-        // separado en la UI: se toman del representante legal (única persona
-        // de contacto que se captura ahora) y se autocompletan los campos
-        // de cuenta que el backend sigue requiriendo.
+        // fullName/email/phone se toman del representante legal
+        // password ahora es visible en el formulario (o se autogenera si está vacío)
         const dataToValidate = {
             ...formData,
             fullName: formData.legalRepresentativeName,
@@ -175,8 +175,10 @@ export default function OrganizationRegister() {
         const result = organizationSchema.safeParse(dataToValidate);
 
         if (!result.success) {
-            setErrors(getFieldErrors(dataToValidate));
-            alertService.warning("Revisa los campos marcados en rojo.");
+            const fieldErrors = getFieldErrors(dataToValidate);
+            setErrors(fieldErrors);
+            const firstError = result.error.issues[0]?.message ?? "Revisa los campos marcados en rojo.";
+            alertService.warning(firstError);
             return;
         }
 
@@ -197,12 +199,46 @@ export default function OrganizationRegister() {
         setDocumentErrors({});
 
         try {
-            await sendOrganization(result.data);
+            // Paso 1: Registrar la organización con todos los campos (básicos + extendidos)
+            // El endpoint POST /api/auth/register/organization ya crea:
+            // - users + user_details + organization_profiles + legal_representatives
+            // - organization_disability_types + organization_services + verification_requests
+            const fullPayload = buildOrganizationRegisterPayload(formData);
+            const registerResponse = await sendOrganization(fullPayload);
 
-            
+            if (!registerResponse?.token) {
+                throw new Error("No se recibió el token de autenticación");
+            }
+
+            // Paso 2: Subir todos los documentos de verificación
+            const uploadPromises = REQUIRED_DOCUMENTS.map(async (doc) => {
+                const file = documentFiles[doc.id];
+                if (!file) return null;
+                
+                const documentTypeId = DOCUMENT_TYPE_IDS[doc.id];
+                if (!documentTypeId) {
+                    console.warn(`No se encontró documentTypeId para ${doc.id}`);
+                    return null;
+                }
+
+                try {
+                    return await uploadVerificationDocument(
+                        file,
+                        documentTypeId,
+                        registerResponse.token
+                    );
+                } catch (err) {
+                    console.error(`Error subiendo documento ${doc.name}:`, err);
+                    throw new Error(`No se pudo subir el documento: ${doc.name}`);
+                }
+            });
+
+            await Promise.all(uploadPromises);
 
             alertService.success("Tu solicitud fue enviada. Te contactaremos pronto.");
             setFormData(InitOrganizationForm);
+            // Resetear archivos de documentos
+            setDocumentFiles(Object.fromEntries(REQUIRED_DOCUMENTS.map((doc) => [doc.id, null])));
 
         } catch (error) {
             const message = error instanceof Error ? error.message : "No se pudo enviar tu solicitud.";
@@ -506,6 +542,23 @@ export default function OrganizationRegister() {
                                     <p id={`${ids.legalRepresentativeEmail}-err`} className={errorClass}>{errors.legalRepresentativeEmail}</p>
                                 )}
                             </div>
+                        </div>
+
+                        <div>
+                            <Label htmlFor={ids.password} name="Contraseña para tu cuenta" />
+                            <input
+                                id={ids.password}
+                                type="password"
+                                className={`${fieldClass} mt-2 ${errors.password ? "border-error" : ""}`}
+                                placeholder="Mínimo 8 caracteres"
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                aria-invalid={!!errors.password}
+                                aria-describedby={errors.password ? `${ids.password}-err` : undefined}
+                            />
+                            {errors.password && (
+                                <p id={`${ids.password}-err`} className={errorClass}>{errors.password}</p>
+                            )}
                         </div>
                     </fieldset>
 

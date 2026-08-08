@@ -163,12 +163,13 @@ const RegisterVolunteerBody = CommonFields.extend({
 // ---------------------------------------------------------------------------
 
 const RegisterOrganizationBody = CommonFields.extend({
+  // Campos básicos (legacy - para compatibilidad)
   organizationName: z.string()
     .min(1, "organizationName es requerido para organizaciones")
     .openapi({ example: "Cruz Roja Venezolana", description: "Nombre de la organización" }),
 
   legalDocument: z.string()
-    .min(1, "legalDocument es requerido para organizaciones")
+    // .min(1, "legalDocument es requerido para organizaciones")
     .openapi({ example: "RIF-J-12345678-9", description: "Documento legal (RIF, cédula jurídica)" }),
 
   workArea: z.array(z.string().min(1, "workArea contiene valores vacíos"))
@@ -181,8 +182,95 @@ const RegisterOrganizationBody = CommonFields.extend({
   acceptedTerms: z.literal(true, {
     errorMap: () => ({ message: "acceptedTerms debe ser true para registrarse como organización" }),
   }).openapi({ example: true, description: "Debe ser true" }),
+
+  // Campos extendidos del perfil de organización
+  organizationTypeId: z.number()
+    .int("organizationTypeId debe ser un número entero")
+    .positive("organizationTypeId debe ser positivo")
+    .optional()
+    .openapi({ example: 1, description: "ID del tipo de organización (catálogo)" }),
+
+  taxId: z.string()
+    .max(30, "taxId no puede exceder 30 caracteres")
+    .optional()
+    .openapi({ example: "J123456789", description: "Identificación fiscal (RIF, CIF, NIF)" }),
+
+  registryNumber: z.string()
+    .max(50, "registryNumber no puede exceder 50 caracteres")
+    .optional()
+    .openapi({ example: "123", description: "Número de registro" }),
+
+  foundedAt: z.string()
+    .optional()
+    .openapi({ example: "2020-01-01", description: "Fecha de constitución (YYYY-MM-DD)" }),
+
+  country: z.string()
+    .max(60, "country no puede exceder 60 caracteres")
+    .optional()
+    .openapi({ example: "Venezuela", description: "País" }),
+
+  province: z.string()
+    .max(60, "province no puede exceder 60 caracteres")
+    .optional()
+    .openapi({ example: "Distrito Capital", description: "Provincia/Estado" }),
+
+  city: z.string()
+    .max(60, "city no puede exceder 60 caracteres")
+    .optional()
+    .openapi({ example: "Caracas", description: "Ciudad" }),
+
+  address: z.string()
+    .optional()
+    .openapi({ example: "Av. Principal 123", description: "Dirección completa" }),
+
+  website: z.string()
+    .max(200, "website no puede exceder 200 caracteres")
+    .optional()
+    .openapi({ example: "https://sara.org", description: "Sitio web" }),
+
+  socialLinks: z.record(z.string())
+    .optional()
+    .openapi({
+      example: { instagram: "@sara", facebook: "saraorg" },
+      description: "Redes sociales (objeto clave-valor)",
+    }),
+
+  mission: z.string()
+    .optional()
+    .openapi({ example: "Ayudar a personas con discapacidad", description: "Misión de la organización" }),
+
+  vision: z.string()
+    .optional()
+    .openapi({ example: "Ser la principal organización de apoyo", description: "Visión de la organización" }),
+
+  scope: z.string()
+    .optional()
+    .openapi({ example: "Nacional", description: "Ámbito de actuación" }),
+
+  servedGroups: z.string()
+    .optional()
+    .openapi({ example: "Personas con discapacidad física", description: "Colectivos atendidos" }),
+
+  legalRepresentatives: z.array(z.object({
+    fullName: z.string().min(1, "fullName es requerido"),
+    position: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().email("email no válido").optional(),
+  })).optional()
+    .openapi({
+      example: [{ fullName: "Juan Pérez", position: "Director", email: "juan@sara.org" }],
+      description: "Representantes legales",
+    }),
+
+  disabilityTypeIds: z.array(z.number().int().positive())
+    .optional()
+    .openapi({ example: [12, 14], description: "IDs de tipos de discapacidad (catálogo)" }),
+
+  serviceIds: z.array(z.number().int().positive())
+    .optional()
+    .openapi({ example: [43, 44], description: "IDs de servicios ofrecidos (catálogo)" }),
 }).openapi({
-  description: "Payload para registrar una organización (requiere aprobación)",
+  description: "Payload para registrar una organización con perfil completo (requiere aprobación)",
   example: {
     fullName: "Ana Rodríguez",
     email: "contacto@cruzroja.org.ve",
@@ -192,8 +280,23 @@ const RegisterOrganizationBody = CommonFields.extend({
     zone: "Caracas - Centro",
     organizationName: "Cruz Roja Venezolana",
     legalDocument: "RIF-J-12345678-9",
-    workArea: ["salud", "logistica"],
     acceptedTerms: true,
+    organizationTypeId: 1,
+    taxId: "J123456789",
+    registryNumber: "123",
+    foundedAt: "2020-01-01",
+    country: "Venezuela",
+    province: "Distrito Capital",
+    city: "Caracas",
+    address: "Av. Principal 123",
+    website: "https://cruzroja.org.ve",
+    mission: "Ayudar a personas con discapacidad",
+    vision: "Ser la principal organización de apoyo",
+    scope: "Nacional",
+    servedGroups: "Personas con discapacidad física",
+    legalRepresentatives: [{ fullName: "Juan Pérez", position: "Director" }],
+    disabilityTypeIds: [12, 14],
+    serviceIds: [43, 44],
   },
 });
 
@@ -330,6 +433,7 @@ function normalizeRegisterVolunteer(payload) {
 
 /**
  * Normaliza el payload de registro de organización para inserción en DB.
+ * Versión básica (legacy) — solo crea user + user_details.
  * @param {Object} payload — ya validado por Zod
  * @returns {{ user: Object, details: Object }}
  */
@@ -351,6 +455,72 @@ function normalizeRegisterOrganization(payload) {
       workArea: payload.workArea?.map((a) => a.trim()) || null,
       acceptedTerms: true,
     },
+  };
+}
+
+/**
+ * Normaliza el payload extendido de organización para inserción completa.
+ * Separa campos de users vs organization_profiles.
+ * @param {Object} payload — ya validado por Zod
+ * @returns {{ user: Object, details: Object, profile: Object, legalRepresentatives: Object[], disabilityTypeIds: number[], serviceIds: number[] }}
+ */
+function normalizeRegisterOrganizationExtended(payload) {
+  // Campos de usuario (users + user_details)
+  const user = {
+    fullName: payload.fullName.trim(),
+    email: payload.email.trim().toLowerCase(),
+    phone: payload.phone.trim().replace(/[\s-]/g, ""),
+    password: payload.password,
+    role: "organization",
+    status: "pending",
+    location: payload.location || null,
+    zone: payload.zone?.trim() || null,
+  };
+
+  const details = {
+    organizationName: payload.organizationName.trim(),
+    legalDocument: payload.legalDocument.trim(),
+    workArea: payload.workArea?.map((a) => a.trim()) || null,
+    acceptedTerms: true,
+  };
+
+  // Campos de perfil de organización (organization_profiles)
+  const profile = {
+    organizationTypeId: payload.organizationTypeId || null,
+    taxId: payload.taxId?.trim() || null,
+    registryNumber: payload.registryNumber?.trim() || null,
+    foundedAt: payload.foundedAt || null,
+    country: payload.country?.trim() || null,
+    province: payload.province?.trim() || null,
+    city: payload.city?.trim() || null,
+    address: payload.address?.trim() || null,
+    website: payload.website?.trim() || null,
+    socialLinks: payload.socialLinks || null,
+    mission: payload.mission?.trim() || null,
+    vision: payload.vision?.trim() || null,
+    scope: payload.scope?.trim() || null,
+    servedGroups: payload.servedGroups?.trim() || null,
+  };
+
+  // Representantes legales
+  const legalRepresentatives = payload.legalRepresentatives?.map((rep) => ({
+    fullName: rep.fullName.trim(),
+    position: rep.position?.trim() || null,
+    phone: rep.phone?.trim() || null,
+    email: rep.email?.trim() || null,
+  })) || [];
+
+  // Relaciones many-to-many
+  const disabilityTypeIds = payload.disabilityTypeIds || [];
+  const serviceIds = payload.serviceIds || [];
+
+  return {
+    user,
+    details,
+    profile,
+    legalRepresentatives,
+    disabilityTypeIds,
+    serviceIds,
   };
 }
 
@@ -403,5 +573,6 @@ module.exports = {
   normalizeRegisterCitizen,
   normalizeRegisterVolunteer,
   normalizeRegisterOrganization,
+  normalizeRegisterOrganizationExtended,
   normalizeRegisterAdmin,
 };

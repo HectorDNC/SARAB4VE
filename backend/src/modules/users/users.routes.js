@@ -50,4 +50,14 @@ router.post(
   controller.rejectUser(service, repository),
 );
 
+// GET /api/users/:id/organization-profile — Obtener perfil completo de organización (solo admin)
+// Retorna: datos de usuario, perfil extendido, representantes legales,
+// tipos de discapacidad, servicios, verificación y documentos
+router.get(
+  "/:id/organization-profile",
+  authenticate,
+  authorize("admin"),
+  controller.getOrganizationProfile(service, repository),
+);
+
 module.exports = router;

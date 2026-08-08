@@ -265,7 +265,7 @@ function getDownloadUrl(service, repository) {
     try {
       const result = await service.getDownloadUrl(
         id,
-        req.user.userId,
+        { userId: req.user.userId, role: req.user.role },
         repository,
       );
 
