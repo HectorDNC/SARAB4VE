@@ -262,10 +262,88 @@ async function rejectUser(targetUserId, repository) {
   return { data: updatedUser, status: 200 };
 }
 
+// ---------------------------------------------------------------------------
+// Obtener perfil completo de organización (solo admin)
+// ---------------------------------------------------------------------------
+
+/**
+ * Obtiene el perfil completo de una organización, incluyendo:
+ * - Datos básicos del usuario
+ * - Perfil de organización (organization_profiles)
+ * - Representantes legales
+ * - Tipos de discapacidad
+ * - Servicios ofrecidos
+ * - Solicitud de verificación
+ * - Documentos de verificación
+ *
+ * @param {string} organizationId — ID de la organización
+ * @param {Object} requester — req.user (JWT payload del que hace la petición)
+ * @param {Object} repository — users.repository
+ * @returns {Promise<{ data?: Object, status: number, errors?: string[] }>}
+ */
+async function getOrganizationProfile(organizationId, requester, repository) {
+  // Verificar permisos: solo admin
+  const isAdmin = requester.role === "admin";
+
+  if (!isAdmin) {
+    return {
+      errors: ["No tienes permiso para ver este perfil"],
+      status: 403,
+    };
+  }
+
+  // Obtener datos básicos del usuario
+  const user = await repository.findUserById(organizationId);
+
+  if (!user) {
+    return { errors: ["Usuario no encontrado"], status: 404 };
+  }
+
+  // Verificar que sea una organización
+  if (user.role !== "organization") {
+    return {
+      errors: ["El usuario no es una organización"],
+      status: 400,
+    };
+  }
+
+  // Obtener perfil de organización
+  const organizationProfile = await repository.findOrganizationProfileById(organizationId);
+
+  // Obtener representantes legales
+  const legalRepresentatives = await repository.findLegalRepresentatives(organizationId);
+
+  // Obtener tipos de discapacidad
+  const disabilityTypes = await repository.findOrganizationDisabilityTypes(organizationId);
+
+  // Obtener servicios
+  const services = await repository.findOrganizationServices(organizationId);
+
+  // Obtener solicitud de verificación
+  const verification = await repository.findVerificationByOwner(organizationId);
+
+  // Obtener documentos de verificación
+  const documents = await repository.findVerificationDocuments(organizationId);
+
+  // Construir respuesta completa
+  const data = {
+    user,
+    organizationProfile: organizationProfile || null,
+    legalRepresentatives,
+    disabilityTypes,
+    services,
+    verification: verification || null,
+    documents,
+  };
+
+  return { data, status: 200 };
+}
+
 module.exports = {
   listUsers,
   getUserById,
   updateUser,
   approveUser,
   rejectUser,
+  getOrganizationProfile,
 };

@@ -162,9 +162,10 @@ async function registerVolunteer(payload, schema, repository) {
 // ---------------------------------------------------------------------------
 
 /**
- * Registra una organización.
- * Crea registro en users (status = pending) + fila en user_details.
- * Usa transacción atómica: si falla details, hace rollback de users.
+ * Registra una organización con perfil completo.
+ * Crea: users + user_details + organization_profiles + legal_representatives
+ *        + organization_disability_types + organization_services + verification_requests
+ * Usa transacción atómica: si falla cualquier paso, hace rollback completo.
  *
  * @param {Object} payload — cuerpo del request sin procesar
  * @param {Object} schema — auth.schema
@@ -172,23 +173,81 @@ async function registerVolunteer(payload, schema, repository) {
  * @returns {Promise<{ data: Object, status: number, errors?: string[] }>}
  */
 async function registerOrganization(payload, schema, repository) {
-  const normalized = schema.normalizeRegisterOrganization(payload);
-  const passwordHash = await hashPassword(normalized.user.password);
+  // Usar el normalizador extendido si hay campos de perfil, sino el básico
+  const hasExtendedFields = payload.organizationTypeId || payload.legalRepresentatives ||
+    payload.disabilityTypeIds || payload.serviceIds || payload.mission || payload.country;
+
+  const passwordHash = hasExtendedFields
+    ? await hashPassword(schema.normalizeRegisterOrganizationExtended(payload).user.password)
+    : await hashPassword(schema.normalizeRegisterOrganization(payload).user.password);
 
   try {
     const result = await repository.withTransaction(async (client) => {
-      const user = await repository.insertUser(client, {
-        ...normalized.user,
-        passwordHash,
-      });
+      if (hasExtendedFields) {
+        // Flujo extendido: crear usuario + perfil completo + verificación
+        const normalized = schema.normalizeRegisterOrganizationExtended(payload);
 
-      const details = await repository.insertUserDetails(
-        client,
-        user.id,
-        normalized.details,
-      );
+        const user = await repository.insertUser(client, {
+          ...normalized.user,
+          passwordHash,
+        });
 
-      return { ...user, details };
+        // Crear user_details (datos básicos)
+        const details = await repository.insertUserDetails(
+          client,
+          user.id,
+          normalized.details,
+        );
+
+        // Crear organization_profiles (perfil extendido)
+        const profile = await repository.insertOrganizationProfile(
+          client,
+          user.id,
+          normalized.profile,
+        );
+
+        // Crear legal_representatives
+        const legalReps = [];
+        for (const rep of normalized.legalRepresentatives) {
+          const legalRep = await repository.insertLegalRepresentative(client, user.id, rep);
+          legalReps.push(legalRep);
+        }
+
+        // Crear relaciones many-to-many: disability_types
+        for (const disabilityTypeId of normalized.disabilityTypeIds) {
+          await repository.insertOrganizationDisabilityType(client, user.id, disabilityTypeId);
+        }
+
+        // Crear relaciones many-to-many: services
+        for (const serviceId of normalized.serviceIds) {
+          await repository.insertOrganizationService(client, user.id, serviceId);
+        }
+
+        // Crear verification_request
+        const verification = await repository.insertVerificationRequest(
+          client,
+          user.id,
+          'organization',
+        );
+
+        return { ...user, details, profile, legalRepresentatives: legalReps, verification };
+      } else {
+        // Flujo básico (legacy): solo usuario + detalles
+        const normalized = schema.normalizeRegisterOrganization(payload);
+
+        const user = await repository.insertUser(client, {
+          ...normalized.user,
+          passwordHash,
+        });
+
+        const details = await repository.insertUserDetails(
+          client,
+          user.id,
+          normalized.details,
+        );
+
+        return { ...user, details };
+      }
     });
 
     const token = issueToken(result);

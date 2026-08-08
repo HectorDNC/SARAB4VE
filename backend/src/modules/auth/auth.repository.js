@@ -229,11 +229,156 @@ async function findUserById(userId) {
   return result.rows[0] || null;
 }
 
+// ---------------------------------------------------------------------------
+// INSERT — organization_profiles (perfil extendido)
+// ---------------------------------------------------------------------------
+
+const INSERT_ORGANIZATION_PROFILE = `
+  INSERT INTO organization_profiles (
+    user_id, organization_type_id, tax_id, registry_number, founded_at,
+    country, province, city, address, website, social_links,
+    mission, vision, scope, served_groups
+  )
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15)
+  RETURNING user_id AS "userId", organization_type_id AS "organizationTypeId",
+            tax_id AS "taxId", registry_number AS "registryNumber", founded_at AS "foundedAt",
+            country, province, city, address, website, social_links AS "socialLinks",
+            mission, vision, scope, served_groups AS "servedGroups",
+            created_at AS "createdAt", updated_at AS "updatedAt"
+`;
+
+/**
+ * Inserta el perfil extendido de una organización.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} userId — UUID del usuario recién creado
+ * @param {Object} profile — Payload normalizado del perfil
+ * @returns {Promise<Object>} — Fila insertada
+ */
+async function insertOrganizationProfile(client, userId, profile) {
+  const result = await client.query(INSERT_ORGANIZATION_PROFILE, [
+    userId,
+    profile.organizationTypeId,
+    profile.taxId,
+    profile.registryNumber,
+    profile.foundedAt,
+    profile.country,
+    profile.province,
+    profile.city,
+    profile.address,
+    profile.website,
+    profile.socialLinks ? JSON.stringify(profile.socialLinks) : null,
+    profile.mission,
+    profile.vision,
+    profile.scope,
+    profile.servedGroups,
+  ]);
+  return result.rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// INSERT — legal_representatives
+// ---------------------------------------------------------------------------
+
+const INSERT_LEGAL_REPRESENTATIVE = `
+  INSERT INTO legal_representatives (organization_id, full_name, position, phone, email)
+  VALUES ($1, $2, $3, $4, $5)
+  RETURNING id, full_name AS "fullName", position, phone, email
+`;
+
+/**
+ * Inserta un representante legal de la organización.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} organizationId — UUID de la organización (user_id)
+ * @param {Object} rep — Datos del representante
+ * @returns {Promise<Object>} — Fila insertada
+ */
+async function insertLegalRepresentative(client, organizationId, rep) {
+  const result = await client.query(INSERT_LEGAL_REPRESENTATIVE, [
+    organizationId,
+    rep.fullName,
+    rep.position,
+    rep.phone,
+    rep.email,
+  ]);
+  return result.rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// INSERT — organization_disability_types (relación many-to-many)
+// ---------------------------------------------------------------------------
+
+const INSERT_ORGANIZATION_DISABILITY_TYPE = `
+  INSERT INTO organization_disability_types (organization_id, catalog_id, catalog_type)
+  VALUES ($1, $2, 'disability_type')
+  ON CONFLICT DO NOTHING
+`;
+
+/**
+ * Inserta la relación entre organización y tipo de discapacidad.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} organizationId — UUID de la organización
+ * @param {number} disabilityTypeId — ID del tipo de discapacidad (catálogo)
+ * @returns {Promise<void>}
+ */
+async function insertOrganizationDisabilityType(client, organizationId, disabilityTypeId) {
+  await client.query(INSERT_ORGANIZATION_DISABILITY_TYPE, [organizationId, disabilityTypeId]);
+}
+
+// ---------------------------------------------------------------------------
+// INSERT — organization_services (relación many-to-many)
+// ---------------------------------------------------------------------------
+
+const INSERT_ORGANIZATION_SERVICE = `
+  INSERT INTO organization_services (organization_id, catalog_id, catalog_type)
+  VALUES ($1, $2, 'service')
+  ON CONFLICT DO NOTHING
+`;
+
+/**
+ * Inserta la relación entre organización y servicio ofrecido.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} organizationId — UUID de la organización
+ * @param {number} serviceId — ID del servicio (catálogo)
+ * @returns {Promise<void>}
+ */
+async function insertOrganizationService(client, organizationId, serviceId) {
+  await client.query(INSERT_ORGANIZATION_SERVICE, [organizationId, serviceId]);
+}
+
+// ---------------------------------------------------------------------------
+// INSERT — verification_requests
+// ---------------------------------------------------------------------------
+
+const INSERT_VERIFICATION_REQUEST = `
+  INSERT INTO verification_requests (owner_id, entity_type, status)
+  VALUES ($1, $2, 'entregada')
+  RETURNING id, owner_id AS "ownerId", entity_type AS "entityType", status,
+            rejection_reason AS "rejectionReason", submitted_at AS "submittedAt",
+            reviewed_by AS "reviewedBy", reviewed_at AS "reviewedAt"
+`;
+
+/**
+ * Crea una solicitud de verificación para la organización.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} ownerId — UUID del usuario/organización
+ * @param {string} entityType — Tipo de entidad ('organization', 'volunteer_professional', etc.)
+ * @returns {Promise<Object>} — Fila insertada
+ */
+async function insertVerificationRequest(client, ownerId, entityType) {
+  const result = await client.query(INSERT_VERIFICATION_REQUEST, [ownerId, entityType]);
+  return result.rows[0];
+}
+
 module.exports = {
   USER_SELECT_COLUMNS,
   USER_DETAILS_SELECT_COLUMNS,
   insertUser,
   insertUserDetails,
+  insertOrganizationProfile,
+  insertLegalRepresentative,
+  insertOrganizationDisabilityType,
+  insertOrganizationService,
+  insertVerificationRequest,
   withTransaction,
   findUserByEmail,
   findUserById,

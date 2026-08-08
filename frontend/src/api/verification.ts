@@ -43,6 +43,16 @@ export type LegalRepresentativeInput = {
 };
 
 export type OrganizationRegisterPayload = {
+  // Campos básicos requeridos por el backend (CommonFields + organización)
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+  organizationName: string;
+  legalDocument: string;
+  acceptedTerms: true;
+  
+  // Campos extendidos del perfil de organización
   organizationTypeId: number;
   taxId?: string;
   registryNumber?: string;
@@ -174,6 +184,38 @@ export async function requestDocumentUpload(
     body: JSON.stringify(payload),
   });
   return handleResponse<DocumentUploadResponse>(res);
+}
+
+/**
+ * Sube un documento de verificación usando multipart/form-data.
+ * El backend espera el archivo en el campo "file" y documentTypeId como campo de texto.
+ */
+export async function uploadVerificationDocument(
+  file: File,
+  documentTypeId: number,
+  token?: string
+): Promise<VerificationDocument> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("documentTypeId", String(documentTypeId));
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  } else {
+    const authHeaders = getAuthHeaders();
+    if (authHeaders["Authorization"]) {
+      headers["Authorization"] = authHeaders["Authorization"];
+    }
+  }
+
+  const res = await fetch(`${API}/api/verification-documents`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  return handleResponse<VerificationDocument>(res);
 }
 
 // ---------------------------------------------------------------------------

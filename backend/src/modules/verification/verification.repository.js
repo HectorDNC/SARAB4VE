@@ -417,7 +417,7 @@ async function insertStatusHistory(client, verificationRequestId, fromStatus, to
 }
 
 // ---------------------------------------------------------------------------
-// Actualizar rol de usuario (activación tras verificación aceptada)
+// Actualizar estado de usuario (activación/rechazo tras verificación)
 // ---------------------------------------------------------------------------
 
 const APPROVE_USER = `
@@ -436,6 +436,25 @@ const APPROVE_USER = `
  */
 async function approveUser(client, userId) {
   const result = await client.query(APPROVE_USER, [userId]);
+  return result.rows[0];
+}
+
+const REJECT_USER = `
+  UPDATE users
+  SET status = 'rejected',
+      updated_at = NOW()
+  WHERE id = $1
+  RETURNING id, role, status
+`;
+
+/**
+ * Rechaza la cuenta del usuario cuando su verificación es rechazada.
+ * @param {import("pg").PoolClient} client
+ * @param {string} userId
+ * @returns {Promise<Object>}
+ */
+async function rejectUser(client, userId) {
+  const result = await client.query(REJECT_USER, [userId]);
   return result.rows[0];
 }
 
@@ -590,6 +609,7 @@ module.exports = {
   insertStatusHistory,
 
   approveUser,
+  rejectUser,
 
   insertVerificationDocument,
   findDocumentsByOwner,

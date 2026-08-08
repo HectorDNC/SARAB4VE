@@ -414,6 +414,11 @@ async function transitionVerification(verificationId, transition, reviewerId, re
         await repository.approveUser(client, current.ownerId);
       }
 
+      // Efecto secundario: si se rechaza, marcar la cuenta como rechazada
+      if (transition.toStatus === "rechazada") {
+        await repository.rejectUser(client, current.ownerId);
+      }
+
       return updated;
     });
 

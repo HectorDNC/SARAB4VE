@@ -304,6 +304,129 @@ async function withTransaction(callback) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// SELECT — obtener perfil completo de organización
+// ---------------------------------------------------------------------------
+
+const ORGANIZATION_PROFILE_SELECT = `
+  user_id AS "userId",
+  organization_type_id AS "organizationTypeId",
+  tax_id AS "taxId",
+  registry_number AS "registryNumber",
+  founded_at AS "foundedAt",
+  country, province, city, address,
+  website, social_links AS "socialLinks",
+  mission, vision, scope,
+  served_groups AS "servedGroups",
+  created_at AS "createdAt",
+  updated_at AS "updatedAt"
+`;
+
+/**
+ * Obtiene el perfil completo de una organización.
+ * @param {string} userId - ID del usuario/organización
+ * @returns {Promise<Object|null>}
+ */
+async function findOrganizationProfileById(userId) {
+  const query = `
+    SELECT ${ORGANIZATION_PROFILE_SELECT}
+    FROM organization_profiles
+    WHERE user_id = $1
+  `;
+  const result = await db.query(query, [userId]);
+  return result.rows[0] || null;
+}
+
+/**
+ * Obtiene los representantes legales de una organización.
+ * @param {string} organizationId - ID de la organización
+ * @returns {Promise<Array>}
+ */
+async function findLegalRepresentatives(organizationId) {
+  const query = `
+    SELECT id, full_name AS "fullName", position, phone, email, created_at AS "createdAt"
+    FROM legal_representatives
+    WHERE organization_id = $1
+    ORDER BY created_at ASC
+  `;
+  const result = await db.query(query, [organizationId]);
+  return result.rows;
+}
+
+/**
+ * Obtiene los tipos de discapacidad asociados a una organización.
+ * @param {string} organizationId - ID de la organización
+ * @returns {Promise<Array>}
+ */
+async function findOrganizationDisabilityTypes(organizationId) {
+  const query = `
+    SELECT c.id, c.name, c.type
+    FROM organization_disability_types odt
+    JOIN catalog c ON c.id = odt.catalog_id
+    WHERE odt.organization_id = $1
+    ORDER BY c.name ASC
+  `;
+  const result = await db.query(query, [organizationId]);
+  return result.rows;
+}
+
+/**
+ * Obtiene los servicios asociados a una organización.
+ * @param {string} organizationId - ID de la organización
+ * @returns {Promise<Array>}
+ */
+async function findOrganizationServices(organizationId) {
+  const query = `
+    SELECT c.id, c.name, c.type
+    FROM organization_services os
+    JOIN catalog c ON c.id = os.catalog_id
+    WHERE os.organization_id = $1
+    ORDER BY c.name ASC
+  `;
+  const result = await db.query(query, [organizationId]);
+  return result.rows;
+}
+
+/**
+ * Obtiene la solicitud de verificación de un usuario.
+ * @param {string} ownerId - ID del usuario
+ * @returns {Promise<Object|null>}
+ */
+async function findVerificationByOwner(ownerId) {
+  const query = `
+    SELECT id, owner_id AS "ownerId", entity_type AS "entityType", status,
+           rejection_reason AS "rejectionReason",
+           submitted_at AS "submittedAt",
+           reviewed_by AS "reviewedBy", reviewed_at AS "reviewedAt"
+    FROM verification_requests
+    WHERE owner_id = $1
+  `;
+  const result = await db.query(query, [ownerId]);
+  return result.rows[0] || null;
+}
+
+/**
+ * Obtiene los documentos de verificación de un usuario.
+ * @param {string} ownerId - ID del usuario
+ * @returns {Promise<Array>}
+ */
+async function findVerificationDocuments(ownerId) {
+  const query = `
+    SELECT vd.id, vd.document_type_id AS "documentTypeId",
+           vd.storage_key AS "storageKey", vd.status,
+           vd.rejection_reason AS "rejectionReason",
+           vd.uploaded_at AS "uploadedAt",
+           vd.reviewed_by AS "reviewedBy", vd.reviewed_at AS "reviewedAt",
+           dt.code AS "documentTypeCode", dt.name AS "documentTypeName"
+    FROM verification_documents vd
+    JOIN document_types dt ON dt.id = vd.document_type_id
+    WHERE vd.owner_id = $1
+    ORDER BY vd.uploaded_at ASC
+  `;
+  const result = await db.query(query, [ownerId]);
+  return result.rows;
+}
+
 module.exports = {
   USER_SELECT_COLUMNS,
   USER_DETAILS_SELECT_COLUMNS,
@@ -311,6 +434,12 @@ module.exports = {
   listUsers,
   findUserById,
   findUserDetailsById,
+  findOrganizationProfileById,
+  findLegalRepresentatives,
+  findOrganizationDisabilityTypes,
+  findOrganizationServices,
+  findVerificationByOwner,
+  findVerificationDocuments,
   updateUser,
   updateUserStatus,
   withTransaction,
