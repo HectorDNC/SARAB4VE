@@ -51,7 +51,7 @@ export const organizationSchema = z.object({
 
   workArea: z
     .array(z.string())
-    .min(1, "Selecciona al menos un área de trabajo"),
+    .optional(),
 
   // NUEVOS CAMPOS: Identificación Fiscal
   countryFiscal: z
