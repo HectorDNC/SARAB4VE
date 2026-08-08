@@ -130,6 +130,7 @@ export default function OrganizationDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [pendingDecision, setPendingDecision] = useState<"approved" | "rejected" | null>(null);
+    const [executingDecision, setExecutingDecision] = useState<"approved" | "rejected" | null>(null);
     const confirmDialogRef = useRef<HTMLDialogElement>(null);
 
     // Estado para revisión de documentos
@@ -160,7 +161,7 @@ export default function OrganizationDetailPage() {
 
     const executeDecision = async (status: "approved" | "rejected") => {
         setActionLoading(true);
-        setPendingDecision(null);
+        setExecutingDecision(status);
         try {
             if (status === "approved") {
                 await approveUser(id);
@@ -175,7 +176,15 @@ export default function OrganizationDetailPage() {
             alertService.error(`Error al ${status === "approved" ? "aprobar" : "rechazar"}: ${msg}`);
         } finally {
             setActionLoading(false);
+            setExecutingDecision(null);
         }
+    };
+
+    const handleConfirmDecision = () => {
+        if (!pendingDecision) return;
+        // Cerrar el modal antes de ejecutar para evitar re-render con estado null
+        closeConfirm();
+        executeDecision(pendingDecision);
     };
 
     const openConfirm = (decision: "approved" | "rejected") => {
@@ -660,24 +669,24 @@ export default function OrganizationDetailPage() {
             <dialog
                 ref={confirmDialogRef}
                 style={{ margin: "auto" }}
-                className="rounded-2xl border border-outline-variant bg-surface-container-low p-0 shadow-lg backdrop:bg-black/50 max-w-md w-full"
+                className="rounded-2xl border border-outline-variant bg-surface-container-low p-0 shadow-lg backdrop:bg-black/80 max-w-md w-full"
                 onCancel={closeConfirm}
                 aria-label="Confirmar decisión"
             >
                 <div className="p-6">
                     <div className="flex items-center gap-3 mb-4">
                         <span
-                            className={`material-symbols-rounded text-2xl ${pendingDecision === "approved" ? "text-[color:var(--color-success)]" : "text-error"}`}
+                            className={`material-symbols-rounded text-2xl ${(executingDecision ?? pendingDecision) === "approved" ? "text-[color:var(--color-success)]" : "text-error"}`}
                             aria-hidden="true"
                         >
-                            {pendingDecision === "approved" ? "check_circle" : "cancel"}
+                            {(executingDecision ?? pendingDecision) === "approved" ? "check_circle" : "cancel"}
                         </span>
                         <h3 className="text-base font-bold text-on-surface">
-                            {pendingDecision === "approved" ? "¿Aprobar organización?" : "¿Rechazar organización?"}
+                            {(executingDecision ?? pendingDecision) === "approved" ? "¿Aprobar organización?" : "¿Rechazar organización?"}
                         </h3>
                     </div>
                     <p className="text-sm text-on-surface-variant mb-6">
-                        {pendingDecision === "approved"
+                        {(executingDecision ?? pendingDecision) === "approved"
                             ? `Vas a aprobar a "${perfil?.user.fullName}". La organización podrá operar en la plataforma.`
                             : `Vas a rechazar a "${perfil?.user.fullName}". La organización no podrá operar en la plataforma.`
                         }
@@ -694,14 +703,14 @@ export default function OrganizationDetailPage() {
                         <button
                             type="button"
                             disabled={actionLoading}
-                            onClick={() => pendingDecision && executeDecision(pendingDecision)}
+                            onClick={handleConfirmDecision}
                             className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity disabled:opacity-50 ${
-                                pendingDecision === "approved"
+                                (executingDecision ?? pendingDecision) === "approved"
                                     ? "bg-primary text-on-primary hover:opacity-90"
                                     : "bg-error text-on-error hover:opacity-90"
                             }`}
                         >
-                            {actionLoading ? "Procesando…" : pendingDecision === "approved" ? "Sí, aprobar" : "Sí, rechazar"}
+                            {actionLoading ? "Procesando…" : (executingDecision ?? pendingDecision) === "approved" ? "Sí, aprobar" : "Sí, rechazar"}
                         </button>
                     </div>
                 </div>
@@ -713,7 +722,7 @@ export default function OrganizationDetailPage() {
             <dialog
                 ref={docRejectDialogRef}
                 style={{ margin: "auto" }}
-                className="rounded-2xl border border-outline-variant bg-surface-container-low p-0 shadow-lg backdrop:bg-black/50 max-w-md w-full"
+                className="rounded-2xl border border-outline-variant bg-surface-container-low p-0 shadow-lg backdrop:bg-black/80 max-w-md w-full"
                 onCancel={closeDocRejectDialog}
                 aria-label="Rechazar documento"
             >
@@ -764,7 +773,7 @@ export default function OrganizationDetailPage() {
             <dialog
                 ref={docApproveDialogRef}
                 style={{ margin: "auto" }}
-                className="rounded-2xl border border-outline-variant bg-surface-container-low p-0 shadow-lg backdrop:bg-black/50 max-w-md w-full"
+                className="rounded-2xl border border-outline-variant bg-surface-container-low p-0 shadow-lg backdrop:bg-black/80 max-w-md w-full"
                 onCancel={closeDocApproveDialog}
                 aria-label="Confirmar aprobación de documento"
             >
