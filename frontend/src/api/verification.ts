@@ -229,3 +229,41 @@ export async function getDocumentChecklist(ownerId: string): Promise<DocumentChe
   });
   return handleResponse<DocumentChecklistItem[]>(res);
 }
+
+// ---------------------------------------------------------------------------
+// GET /api/verification-documents/:id/download — URL prefirmada temporal
+// ---------------------------------------------------------------------------
+
+export type DownloadUrlResponse = {
+  downloadUrl: string;
+  expiresIn: number;
+};
+
+export async function getDocumentDownloadUrl(documentId: number): Promise<DownloadUrlResponse> {
+  const res = await fetch(`${API}/api/verification-documents/${documentId}/download`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+  return handleResponse<DownloadUrlResponse>(res);
+}
+
+// ---------------------------------------------------------------------------
+// PATCH /api/verification-documents/:id/review — admin aprueba/rechaza
+// ---------------------------------------------------------------------------
+
+export type DocumentReviewPayload = {
+  status: "approved" | "rejected";
+  reason?: string;
+};
+
+export async function reviewVerificationDocument(
+  documentId: number,
+  payload: DocumentReviewPayload,
+): Promise<VerificationDocument> {
+  const res = await fetch(`${API}/api/verification-documents/${documentId}/review`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<VerificationDocument>(res);
+}

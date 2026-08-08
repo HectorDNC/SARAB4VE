@@ -6,6 +6,10 @@ import Link from "next/link";
 import StatusBadge from "@/components/layout/dashboard/StatusBadge";
 import { alertService } from "@/services/alertService";
 import { approveUser, rejectUser, getOrganizationProfile } from "@/api/user";
+import {
+    getDocumentDownloadUrl,
+    reviewVerificationDocument,
+} from "@/api/verification";
 import dynamic from "next/dynamic";
 import type {
     OrganizationProfileResponse,
@@ -128,6 +132,15 @@ export default function OrganizationDetailPage() {
     const [pendingDecision, setPendingDecision] = useState<"approved" | "rejected" | null>(null);
     const confirmDialogRef = useRef<HTMLDialogElement>(null);
 
+    // Estado para revisión de documentos
+    const [docActionLoadingId, setDocActionLoadingId] = useState<number | null>(null);
+    const [docRejecting, setDocRejecting] = useState<{ id: number; name: string } | null>(null);
+    const [docRejectReason, setDocRejectReason] = useState("");
+    const docRejectDialogRef = useRef<HTMLDialogElement>(null);
+    const [docApproving, setDocApproving] = useState<{ id: number; name: string } | null>(null);
+    const docApproveDialogRef = useRef<HTMLDialogElement>(null);
+    const [downloadingDocId, setDownloadingDocId] = useState<number | null>(null);
+
     useEffect(() => {
         async function load() {
             setIsLoading(true);
@@ -173,6 +186,73 @@ export default function OrganizationDetailPage() {
     const closeConfirm = () => {
         setPendingDecision(null);
         confirmDialogRef.current?.close();
+    };
+
+    /* --------------------- Acciones de documentos --------------------- */
+
+    const handleDownloadDocument = async (docId: number) => {
+        setDownloadingDocId(docId);
+        try {
+            const { downloadUrl } = await getDocumentDownloadUrl(docId);
+            // Abrir URL prefirmada en pestaña nueva
+            window.open(downloadUrl, "_blank", "noopener,noreferrer");
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : "No se pudo obtener el enlace de descarga";
+            alertService.error(msg);
+        } finally {
+            setDownloadingDocId(null);
+        }
+    };
+
+    const openDocRejectDialog = (docId: number, docName: string) => {
+        setDocRejecting({ id: docId, name: docName });
+        setDocRejectReason("");
+        docRejectDialogRef.current?.showModal();
+    };
+
+    const closeDocRejectDialog = () => {
+        setDocRejecting(null);
+        setDocRejectReason("");
+        docRejectDialogRef.current?.close();
+    };
+
+    const openDocApproveDialog = (docId: number, docName: string) => {
+        setDocApproving({ id: docId, name: docName });
+        docApproveDialogRef.current?.showModal();
+    };
+
+    const closeDocApproveDialog = () => {
+        setDocApproving(null);
+        docApproveDialogRef.current?.close();
+    };
+
+    const submitDocReview = async (status: "approved" | "rejected", reason?: string) => {
+        if (!perfil) return;
+
+        // Determinamos el id del documento a partir del estado correspondiente
+        const documentId = status === "rejected" ? docRejecting?.id : docApproving?.id;
+        if (!documentId) return;
+
+        setDocActionLoadingId(documentId);
+        try {
+            await reviewVerificationDocument(documentId, {
+                status,
+                reason: reason?.trim() || undefined,
+            });
+            alertService.success(
+                status === "approved" ? "Documento aprobado." : "Documento rechazado.",
+            );
+            // Refrescar el perfil para reflejar el nuevo estado
+            const data = await getOrganizationProfile(id);
+            setPerfil(data);
+            if (status === "rejected") closeDocRejectDialog();
+            if (status === "approved") closeDocApproveDialog();
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : "Error desconocido";
+            alertService.error(`Error al ${status === "approved" ? "aprobar" : "rechazar"} el documento: ${msg}`);
+        } finally {
+            setDocActionLoadingId(null);
+        }
     };
 
     /* --------------------- Estados de carga / error -------------------- */
@@ -456,23 +536,80 @@ export default function OrganizationDetailPage() {
                                     <th className="pb-2 pr-4">Documento</th>
                                     <th className="pb-2 pr-4">Estado</th>
                                     <th className="pb-2 pr-4">Subido</th>
-                                    <th className="pb-2">Revisado</th>
+                                    <th className="pb-2 pr-4">Revisado</th>
+                                    <th className="pb-2 text-right">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {documents.map((doc) => (
-                                    <tr key={doc.id} className="border-b border-outline-variant/50 last:border-0">
-                                        <td className="py-2.5 pr-4 font-medium text-on-surface">{doc.documentTypeName}</td>
-                                        <td className="py-2.5 pr-4">
-                                            <TagBadge
-                                                label={DOC_STATUS_LABELS[doc.status] ?? doc.status}
-                                                className={DOC_STATUS_CLASSES[doc.status]}
-                                            />
-                                        </td>
-                                        <td className="py-2.5 pr-4 text-on-surface-variant text-xs">{fmtDate(doc.uploadedAt)}</td>
-                                        <td className="py-2.5 text-on-surface-variant text-xs">{fmtDate(doc.reviewedAt)}</td>
-                                    </tr>
-                                ))}
+                                {documents.map((doc) => {
+                                    const isDocLoading = docActionLoadingId === doc.id;
+                                    const isDownloading = downloadingDocId === doc.id;
+                                    return (
+                                        <tr key={doc.id} className="border-b border-outline-variant/50 last:border-0">
+                                            <td className="py-2.5 pr-4 font-medium text-on-surface">
+                                                <div className="flex flex-col">
+                                                    <span>{doc.documentTypeName}</span>
+                                                    {doc.rejectionReason && (
+                                                        <span className="text-xs text-on-surface-variant mt-0.5">
+                                                            Motivo: {doc.rejectionReason}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="py-2.5 pr-4">
+                                                <TagBadge
+                                                    label={DOC_STATUS_LABELS[doc.status] ?? doc.status}
+                                                    className={DOC_STATUS_CLASSES[doc.status]}
+                                                />
+                                            </td>
+                                            <td className="py-2.5 pr-4 text-on-surface-variant text-xs">{fmtDate(doc.uploadedAt)}</td>
+                                            <td className="py-2.5 pr-4 text-on-surface-variant text-xs">{fmtDate(doc.reviewedAt)}</td>
+                                            <td className="py-2.5">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    {/* Descargar */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDownloadDocument(doc.id)}
+                                                        disabled={isDownloading}
+                                                        title="Descargar documento"
+                                                        aria-label={`Descargar ${doc.documentTypeName}`}
+                                                        className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors disabled:opacity-50"
+                                                    >
+                                                        <span className="material-symbols-rounded text-lg" aria-hidden="true">
+                                                            {isDownloading ? "hourglass_top" : "download"}
+                                                        </span>
+                                                    </button>
+
+                                                    {/* Aprobar / Rechazar — solo si está pendiente */}
+                                                    {doc.status === "pending" && (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openDocApproveDialog(doc.id, doc.documentTypeName)}
+                                                                disabled={isDocLoading}
+                                                                title="Aprobar documento"
+                                                                aria-label={`Aprobar ${doc.documentTypeName}`}
+                                                                className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-[color:var(--color-success)] hover:bg-[color:var(--color-success-container)] transition-colors disabled:opacity-50"
+                                                            >
+                                                                <span className="material-symbols-rounded text-lg" aria-hidden="true">check</span>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openDocRejectDialog(doc.id, doc.documentTypeName)}
+                                                                disabled={isDocLoading}
+                                                                title="Rechazar documento"
+                                                                aria-label={`Rechazar ${doc.documentTypeName}`}
+                                                                className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-error hover:bg-error-container transition-colors disabled:opacity-50"
+                                                            >
+                                                                <span className="material-symbols-rounded text-lg" aria-hidden="true">close</span>
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -565,6 +702,97 @@ export default function OrganizationDetailPage() {
                             }`}
                         >
                             {actionLoading ? "Procesando…" : pendingDecision === "approved" ? "Sí, aprobar" : "Sí, rechazar"}
+                        </button>
+                    </div>
+                </div>
+            </dialog>
+
+            {/* ================================================================ */}
+            {/* Diálogo para rechazar documento (motivo opcional)                 */}
+            {/* ================================================================ */}
+            <dialog
+                ref={docRejectDialogRef}
+                style={{ margin: "auto" }}
+                className="rounded-2xl border border-outline-variant bg-surface-container-low p-0 shadow-lg backdrop:bg-black/50 max-w-md w-full"
+                onCancel={closeDocRejectDialog}
+                aria-label="Rechazar documento"
+            >
+                <div className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <span className="material-symbols-rounded text-2xl text-error" aria-hidden="true">cancel</span>
+                        <h3 className="text-base font-bold text-on-surface">Rechazar documento</h3>
+                    </div>
+                    <p className="text-sm text-on-surface-variant mb-4">
+                        Vas a rechazar <span className="font-semibold text-on-surface">&ldquo;{docRejecting?.name}&rdquo;</span>.
+                        Indica opcionalmente un motivo para que la organización pueda corregirlo.
+                    </p>
+                    <label htmlFor="doc-reject-reason" className="block text-xs font-medium text-on-surface-variant mb-1.5 uppercase tracking-wide">
+                        Motivo (opcional)
+                    </label>
+                    <textarea
+                        id="doc-reject-reason"
+                        value={docRejectReason}
+                        onChange={(e) => setDocRejectReason(e.target.value)}
+                        rows={3}
+                        placeholder="Ej. Documento ilegible, vencido, archivo incorrecto…"
+                        className="w-full rounded-xl border border-outline-variant bg-background p-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    />
+                    <div className="flex gap-3 mt-5">
+                        <button
+                            type="button"
+                            disabled={docActionLoadingId !== null}
+                            onClick={closeDocRejectDialog}
+                            className="flex-1 rounded-xl border border-outline px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            disabled={docActionLoadingId !== null}
+                            onClick={() => submitDocReview("rejected", docRejectReason)}
+                            className="flex-1 rounded-xl bg-error text-on-error px-4 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                        >
+                            {docActionLoadingId !== null ? "Procesando…" : "Sí, rechazar"}
+                        </button>
+                    </div>
+                </div>
+            </dialog>
+
+            {/* ================================================================ */}
+            {/* Diálogo de confirmación para aprobar documento                    */}
+            {/* ================================================================ */}
+            <dialog
+                ref={docApproveDialogRef}
+                style={{ margin: "auto" }}
+                className="rounded-2xl border border-outline-variant bg-surface-container-low p-0 shadow-lg backdrop:bg-black/50 max-w-md w-full"
+                onCancel={closeDocApproveDialog}
+                aria-label="Confirmar aprobación de documento"
+            >
+                <div className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <span className="material-symbols-rounded text-2xl text-[color:var(--color-success)]" aria-hidden="true">check_circle</span>
+                        <h3 className="text-base font-bold text-on-surface">¿Aprobar documento?</h3>
+                    </div>
+                    <p className="text-sm text-on-surface-variant mb-6">
+                        Vas a aprobar <span className="font-semibold text-on-surface">&ldquo;{docApproving?.name}&rdquo;</span>.
+                        Esta acción no se puede deshacer y el documento quedará marcado como aprobado.
+                    </p>
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            disabled={docActionLoadingId !== null}
+                            onClick={closeDocApproveDialog}
+                            className="flex-1 rounded-xl border border-outline px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            disabled={docActionLoadingId !== null}
+                            onClick={() => submitDocReview("approved")}
+                            className="flex-1 rounded-xl bg-primary text-on-primary px-4 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                        >
+                            {docActionLoadingId !== null ? "Procesando…" : "Sí, aprobar"}
                         </button>
                     </div>
                 </div>

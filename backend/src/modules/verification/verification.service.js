@@ -311,20 +311,22 @@ async function getDocumentChecklist(ownerId, entityType, repository) {
  * Valida que el solicitante sea el propietario del documento o un admin.
  *
  * @param {number} documentId
- * @param {string} requesterId — UUID del usuario que solicita la descarga
+ * @param {{ userId: string, role: string }} requester — Usuario que solicita la descarga
  * @param {Object} repository
  * @returns {Promise<import("./verification.types").ServiceResult>}
  */
-async function getDownloadUrl(documentId, requesterId, repository) {
+async function getDownloadUrl(documentId, requester, repository) {
   const document = await repository.findDocumentById(documentId);
 
   if (!document) {
     return { errors: ["Documento no encontrado"], status: 404 };
   }
 
-  // Validar acceso: el solicitante debe ser el propietario o admin
-  // (el admin check se hace en el middleware authorize)
-  if (document.ownerId !== requesterId) {
+  // Validar acceso: el solicitante debe ser el propietario o un admin
+  const isAdmin = requester.role === "admin";
+  const isOwner = document.ownerId === requester.userId;
+
+  if (!isOwner && !isAdmin) {
     return { errors: ["No tienes acceso a este documento"], status: 403 };
   }
 
