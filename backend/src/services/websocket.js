@@ -12,6 +12,10 @@ const lastState = new Map(); // emergencyId -> último estado de procesamiento
 // ── Chat (conversations) ──
 const chatClients = new Map(); // conversationId -> Set<ws>
 
+// ── Lista de conversaciones por usuario ──
+const userListClients = new Map(); // userId -> Set<ws>
+const citizenListClients = new Map(); // emergencyId -> Set<ws>
+
 /**
  * Inicializa el servidor WebSocket.
  * @param {import('http').Server} server - Servidor HTTP de Express
@@ -38,6 +42,18 @@ function initWebSocketServer(server) {
       for (const [conversationId, clientSet] of chatClients.entries()) {
         clientSet.delete(ws);
         if (clientSet.size === 0) chatClients.delete(conversationId);
+      }
+
+      // Limpiar suscripciones a lista de conversaciones de usuario
+      for (const [userId, clientSet] of userListClients.entries()) {
+        clientSet.delete(ws);
+        if (clientSet.size === 0) userListClients.delete(userId);
+      }
+
+      // Limpiar suscripciones a lista de conversaciones de ciudadano
+      for (const [emergencyId, clientSet] of citizenListClients.entries()) {
+        clientSet.delete(ws);
+        if (clientSet.size === 0) citizenListClients.delete(emergencyId);
       }
     });
 
@@ -99,6 +115,34 @@ function initWebSocketServer(server) {
         // ── Desuscripción de conversación de chat ──
         if (data.type === 'unsubscribe_conversation' && data.conversationId) {
           unsubscribeFromConversation(ws, data.conversationId);
+        }
+
+        // ── Suscripción a lista de conversaciones del usuario ──
+        if (data.type === 'subscribe_conversation_list') {
+          if (data.userId) {
+            subscribeToUserConversationList(ws, data.userId);
+            ws.send(JSON.stringify({
+              type: 'subscribed_conversation_list',
+              userId: data.userId,
+              timestamp: new Date().toISOString()
+            }));
+          } else if (data.emergencyId) {
+            subscribeToCitizenConversationList(ws, data.emergencyId);
+            ws.send(JSON.stringify({
+              type: 'subscribed_conversation_list',
+              emergencyId: data.emergencyId,
+              timestamp: new Date().toISOString()
+            }));
+          }
+        }
+
+        // ── Desuscripción de lista de conversaciones ──
+        if (data.type === 'unsubscribe_conversation_list') {
+          if (data.userId) {
+            unsubscribeFromUserConversationList(ws, data.userId);
+          } else if (data.emergencyId) {
+            unsubscribeFromCitizenConversationList(ws, data.emergencyId);
+          }
         }
       } catch (error) {
         console.error('[WS] Error procesando mensaje:', error);
@@ -196,6 +240,8 @@ function closeWebSocketServer() {
     clients.clear();
     lastState.clear();
     chatClients.clear();
+    userListClients.clear();
+    citizenListClients.clear();
     console.log('[WS] Servidor WebSocket cerrado');
   }
 }
@@ -300,6 +346,115 @@ function notifyMessageRead(conversationId, message) {
   }
 }
 
+// ── Lista de conversaciones por usuario ──
+
+/**
+ * Suscribe un cliente WebSocket a la lista de conversaciones de un usuario autenticado.
+ * @param {WebSocket} ws - Cliente WebSocket
+ * @param {string} userId - ID del usuario autenticado
+ */
+function subscribeToUserConversationList(ws, userId) {
+  if (!userListClients.has(userId)) {
+    userListClients.set(userId, new Set());
+  }
+  const clientSet = userListClients.get(userId);
+  clientSet.add(ws);
+  console.log(`[WS] Cliente suscrito a lista de conversaciones de usuario ${userId}`);
+}
+
+/**
+ * Desuscribe un cliente WebSocket de la lista de conversaciones de un usuario autenticado.
+ * @param {WebSocket} ws - Cliente WebSocket
+ * @param {string} userId - ID del usuario autenticado
+ */
+function unsubscribeFromUserConversationList(ws, userId) {
+  if (userListClients.has(userId)) {
+    userListClients.get(userId).delete(ws);
+    if (userListClients.get(userId).size === 0) {
+      userListClients.delete(userId);
+    }
+  }
+}
+
+/**
+ * Suscribe un cliente WebSocket a la lista de conversaciones de un ciudadano anónimo.
+ * @param {WebSocket} ws - Cliente WebSocket
+ * @param {string} emergencyId - ID de la emergencia del ciudadano
+ */
+function subscribeToCitizenConversationList(ws, emergencyId) {
+  if (!citizenListClients.has(emergencyId)) {
+    citizenListClients.set(emergencyId, new Set());
+  }
+  const clientSet = citizenListClients.get(emergencyId);
+  clientSet.add(ws);
+  console.log(`[WS] Cliente suscrito a lista de conversaciones de emergencia ${emergencyId}`);
+}
+
+/**
+ * Desuscribe un cliente WebSocket de la lista de conversaciones de un ciudadano anónimo.
+ * @param {WebSocket} ws - Cliente WebSocket
+ * @param {string} emergencyId - ID de la emergencia del ciudadano
+ */
+function unsubscribeFromCitizenConversationList(ws, emergencyId) {
+  if (citizenListClients.has(emergencyId)) {
+    citizenListClients.get(emergencyId).delete(ws);
+    if (citizenListClients.get(emergencyId).size === 0) {
+      citizenListClients.delete(emergencyId);
+    }
+  }
+}
+
+/**
+ * Notifica a todos los clientes suscritos que la lista de conversaciones ha cambiado.
+ * Notifica tanto a usuarios autenticados (attendedBy) como a ciudadanos (emergencyId).
+ * @param {Object} conversation - Conversación creada o modificada
+ * @param {string} conversation.id - ID de la conversación
+ * @param {string|null} conversation.emergencyId - ID de la emergencia (si aplica)
+ * @param {string|null} conversation.helpRequestId - ID del help request (si aplica)
+ * @param {string} conversation.attendedBy - ID del usuario que atiende
+ * @param {string} conversation.status - Estado de la conversación
+ * @param {string} conversation.createdAt - Fecha de creación
+ * @param {string} conversation.updatedAt - Fecha de actualización
+ */
+function notifyConversationListUpdate(conversation) {
+  try {
+    const payload = JSON.stringify({
+      type: 'conversation_list_update',
+      conversation,
+    });
+
+    let sentCount = 0;
+
+    // Notificar al usuario autenticado (attendedBy)
+    if (conversation.attendedBy && userListClients.has(conversation.attendedBy)) {
+      const clientSet = userListClients.get(conversation.attendedBy);
+      for (const ws of clientSet) {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(payload);
+          sentCount++;
+        }
+      }
+    }
+
+    // Notificar al ciudadano (emergencyId)
+    if (conversation.emergencyId && citizenListClients.has(conversation.emergencyId)) {
+      const clientSet = citizenListClients.get(conversation.emergencyId);
+      for (const ws of clientSet) {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(payload);
+          sentCount++;
+        }
+      }
+    }
+
+    if (sentCount > 0) {
+      console.log(`[WS] Lista de conversaciones actualizada para ${sentCount} cliente(s) (conversación ${conversation.id})`);
+    }
+  } catch (err) {
+    console.error('[WS] Error en notifyConversationListUpdate:', err.message);
+  }
+}
+
 module.exports = {
   initWebSocketServer,
   notifyEmergencyUpdate,
@@ -309,4 +464,9 @@ module.exports = {
   unsubscribeFromConversation,
   notifyNewMessage,
   notifyMessageRead,
+  subscribeToUserConversationList,
+  unsubscribeFromUserConversationList,
+  subscribeToCitizenConversationList,
+  unsubscribeFromCitizenConversationList,
+  notifyConversationListUpdate,
 };
