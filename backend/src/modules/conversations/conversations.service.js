@@ -48,6 +48,15 @@ async function getOrCreateOnAttend(
       helpRequestId: helpRequestId || null,
       attendedBy,
     });
+
+    // Notificar por WebSocket a los clientes suscritos a la lista de conversaciones
+    try {
+      const websocketService = require("../../services/websocket");
+      websocketService.notifyConversationListUpdate(conversation);
+    } catch (wsErr) {
+      // WebSocket no disponible (tests, entorno sin servidor) — ignorar silenciosamente
+    }
+
     return conversation;
   } catch (error) {
     // Capturar violación de unique constraint (23505 = PostgreSQL unique violation)
