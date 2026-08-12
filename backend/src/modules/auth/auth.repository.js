@@ -3,6 +3,7 @@
  * Todas las funciones de escritura reciben un cliente de transacción (PoolClient)
  * para que el servicio pueda coordinarlas atómicamente.
  */
+const crypto = require("crypto");
 const db = require("../../db");
 
 // ---------------------------------------------------------------------------
@@ -369,6 +370,39 @@ async function insertVerificationRequest(client, ownerId, entityType) {
   return result.rows[0];
 }
 
+// ---------------------------------------------------------------------------
+// INSERT — verification_tokens
+// ---------------------------------------------------------------------------
+
+const INSERT_VERIFICATION_TOKEN = `
+  INSERT INTO verification_tokens (verification_request_id, token, action, expires_at)
+  VALUES ($1, $2, $3, $4)
+  RETURNING id,
+            verification_request_id AS "verificationRequestId",
+            token,
+            action,
+            used_at AS "usedAt",
+            expires_at AS "expiresAt",
+            created_at AS "createdAt"
+`;
+
+/**
+ * Crea un token de acción para una solicitud de verificación.
+ * Si no se pasa cliente, se ejecuta en la conexión global de la app.
+ * @param {import("pg").PoolClient | null} client
+ * @param {number} verificationRequestId
+ * @param {string} action
+ * @param {string} [tokenValue]
+ * @param {Date|null} [expiresAt]
+ * @returns {Promise<Object>}
+ */
+async function insertVerificationToken(client, verificationRequestId, action, tokenValue, expiresAt) {
+  const token = tokenValue || crypto.randomUUID();
+  const query = client ? client.query.bind(client) : db.query.bind(db);
+  const result = await query(INSERT_VERIFICATION_TOKEN, [verificationRequestId, token, action, expiresAt || null]);
+  return result.rows[0];
+}
+
 module.exports = {
   USER_SELECT_COLUMNS,
   USER_DETAILS_SELECT_COLUMNS,
@@ -379,6 +413,7 @@ module.exports = {
   insertOrganizationDisabilityType,
   insertOrganizationService,
   insertVerificationRequest,
+  insertVerificationToken,
   withTransaction,
   findUserByEmail,
   findUserById,

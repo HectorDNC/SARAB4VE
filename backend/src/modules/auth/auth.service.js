@@ -4,7 +4,10 @@
  */
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { jwtSecret, adminSecret } = require("../../config");
+const crypto = require("crypto");
+const { jwtSecret, adminSecret, appBaseUrl, validatorEmails } = require("../../config");
+const emailService = require("../../services/email.service");
+const { buildConfirmationEmail, buildValidatorEmail } = require("../../services/emailTemplates/verificationEmails");
 
 /** Costo del hash bcrypt (12 rondas ≈ buena seguridad sin ser muy lento). */
 const BCRYPT_ROUNDS = 12;
@@ -65,6 +68,53 @@ function parseUniqueViolation(error) {
     return { isUniqueViolation: true, field: "desconocido" };
   }
   return { isUniqueViolation: false, field: null };
+}
+
+function buildVerificationLink(token) {
+  return `${appBaseUrl.replace(/\/$/, "")}/api/verification/tokens/${token}?action=iniciar_revision`;
+}
+
+async function createVerificationTokensAndEmails({ result, ownerName, entityType, verificationRequest, repository, trigger }) {
+  if (!verificationRequest || !verificationRequest.id) {
+    return;
+  }
+
+  try {
+    const tokenRecord = await repository.insertVerificationToken(
+      trigger.client || null,
+      verificationRequest.id,
+      "iniciar_revision",
+    );
+
+    const confirmation = buildConfirmationEmail({
+      nombreSolicitante: ownerName,
+      tipoSolicitud: entityType === "organization" ? "Organización" : "Voluntariado",
+      idSolicitud: verificationRequest.ownerId || result?.id || ownerName,
+      fechaEnvio: new Date().toISOString(),
+    });
+
+    const tokenLink = buildVerificationLink(tokenRecord?.token || crypto.randomUUID());
+    const validatorList = (validatorEmails || "")
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+    const validatorEmail = buildValidatorEmail({
+      nombreSolicitante: ownerName,
+      tipoSolicitud: entityType === "organization" ? "Organización" : "Voluntariado",
+      idSolicitud: verificationRequest.ownerId || result?.id || ownerName,
+      fechaEnvio: new Date().toISOString(),
+      resumenDatos: `Solicitante: ${ownerName} | Tipo: ${entityType === "organization" ? "Organización" : "Voluntariado"}`,
+      listaDocumentos: "Documentación adjunta según formulario del registro",
+      linkIniciarRevision: tokenLink,
+    });
+
+    await emailService.sendEmail(result.email || ownerName, confirmation.subject, confirmation.html);
+    const validatorsTarget = validatorList.length > 0 ? validatorList.join(",") : "validadores@sara.org";
+    await emailService.sendEmail(validatorsTarget, validatorEmail.subject, validatorEmail.html);
+  } catch (error) {
+    console.error("Error enviando correos de verificación:", error);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -146,6 +196,15 @@ async function registerVolunteer(payload, schema, repository) {
       );
 
       return { ...user, details, verification };
+    });
+
+    await createVerificationTokensAndEmails({
+      result,
+      ownerName: result.fullName,
+      entityType: "volunteer_professional",
+      verificationRequest: result.verification,
+      repository,
+      trigger: { client: null },
     });
 
     const token = issueToken(result);
@@ -254,6 +313,15 @@ async function registerOrganization(payload, schema, repository) {
 
         return { ...user, details };
       }
+    });
+
+    await createVerificationTokensAndEmails({
+      result,
+      ownerName: result.fullName,
+      entityType: "organization",
+      verificationRequest: result.verification,
+      repository,
+      trigger: { client: null },
     });
 
     const token = issueToken(result);
