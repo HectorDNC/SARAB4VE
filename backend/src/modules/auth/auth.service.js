@@ -139,7 +139,13 @@ async function registerVolunteer(payload, schema, repository) {
         normalized.details,
       );
 
-      return { ...user, details };
+      const verification = await repository.insertVerificationRequest(
+        client,
+        user.id,
+        "volunteer_professional",
+      );
+
+      return { ...user, details, verification };
     });
 
     const token = issueToken(result);
