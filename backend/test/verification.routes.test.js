@@ -36,10 +36,14 @@ function request(server, method, path, body, headers = {}) {
           data += chunk;
         });
         res.on("end", () => {
-          resolve({
-            statusCode: res.statusCode,
-            body: data ? JSON.parse(data) : null,
-          });
+          try {
+            resolve({
+              statusCode: res.statusCode,
+              body: data ? JSON.parse(data) : null,
+            });
+          } catch (err) {
+            reject(err);
+          }
         });
       },
     );
