@@ -2,29 +2,22 @@
 
 import { useState } from "react";
 import {
-    getCountries,
-    getCountryCallingCode,
     getExampleNumber,
     parsePhoneNumberFromString,
 } from "libphonenumber-js";
 import examples from "libphonenumber-js/examples.mobile.json";
-import flags from "react-phone-number-input/flags";
 import type { Country } from "react-phone-number-input";
+import CountrySelect from "@/components/ui/CountrySelect";
 
 interface PhoneFieldProps {
     value: string;
     onChange: (value: string) => void;
 }
 
-const ALL_COUNTRIES: Country[] = getCountries().sort();
-
-const countryNames = new Intl.DisplayNames(["es"], { type: "region" });
-
-export default function PhoneField({ value, onChange }: PhoneFieldProps) {
+export default function PhoneField({ onChange }: PhoneFieldProps) {
     const [country, setCountry] = useState<Country>("PE");
     const [rawNumber, setRawNumber] = useState("");
 
-    const FlagIcon = flags[country];
     const exampleNumber = getExampleNumber(country, examples);
     const exampleFormatted = exampleNumber ? exampleNumber.formatNational() : null;
     const expectedLength = exampleNumber ? exampleNumber.nationalNumber.length : null;
@@ -37,8 +30,7 @@ export default function PhoneField({ value, onChange }: PhoneFieldProps) {
         onChange(parsed ? parsed.number : "");
     };
 
-    const handleCountryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newCountry = e.target.value as Country;
+    const handleCountryChange = (newCountry: Country) => {
         setCountry(newCountry);
         setRawNumber("");
         onChange("");
@@ -46,29 +38,15 @@ export default function PhoneField({ value, onChange }: PhoneFieldProps) {
 
     return (
         <div>
-            <div className="flex gap-2 rounded-xl border border-outline-variant bg-background px-4 py-3">
-                <div className="flex items-center gap-1 shrink-0">
-                    {FlagIcon && (
-                        <span className="w-6 h-4 inline-block overflow-hidden rounded-sm shrink-0">
-                            <FlagIcon title={country} />
-                        </span>
-                    )}
-                    <select
-                        value={country}
-                        onChange={handleCountryChange}
-                        className="bg-transparent outline-none text-sm cursor-pointer w-18"
-                    >
-                        {ALL_COUNTRIES.map((c) => (
-                            <option key={c} value={c} className="text-black">
-                                {c} (+{getCountryCallingCode(c)})
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
+            <div className="flex items-center gap-2 rounded-xl border border-outline-variant bg-background px-4">
+                <CountrySelect value={country} onChange={handleCountryChange} />
+                <div
+                    className="self-stretch w-px bg-outline-variant shrink-0"
+                    aria-hidden="true"
+                />
                 <input
                     type="tel"
-                    className="flex-1 bg-transparent outline-none"
+                    className="flex-1 min-w-0 bg-transparent py-2.5 outline-none"
                     placeholder={exampleFormatted ?? "Número de teléfono"}
                     value={rawNumber}
                     onChange={(e) => handleNumberChange(e.target.value)}
