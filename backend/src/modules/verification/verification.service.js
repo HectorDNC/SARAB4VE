@@ -462,6 +462,17 @@ async function listAdminVerifications(filters, repository) {
   return { data: rows };
 }
 
+async function listAdminVerificationsPaginated(filters, repository) {
+  const result = await repository.listVerificationsPaginated(
+    filters.status || null,
+    filters.entityType || null,
+    filters.search || null,
+    filters.limit,
+    filters.offset,
+  );
+  return { data: result };
+}
+
 /**
  * Obtiene el estado de verificación de un usuario.
  * @param {string} ownerId
@@ -498,5 +509,6 @@ module.exports = {
   transitionVerification,
   getCatalog,
   listAdminVerifications,
+  listAdminVerificationsPaginated,
   getMyVerificationStatus,
 };

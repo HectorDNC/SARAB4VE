@@ -41,6 +41,8 @@ const {
   DocumentReviewBody,
   CatalogQuery,
   AdminVerificationsQuery,
+  AdminVerificationsPagedQuery,
+  AdminVerificationsResponse,
   CatalogItemResponse,
   DocumentTypeResponse,
   VerificationRequestResponse,
@@ -1694,6 +1696,43 @@ registry.registerPath({
               ownerEmail: z.string().email(),
             })),
           }),
+        },
+      },
+    },
+    400: {
+      description: "Error de validación",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Acceso denegado — solo administradores",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/admin/verifications/paginated",
+  summary: "Cola de revisión paginada (admin)",
+  description: [
+    "Lista solicitudes de verificación con filtros opcionales y paginación.",
+    "Solo accesible por administradores.",
+  ].join(" "),
+  tags: ["Verification"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    query: AdminVerificationsPagedQuery,
+  },
+  responses: {
+    200: {
+      description: "Lista paginada de solicitudes de verificación",
+      content: {
+        "application/json": {
+          schema: z.object({ data: AdminVerificationsResponse }),
         },
       },
     },

@@ -347,15 +347,96 @@ const LIST_VERIFICATIONS = `
   ORDER BY vr.submitted_at ASC
 `;
 
-/**
- * Lista solicitudes de verificación (vista admin).
- * @param {string|null} status
- * @param {string|null} entityType
- * @returns {Promise<Array>}
- */
 async function listVerifications(status, entityType) {
   const result = await db.query(LIST_VERIFICATIONS, [status || null, entityType || null]);
   return result.rows;
+}
+
+function buildListVerificationsPaginatedQuery(status, entityType, search, limit = 50, offset = 0) {
+  const conditions = [];
+  const params = [];
+  let paramIndex = 1;
+
+  if (status) {
+    conditions.push(`vr.status = $${paramIndex++}`);
+    params.push(status);
+  }
+
+  if (entityType) {
+    conditions.push(`vr.entity_type = $${paramIndex++}`);
+    params.push(entityType);
+  }
+
+  if (search) {
+    conditions.push(`(u.full_name ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex})`);
+    params.push(`%${search}%`);
+    paramIndex++;
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const dataQuery = `
+    SELECT
+      vr.id,
+      vr.owner_id AS "ownerId",
+      vr.entity_type AS "entityType",
+      vr.status,
+      vr.rejection_reason AS "rejectionReason",
+      vr.submitted_at AS "submittedAt",
+      vr.reviewed_by AS "reviewedBy",
+      vr.reviewed_at AS "reviewedAt",
+      u.full_name AS "ownerName",
+      u.email AS "ownerEmail"
+    FROM verification_requests vr
+    JOIN users u ON u.id = vr.owner_id
+    ${whereClause}
+    ORDER BY vr.submitted_at ASC
+    LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+  `;
+
+  const countQuery = `
+    SELECT COUNT(*)::int AS total
+    FROM verification_requests vr
+    JOIN users u ON u.id = vr.owner_id
+    ${whereClause}
+  `;
+
+  return {
+    dataQuery,
+    countQuery,
+    dataParams: [...params, limit, offset],
+    countParams: params,
+  };
+}
+
+/**
+ * Lista solicitudes de verificación paginadas (vista admin).
+ * @param {string|null} status
+ * @param {string|null} entityType
+ * @param {string|null} search
+ * @param {number} [limit]
+ * @param {number} [offset]
+ * @returns {Promise<{ items: Array, total: number, limit: number, offset: number }>}
+ */
+async function listVerificationsPaginated(status, entityType, search, limit = 50, offset = 0) {
+  const {
+    dataQuery,
+    countQuery,
+    dataParams,
+    countParams,
+  } = buildListVerificationsPaginatedQuery(status, entityType, search, limit, offset);
+
+  const [dataResult, countResult] = await Promise.all([
+    db.query(dataQuery, dataParams),
+    db.query(countQuery, countParams),
+  ]);
+
+  return {
+    items: dataResult.rows,
+    total: countResult.rows[0]?.total || 0,
+    limit,
+    offset,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -605,6 +686,7 @@ module.exports = {
   findVerificationByOwner,
   findVerificationById,
   listVerifications,
+  listVerificationsPaginated,
   updateVerificationStatus,
   insertStatusHistory,
 
