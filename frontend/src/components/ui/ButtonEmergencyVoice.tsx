@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useLocation } from "@/hooks/useLocation";
 import ConsentModal from "./ConsentModal";
@@ -241,9 +242,17 @@ export default function ButtonEmergencyVoice() {
   //   (ej. /request), por lo que ocultamos el FAB por completo.
   // - `isFormFocused === true`: el usuario está escribiendo en un
   //   input/textarea del formulario, así que minimizamos el FAB a un
-  //   ícono discreto de 32px para que no tape los campos.
+  //   ícono discreto de 45px para que no tape los campos.
   const { isFormFocused, hideFAB } = useFabVisibility();
-  const isMinimized = isFormFocused;
+
+  // El FAB solo se muestra en tamaño completo en la portada ("/").
+  // En el resto de rutas queda minimizado a un círculo discreto para
+  // no tapar controles interactivos (p. ej. el botón de envío de los
+  // formularios de registro). Si además hay un formulario enfocado,
+  // se mantiene minimizado igualmente.
+  const pathname = usePathname();
+  const isHomePage = pathname === "/";
+  const isMinimized = !isHomePage || isFormFocused;
 
   // Refs espejo de las acciones de grabación para que el efecto que
   // reacciona al store pueda invocarlas sin quedar atrapado en un
@@ -669,8 +678,11 @@ export default function ButtonEmergencyVoice() {
           } disabled:opacity-50 disabled:cursor-not-allowed`}
           style={fabStyle}
           aria-label={getButtonLabel()}
-          aria-hidden={isMinimized}
-          tabIndex={isMinimized ? -1 : 0}
+          // Mantenemos el FAB accesible (anunciado y focusable) cuando
+          // solo está "pequeño" por ruta; lo retiramos del árbol de
+          // accesibilidad únicamente mientras un formulario tiene foco.
+          aria-hidden={isFormFocused}
+          tabIndex={isFormFocused ? -1 : 0}
           title={getButtonLabel()}
         >
           {renderButtonIcon()}
