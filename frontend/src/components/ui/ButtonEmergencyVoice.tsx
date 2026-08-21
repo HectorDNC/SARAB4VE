@@ -768,19 +768,18 @@ export default function ButtonEmergencyVoice() {
               El audio y tu ubicación se enviarán al servidor para clasificar la emergencia automáticamente.
             </p>
 
-            {/* Transcript */}
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-on-surface">
-                {preview.transcript ? "Lo que dijiste:" : "Transcripción:"}
-              </label>
-              <div className="bg-surface-container-low rounded-lg p-3 text-sm text-on-surface-variant max-h-32 overflow-y-auto">
-                {preview.transcript || (
-                  <span className="italic">
-                    No se obtuvo transcripción. El servidor procesará solo el audio.
-                  </span>
-                )}
+            {/* Transcript: solo se muestra si el frontend logró transcribir.Si no hay transcripción, el backend se encarga de procesar el
+                audio, así que omitimos el bloque para no confundir al usuario. */}
+            {preview.transcript && (
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-on-surface">
+                  Lo que dijiste:
+                </label>
+                <div className="bg-surface-container-low rounded-lg p-3 text-sm text-on-surface-variant max-h-32 overflow-y-auto">
+                  {preview.transcript}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Ubicación */}
             <div className="space-y-2">
