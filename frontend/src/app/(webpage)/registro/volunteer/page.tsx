@@ -40,7 +40,7 @@ const InitVolunteerForm: iVolunteerForm = {
     documentNumber: "",
     birthDate: "",
     address: "",
-    volunteerType: "",
+    volunteerType: "non_professional",
     profession: "",
     languages: [],
     experienceCategories: [],
