@@ -40,7 +40,7 @@ const InitVolunteerForm: iVolunteerForm = {
     documentNumber: "",
     birthDate: "",
     address: "",
-    volunteerType: "",
+    volunteerType: "non_professional",
     profession: "",
     languages: [],
     experienceCategories: [],
@@ -230,8 +230,11 @@ export default function VolunteerRegister() {
     };
 
 
+    // Padding inferior extra (pb-28) para que el botón de envío quede por
+    // encima del FAB de SOS flotante (fixed bottom-24) y no se superpongan
+    // en viewports móviles.
     return (
-        <section className="px-5 lg:px-10 py-8 lg:py-12">
+        <section className="px-5 lg:px-10 pt-8 pb-28 lg:py-12">
             <div className="max-w-3xl mx-auto">
                 <header className="mb-8">
                     <h1 className="text-3xl lg:text-4xl font-bold text-on-surface">
