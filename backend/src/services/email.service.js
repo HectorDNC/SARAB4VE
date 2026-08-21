@@ -1,37 +1,43 @@
 const nodemailer = require("nodemailer");
 const { smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom } = require("../config");
 
-function createTransporter() {
-  if (!smtpHost || !smtpUser || !smtpPass) {
+function createTransport() {
+  if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
     return null;
   }
 
   return nodemailer.createTransport({
     host: smtpHost,
-    port: Number(smtpPort || 587),
-    secure: Number(smtpPort || 587) === 465,
+    port: Number(smtpPort),
+    secure: Number(smtpPort) === 465,
     auth: {
       user: smtpUser,
       pass: smtpPass,
+    },
+    tls: {
+      rejectUnauthorized: false,
     },
   });
 }
 
 async function sendEmail(to, subject, html) {
-  const transporter = createTransporter();
+  const transporter = createTransport();
   if (!transporter) {
-    throw new Error("SMTP no configurado. Revisa SMTP_HOST, SMTP_USER y SMTP_PASS");
+    console.warn("SMTP no configurado: omitiendo envío de correo.");
+    return { skipped: true };
   }
 
-  return transporter.sendMail({
+  const mailOptions = {
     from: smtpFrom || smtpUser,
     to,
     subject,
     html,
-  });
+  };
+
+  return transporter.sendMail(mailOptions);
 }
 
 module.exports = {
-  createTransporter,
   sendEmail,
+  createTransport,
 };

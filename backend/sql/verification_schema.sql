@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- =========================================================================
 -- Esquema: Verificación de Organizaciones y Voluntarios
 -- Proyecto: SARA
@@ -222,6 +224,21 @@ CREATE TABLE verification_status_history (
   changed_by UUID REFERENCES users(id),
   reason TEXT,
   changed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TYPE verification_token_action AS ENUM (
+  'iniciar_revision',
+  'completar_registro'
+);
+
+CREATE TABLE verification_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  verification_request_id INT NOT NULL REFERENCES verification_requests(id) ON DELETE CASCADE,
+  token UUID NOT NULL UNIQUE,
+  action verification_token_action NOT NULL DEFAULT 'iniciar_revision',
+  used_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- -------------------------------------------------------------------------

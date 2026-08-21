@@ -11,6 +11,14 @@ module.exports = {
   jwtSecret: process.env.JWT_SECRET || "",
   /** Secreto requerido para registrar un administrador. Si no se configura, la ruta se deshabilita. */
   adminSecret: process.env.ADMIN_SECRET || "",
+  /** ── SMTP para notificaciones de verificación ── */
+  smtpHost: process.env.SMTP_HOST || "",
+  smtpPort: Number(process.env.SMTP_PORT || 587),
+  smtpUser: process.env.SMTP_USER || "",
+  smtpPass: process.env.SMTP_PASS || "",
+  smtpFrom: process.env.SMTP_FROM || "",
+  validatorEmails: process.env.VALIDATOR_EMAILS || "",
+  appBaseUrl: process.env.APP_BASE_URL || "https://sara.example",
   /** ── Cloudflare R2 (almacenamiento de audio) ── */
   r2Endpoint: process.env.R2_ENDPOINT || "",
   r2AccessKeyId: process.env.R2_ACCESS_KEY_ID || "",
