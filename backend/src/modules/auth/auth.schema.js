@@ -346,6 +346,33 @@ const LoginBody = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/auth/validate-completion-token
+// ---------------------------------------------------------------------------
+
+const ValidateCompletionTokenQuery = z.object({
+  token: z.string()
+    .uuid("token no tiene un formato válido")
+    .openapi({ example: "550e8400-e29b-41d4-a716-446655440000", description: "Token de completar registro" }),
+}).openapi({ description: "Query param para validar un token de completar registro" });
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/complete-registration
+// ---------------------------------------------------------------------------
+
+const CompleteRegistrationBody = z.object({
+  token: z.string()
+    .uuid("token no tiene un formato válido")
+    .openapi({ example: "550e8400-e29b-41d4-a716-446655440000", description: "Token de completar registro" }),
+
+  password: z.string()
+    .min(8, "La contraseña debe tener al menos 8 caracteres.")
+    .openapi({ example: "unaClaveSegura2024!", description: "Nueva contraseña (mín. 8 caracteres)" }),
+}).openapi({
+  description: "Payload para completar el registro tras la aprobación",
+  example: { token: "550e8400-e29b-41d4-a716-446655440000", password: "unaClaveSegura2024!" },
+});
+
+// ---------------------------------------------------------------------------
 // Schemas de respuesta (para documentación OpenAPI)
 // ---------------------------------------------------------------------------
 
@@ -380,6 +407,21 @@ const LoginResponse = z.object({
     user: UserProfile,
   }),
 }).openapi({ description: "Token JWT + perfil del usuario" });
+
+/** Respuesta de validate-completion-token: { data: { valid, status? } } */
+const ValidateCompletionTokenResponse = z.object({
+  data: z.object({
+    valid: z.boolean().openapi({ example: true }),
+    status: z.string().optional().openapi({ example: "aceptada" }),
+  }),
+}).openapi({ description: "Resultado de validar un token de completar registro" });
+
+/** Respuesta de complete-registration: { data: { completed: true } } */
+const CompleteRegistrationResponse = z.object({
+  data: z.object({
+    completed: z.literal(true),
+  }),
+}).openapi({ description: "Confirmación de registro completado" });
 
 // ---------------------------------------------------------------------------
 // Normalizadores (SIN cambios — los servicios dependen de ellos)
@@ -562,12 +604,16 @@ module.exports = {
   RegisterOrganizationBody,
   RegisterAdminBody,
   LoginBody,
+  ValidateCompletionTokenQuery,
+  CompleteRegistrationBody,
 
-  // Schemas de respuesta para OpenAPI 
+  // Schemas de respuesta para OpenAPI
   UserProfile,
   LoginResponse,
   ErrorResponse,
   LocationSchema,
+  ValidateCompletionTokenResponse,
+  CompleteRegistrationResponse,
 
   // Normalizadores
   normalizeRegisterCitizen,

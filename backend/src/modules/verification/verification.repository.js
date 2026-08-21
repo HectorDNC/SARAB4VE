@@ -5,6 +5,7 @@
  * cliente de transacción (PoolClient) para que el servicio las coordine.
  */
 const db = require("../../db");
+const { insertVerificationToken } = require("../auth/auth.repository");
 
 // ---------------------------------------------------------------------------
 // Constantes — columnas explícitas
@@ -321,6 +322,30 @@ const FIND_VERIFICATION_BY_ID = `
  */
 async function findVerificationById(id) {
   const result = await db.query(FIND_VERIFICATION_BY_ID, [id]);
+  return result.rows[0] || null;
+}
+
+const FIND_VERIFICATION_OWNER_CONTACT = `
+  SELECT
+    vr.id,
+    vr.status,
+    vr.entity_type AS "entityType",
+    u.id AS "ownerId",
+    u.full_name AS "ownerName",
+    u.email AS "ownerEmail"
+  FROM verification_requests vr
+  JOIN users u ON u.id = vr.owner_id
+  WHERE vr.id = $1
+`;
+
+/**
+ * Busca los datos de contacto del dueño de una solicitud de verificación,
+ * para construir notificaciones por correo.
+ * @param {number} id
+ * @returns {Promise<Object|null>}
+ */
+async function findVerificationOwnerContact(id) {
+  const result = await db.query(FIND_VERIFICATION_OWNER_CONTACT, [id]);
   return result.rows[0] || null;
 }
 
@@ -685,6 +710,7 @@ module.exports = {
   insertVerificationRequest,
   findVerificationByOwner,
   findVerificationById,
+  findVerificationOwnerContact,
   listVerifications,
   listVerificationsPaginated,
   updateVerificationStatus,
@@ -692,6 +718,8 @@ module.exports = {
 
   approveUser,
   rejectUser,
+
+  insertVerificationToken,
 
   insertVerificationDocument,
   findDocumentsByOwner,

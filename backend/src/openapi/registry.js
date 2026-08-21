@@ -25,9 +25,13 @@ const {
   RegisterOrganizationBody,
   RegisterAdminBody,
   LoginBody,
+  ValidateCompletionTokenQuery,
+  CompleteRegistrationBody,
   UserProfile,
   LoginResponse,
   ErrorResponse,
+  ValidateCompletionTokenResponse,
+  CompleteRegistrationResponse,
 } = require("../modules/auth/auth.schema");
 
 // ---------------------------------------------------------------------------
@@ -421,6 +425,60 @@ registry.registerPath({
     },
     404: {
       description: "Usuario no encontrado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+// =========================================================================
+// AUTH — Completar registro (público, HU-3)
+// =========================================================================
+
+registry.registerPath({
+  method: "get",
+  path: "/api/auth/validate-completion-token",
+  summary: "Validar token de completar registro",
+  description: [
+    "Endpoint público (sin autenticación). Valida un token de un solo uso",
+    "generado al aprobar una solicitud de verificación. No distingue el",
+    "motivo específico de invalidez (inexistente, usado, expirado, o la",
+    "solicitud ya no está en 'aceptada'): todos devuelven valid: false.",
+  ].join(" "),
+  tags: ["Auth"],
+  request: {
+    query: ValidateCompletionTokenQuery,
+  },
+  responses: {
+    200: {
+      description: "Resultado de la validación (valid: true|false)",
+      content: { "application/json": { schema: ValidateCompletionTokenResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/auth/complete-registration",
+  summary: "Completar registro definiendo la contraseña",
+  description: [
+    "Endpoint público (sin autenticación). Define la contraseña definitiva",
+    "de un usuario ya aprobado y consume el token de un solo uso.",
+  ].join(" "),
+  tags: ["Auth"],
+  request: {
+    body: {
+      content: { "application/json": { schema: CompleteRegistrationBody } },
+      description: "Token de completar registro + nueva contraseña",
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      description: "Registro completado",
+      content: { "application/json": { schema: CompleteRegistrationResponse } },
+    },
+    400: {
+      description: "Token inválido, expirado, ya usado, o contraseña inválida",
       content: { "application/json": { schema: ErrorResponse } },
     },
   },

@@ -403,6 +403,73 @@ async function insertVerificationToken(client, verificationRequestId, action, to
   return result.rows[0];
 }
 
+// ---------------------------------------------------------------------------
+// SELECT / UPDATE — verification_tokens (acción 'completar_registro')
+// ---------------------------------------------------------------------------
+
+const FIND_COMPLETION_TOKEN = `
+  SELECT
+    vt.id AS "tokenId",
+    vt.used_at AS "usedAt",
+    vt.expires_at AS "expiresAt",
+    vr.status AS "requestStatus",
+    u.id AS "ownerId",
+    u.email AS "ownerEmail",
+    u.full_name AS "ownerName"
+  FROM verification_tokens vt
+  JOIN verification_requests vr ON vr.id = vt.verification_request_id
+  JOIN users u ON u.id = vr.owner_id
+  WHERE vt.token = $1 AND vt.action = 'completar_registro'
+`;
+
+/**
+ * Busca un token de acción 'completar_registro' junto con el estado de la
+ * solicitud y los datos del dueño. No valida vigencia; eso es responsabilidad
+ * del servicio.
+ * @param {string} token — UUID del token
+ * @returns {Promise<Object|null>}
+ */
+async function findCompletionToken(token) {
+  const result = await db.query(FIND_COMPLETION_TOKEN, [token]);
+  return result.rows[0] || null;
+}
+
+const MARK_COMPLETION_TOKEN_USED = `
+  UPDATE verification_tokens
+  SET used_at = now()
+  WHERE id = $1 AND used_at IS NULL
+  RETURNING id
+`;
+
+/**
+ * Marca un token como usado, solo si no lo estaba ya (evita doble-canje
+ * concurrente). Devuelve null si el token ya estaba usado.
+ * @param {import("pg").PoolClient} client
+ * @param {string} tokenId — UUID (id de verification_tokens, no el token en sí)
+ * @returns {Promise<Object|null>}
+ */
+async function markCompletionTokenUsed(client, tokenId) {
+  const result = await client.query(MARK_COMPLETION_TOKEN_USED, [tokenId]);
+  return result.rows[0] || null;
+}
+
+const UPDATE_USER_PASSWORD = `
+  UPDATE users
+  SET password_hash = $2, email_verified = true, updated_at = now()
+  WHERE id = $1
+`;
+
+/**
+ * Actualiza la contraseña de un usuario al completar su registro.
+ * @param {import("pg").PoolClient} client
+ * @param {string} userId
+ * @param {string} passwordHash
+ * @returns {Promise<void>}
+ */
+async function updateUserPassword(client, userId, passwordHash) {
+  await client.query(UPDATE_USER_PASSWORD, [userId, passwordHash]);
+}
+
 module.exports = {
   USER_SELECT_COLUMNS,
   USER_DETAILS_SELECT_COLUMNS,
@@ -414,6 +481,9 @@ module.exports = {
   insertOrganizationService,
   insertVerificationRequest,
   insertVerificationToken,
+  findCompletionToken,
+  markCompletionTokenUsed,
+  updateUserPassword,
   withTransaction,
   findUserByEmail,
   findUserById,

@@ -474,6 +474,82 @@ function verifyToken(token) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Completar registro — token de acción 'completar_registro' (HU-3)
+// ---------------------------------------------------------------------------
+
+/** Mensaje genérico: no distingue "no existe" de "usado" o "expirado". */
+const COMPLETION_TOKEN_ERROR = "El enlace no es válido o ya fue usado";
+
+/**
+ * Carga un token de completar-registro solo si está en condiciones de
+ * usarse: existe, no fue usado, no expiró, y la solicitud sigue en
+ * 'aceptada'. Devuelve null en cualquier otro caso sin distinguir el motivo.
+ * @param {string} token
+ * @param {Object} repository — auth.repository
+ * @returns {Promise<Object|null>}
+ */
+async function loadUsableCompletionToken(token, repository) {
+  const record = await repository.findCompletionToken(token);
+
+  if (!record) return null;
+  if (record.usedAt) return null;
+  if (record.expiresAt && new Date(record.expiresAt) <= new Date()) return null;
+  if (record.requestStatus !== "aceptada") return null;
+
+  return record;
+}
+
+/**
+ * Valida un token de completar-registro para la pantalla pública.
+ * @param {string} token
+ * @param {Object} repository — auth.repository
+ * @returns {Promise<{ data: { valid: boolean, status?: string } }>}
+ */
+async function validateCompletionToken(token, repository) {
+  const record = await loadUsableCompletionToken(token, repository);
+
+  if (!record) {
+    return { data: { valid: false } };
+  }
+
+  return { data: { valid: true, status: record.requestStatus } };
+}
+
+/**
+ * Completa el registro: define la contraseña definitiva del usuario ya
+ * aprobado y consume el token de un solo uso.
+ * @param {{ token: string, password: string }} payload
+ * @param {Object} repository — auth.repository
+ * @returns {Promise<import("./auth.types").ServiceResult>}
+ */
+async function completeRegistration(payload, repository) {
+  const record = await loadUsableCompletionToken(payload.token, repository);
+
+  if (!record) {
+    return { errors: [COMPLETION_TOKEN_ERROR], status: 400 };
+  }
+
+  const passwordHash = await hashPassword(payload.password);
+
+  try {
+    await repository.withTransaction(async (client) => {
+      const marked = await repository.markCompletionTokenUsed(client, record.tokenId);
+      if (!marked) {
+        throw new Error("COMPLETION_TOKEN_ALREADY_USED");
+      }
+      await repository.updateUserPassword(client, record.ownerId, passwordHash);
+    });
+  } catch (error) {
+    if (error.message === "COMPLETION_TOKEN_ALREADY_USED") {
+      return { errors: [COMPLETION_TOKEN_ERROR], status: 400 };
+    }
+    throw error;
+  }
+
+  return { data: { completed: true } };
+}
+
 module.exports = {
   registerCitizen,
   registerVolunteer,
@@ -482,4 +558,6 @@ module.exports = {
   login,
   verifyToken,
   issueToken,
+  validateCompletionToken,
+  completeRegistration,
 };

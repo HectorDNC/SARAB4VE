@@ -214,3 +214,131 @@ test("registerOrganization no modifica la creación existente y sigue enviando l
     emailService.sendEmail = originalSendEmail;
   }
 });
+
+test("validateCompletionToken devuelve valid: true para un token utilizable", async () => {
+  const repository = {
+    findCompletionToken: async (token) => {
+      assert.equal(token, "token-valido");
+      return {
+        tokenId: "token-id-1",
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        requestStatus: "aceptada",
+        ownerId: "owner-1",
+        ownerEmail: "owner@sara.org",
+        ownerName: "Owner",
+      };
+    },
+  };
+
+  const result = await authService.validateCompletionToken("token-valido", repository);
+
+  assert.deepEqual(result, { data: { valid: true, status: "aceptada" } });
+});
+
+test("validateCompletionToken devuelve valid: false sin distinguir el motivo (usado, expirado, inexistente, status incorrecto)", async () => {
+  const baseRecord = {
+    tokenId: "token-id-1",
+    usedAt: null,
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    requestStatus: "aceptada",
+    ownerId: "owner-1",
+    ownerEmail: "owner@sara.org",
+    ownerName: "Owner",
+  };
+
+  const cases = [
+    { ...baseRecord, usedAt: "2026-08-10T00:00:00.000Z" },
+    { ...baseRecord, expiresAt: new Date(Date.now() - 60 * 60 * 1000).toISOString() },
+    { ...baseRecord, requestStatus: "en_estudio" },
+    null,
+  ];
+
+  for (const record of cases) {
+    const repository = { findCompletionToken: async () => record };
+    const result = await authService.validateCompletionToken("token", repository);
+    assert.deepEqual(result, { data: { valid: false } });
+  }
+});
+
+test("completeRegistration marca el token como usado y define la contraseña", async () => {
+  const record = {
+    tokenId: "token-id-1",
+    usedAt: null,
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    requestStatus: "aceptada",
+    ownerId: "owner-1",
+    ownerEmail: "owner@sara.org",
+    ownerName: "Owner",
+  };
+
+  const calls = { marked: null, password: null };
+
+  const repository = {
+    findCompletionToken: async () => record,
+    withTransaction: async (callback) => callback({ query: async () => ({ rows: [] }) }),
+    markCompletionTokenUsed: async (_client, tokenId) => {
+      calls.marked = tokenId;
+      return { id: tokenId };
+    },
+    updateUserPassword: async (_client, userId, passwordHash) => {
+      calls.password = { userId, passwordHash };
+    },
+  };
+
+  const result = await authService.completeRegistration(
+    { token: "token-valido", password: "nuevaClave123" },
+    repository,
+  );
+
+  assert.deepEqual(result, { data: { completed: true } });
+  assert.equal(calls.marked, "token-id-1");
+  assert.equal(calls.password.userId, "owner-1");
+  assert.notEqual(calls.password.passwordHash, "nuevaClave123");
+});
+
+test("completeRegistration rechaza con error genérico si el token ya fue usado (canje concurrente)", async () => {
+  const record = {
+    tokenId: "token-id-1",
+    usedAt: null,
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    requestStatus: "aceptada",
+    ownerId: "owner-1",
+    ownerEmail: "owner@sara.org",
+    ownerName: "Owner",
+  };
+
+  const repository = {
+    findCompletionToken: async () => record,
+    withTransaction: async (callback) => callback({ query: async () => ({ rows: [] }) }),
+    markCompletionTokenUsed: async () => null,
+    updateUserPassword: async () => {
+      throw new Error("no debería llamarse si el token ya fue consumido");
+    },
+  };
+
+  const result = await authService.completeRegistration(
+    { token: "token-valido", password: "nuevaClave123" },
+    repository,
+  );
+
+  assert.equal(result.status, 400);
+  assert.deepEqual(result.errors, ["El enlace no es válido o ya fue usado"]);
+});
+
+test("completeRegistration rechaza sin llegar a la transacción si el token no es utilizable", async () => {
+  const repository = {
+    findCompletionToken: async () => null,
+    withTransaction: async () => {
+      throw new Error("no debería abrir transacción si el token es inválido");
+    },
+  };
+
+  const result = await authService.completeRegistration(
+    { token: "token-inexistente", password: "nuevaClave123" },
+    repository,
+  );
+
+  assert.equal(result.status, 400);
+  assert.deepEqual(result.errors, ["El enlace no es válido o ya fue usado"]);
+});

@@ -12,6 +12,16 @@
  * se ejecutan dentro de una transacción atómica.
  */
 const { ALLOWED_TRANSITIONS } = require("./verification.schema");
+const { appBaseUrl } = require("../../config");
+const emailService = require("../../services/email.service");
+const {
+  buildInStudyEmail,
+  buildAcceptedEmail,
+  buildRejectedEmail,
+} = require("../../services/emailTemplates/verificationEmails");
+
+/** Vigencia del token de completar registro tras la aprobación. */
+const COMPLETION_TOKEN_TTL_HOURS = 72;
 
 // ---------------------------------------------------------------------------
 // Máquina de estados (pura, sin dependencias externas)
@@ -373,7 +383,11 @@ async function reviewDocument(documentId, review, reviewerId, repository) {
 /**
  * Transiciona una solicitud de verificación a un nuevo estado.
  * Aplica la máquina de estados y efectos secundarios:
- *   - aceptada -> activa la cuenta del usuario (status = 'approved')
+ *   - aceptada -> activa la cuenta del usuario (status = 'approved'), genera
+ *     un token de un solo uso ('completar_registro') y envía el Correo 4A
+ *   - rechazada -> marca la cuenta como rechazada y envía el Correo 4B
+ *   - en_estudio -> envía el Correo 3
+ * Un fallo de envío de correo no revierte la transición ya aplicada.
  *
  * @param {number} verificationId
  * @param {import("./verification.types").TransitionInput} transition
@@ -381,6 +395,61 @@ async function reviewDocument(documentId, review, reviewerId, repository) {
  * @param {Object} repository
  * @returns {Promise<import("./verification.types").ServiceResult>}
  */
+/**
+ * Notifica al solicitante el resultado de una transición ya aplicada.
+ * Nunca lanza: un fallo de envío no debe revertir una transición de estado
+ * ya confirmada (mismo criterio no-bloqueante usado en el registro inicial).
+ *
+ * @param {Object} params
+ * @param {number} params.verificationId
+ * @param {string} params.toStatus
+ * @param {string|null} params.reason
+ * @param {Object} params.repository
+ * @returns {Promise<void>}
+ */
+async function notifyTransitionOutcome({ verificationId, toStatus, reason, repository }) {
+  try {
+    const owner = await repository.findVerificationOwnerContact(verificationId);
+    if (!owner) return;
+
+    if (toStatus === "en_estudio") {
+      const email = buildInStudyEmail({
+        nombreSolicitante: owner.ownerName,
+        idSolicitud: owner.ownerId,
+      });
+      await emailService.sendEmail(owner.ownerEmail, email.subject, email.html);
+      return;
+    }
+
+    if (toStatus === "rechazada") {
+      const email = buildRejectedEmail({
+        nombreSolicitante: owner.ownerName,
+        idSolicitud: owner.ownerId,
+        motivoRechazo: reason || "No se cumplieron los requisitos de verificación.",
+      });
+      await emailService.sendEmail(owner.ownerEmail, email.subject, email.html);
+      return;
+    }
+
+    if (toStatus === "aceptada") {
+      const expiresAt = new Date(Date.now() + COMPLETION_TOKEN_TTL_HOURS * 60 * 60 * 1000);
+      const tokenRecord = await repository.insertVerificationToken(
+        null, verificationId, "completar_registro", undefined, expiresAt,
+      );
+      const link = `${appBaseUrl.replace(/\/$/, "")}/completar-registro?token=${tokenRecord.token}`;
+
+      const email = buildAcceptedEmail({
+        nombreSolicitante: owner.ownerName,
+        idSolicitud: owner.ownerId,
+        linkCompletarRegistro: link,
+      });
+      await emailService.sendEmail(owner.ownerEmail, email.subject, email.html);
+    }
+  } catch (error) {
+    console.error("Error enviando notificación de transición de verificación:", error);
+  }
+}
+
 async function transitionVerification(verificationId, transition, reviewerId, repository) {
   // 1. Buscar la solicitud actual
   const current = await repository.findVerificationById(verificationId);
@@ -424,8 +493,15 @@ async function transitionVerification(verificationId, transition, reviewerId, re
       return updated;
     });
 
-    // TODO: Disparar notificación al usuario (WhatsApp Cloud API / email)
-    // cuando se implemente el servicio de notificaciones.
+    // Notificar al solicitante el resultado (correo 3, 4A o 4B según el caso).
+    // Fuera de la transacción: es un efecto de notificación, no parte de la
+    // transición ya confirmada.
+    await notifyTransitionOutcome({
+      verificationId,
+      toStatus: transition.toStatus,
+      reason: transition.reason || null,
+      repository,
+    });
 
     return { data: result };
   } catch (error) {
