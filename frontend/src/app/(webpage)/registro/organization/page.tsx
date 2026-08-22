@@ -9,6 +9,7 @@ import {
     ENTITY_TYPES,
     DISABILITY_TYPES,
     REQUIRED_DOCUMENTS,
+    PARTICIPATION_REFERENCE_DOCS,
 } from "./constants";
 import { sendOrganization } from "@/api/organization";
 import { organizationSchema, getFieldErrors, type OrganizationFormData } from "./schema";
@@ -257,6 +258,31 @@ export default function OrganizationRegister() {
                         Formulario inicial para unirte a la red SARA como organización.
                     </p>
                 </header>
+
+                <div className="mb-8 rounded-2xl border border-outline-variant bg-surface-container-low p-5 sm:p-6">
+                    <p className="text-sm text-on-surface">
+                        Antes de completar este formulario, te pedimos revisar cuidadosamente los
+                        siguientes documentos para entender qué implica tu participación como
+                        organización dentro de la plataforma SARA. Al final del formulario deberás
+                        adjuntar el <strong>Acuerdo de Participación firmado</strong>, con el cual
+                        confirmas haber leído y aceptado todos los documentos aquí listados.
+                    </p>
+                    <ul className="mt-4 space-y-2">
+                        {PARTICIPATION_REFERENCE_DOCS.map((doc) => (
+                            <li key={doc.href}>
+                                <a
+                                    href={doc.href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-sm font-medium text-primary underline hover:opacity-80"
+                                >
+                                    <span className="material-symbols-rounded text-base" aria-hidden="true">description</span>
+                                    {doc.name}
+                                </a>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
 
                 <form
                     onSubmit={handleSubmit}
@@ -785,9 +811,9 @@ export default function OrganizationRegister() {
                                 >
                                     <div className="flex items-center justify-between gap-2 flex-wrap">
                                         <Label htmlFor={fileId} name={`${doc.name}${doc.required ? " *" : ""}`} />
-                                        {'hasTemplate' in doc && doc.hasTemplate && (
+                                        {'templateHref' in doc && doc.templateHref && (
                                             <a
-                                                href="/documentos/politica-proteccion-datos-plantilla.pdf"
+                                                href={doc.templateHref}
                                                 download
                                                 className="text-xs font-semibold text-primary underline hover:opacity-80"
                                             >
