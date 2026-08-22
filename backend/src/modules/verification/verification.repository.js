@@ -5,6 +5,7 @@
  * cliente de transacción (PoolClient) para que el servicio las coordine.
  */
 const db = require("../../db");
+const { insertVerificationToken } = require("../auth/auth.repository");
 
 // ---------------------------------------------------------------------------
 // Constantes — columnas explícitas
@@ -324,6 +325,30 @@ async function findVerificationById(id) {
   return result.rows[0] || null;
 }
 
+const FIND_VERIFICATION_OWNER_CONTACT = `
+  SELECT
+    vr.id,
+    vr.status,
+    vr.entity_type AS "entityType",
+    u.id AS "ownerId",
+    u.full_name AS "ownerName",
+    u.email AS "ownerEmail"
+  FROM verification_requests vr
+  JOIN users u ON u.id = vr.owner_id
+  WHERE vr.id = $1
+`;
+
+/**
+ * Busca los datos de contacto del dueño de una solicitud de verificación,
+ * para construir notificaciones por correo.
+ * @param {number} id
+ * @returns {Promise<Object|null>}
+ */
+async function findVerificationOwnerContact(id) {
+  const result = await db.query(FIND_VERIFICATION_OWNER_CONTACT, [id]);
+  return result.rows[0] || null;
+}
+
 // ---------------------------------------------------------------------------
 // Admin: listar verificaciones
 // ---------------------------------------------------------------------------
@@ -347,15 +372,96 @@ const LIST_VERIFICATIONS = `
   ORDER BY vr.submitted_at ASC
 `;
 
-/**
- * Lista solicitudes de verificación (vista admin).
- * @param {string|null} status
- * @param {string|null} entityType
- * @returns {Promise<Array>}
- */
 async function listVerifications(status, entityType) {
   const result = await db.query(LIST_VERIFICATIONS, [status || null, entityType || null]);
   return result.rows;
+}
+
+function buildListVerificationsPaginatedQuery(status, entityType, search, limit = 50, offset = 0) {
+  const conditions = [];
+  const params = [];
+  let paramIndex = 1;
+
+  if (status) {
+    conditions.push(`vr.status = $${paramIndex++}`);
+    params.push(status);
+  }
+
+  if (entityType) {
+    conditions.push(`vr.entity_type = $${paramIndex++}`);
+    params.push(entityType);
+  }
+
+  if (search) {
+    conditions.push(`(u.full_name ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex})`);
+    params.push(`%${search}%`);
+    paramIndex++;
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const dataQuery = `
+    SELECT
+      vr.id,
+      vr.owner_id AS "ownerId",
+      vr.entity_type AS "entityType",
+      vr.status,
+      vr.rejection_reason AS "rejectionReason",
+      vr.submitted_at AS "submittedAt",
+      vr.reviewed_by AS "reviewedBy",
+      vr.reviewed_at AS "reviewedAt",
+      u.full_name AS "ownerName",
+      u.email AS "ownerEmail"
+    FROM verification_requests vr
+    JOIN users u ON u.id = vr.owner_id
+    ${whereClause}
+    ORDER BY vr.submitted_at ASC
+    LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+  `;
+
+  const countQuery = `
+    SELECT COUNT(*)::int AS total
+    FROM verification_requests vr
+    JOIN users u ON u.id = vr.owner_id
+    ${whereClause}
+  `;
+
+  return {
+    dataQuery,
+    countQuery,
+    dataParams: [...params, limit, offset],
+    countParams: params,
+  };
+}
+
+/**
+ * Lista solicitudes de verificación paginadas (vista admin).
+ * @param {string|null} status
+ * @param {string|null} entityType
+ * @param {string|null} search
+ * @param {number} [limit]
+ * @param {number} [offset]
+ * @returns {Promise<{ items: Array, total: number, limit: number, offset: number }>}
+ */
+async function listVerificationsPaginated(status, entityType, search, limit = 50, offset = 0) {
+  const {
+    dataQuery,
+    countQuery,
+    dataParams,
+    countParams,
+  } = buildListVerificationsPaginatedQuery(status, entityType, search, limit, offset);
+
+  const [dataResult, countResult] = await Promise.all([
+    db.query(dataQuery, dataParams),
+    db.query(countQuery, countParams),
+  ]);
+
+  return {
+    items: dataResult.rows,
+    total: countResult.rows[0]?.total || 0,
+    limit,
+    offset,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -604,12 +710,16 @@ module.exports = {
   insertVerificationRequest,
   findVerificationByOwner,
   findVerificationById,
+  findVerificationOwnerContact,
   listVerifications,
+  listVerificationsPaginated,
   updateVerificationStatus,
   insertStatusHistory,
 
   approveUser,
   rejectUser,
+
+  insertVerificationToken,
 
   insertVerificationDocument,
   findDocumentsByOwner,

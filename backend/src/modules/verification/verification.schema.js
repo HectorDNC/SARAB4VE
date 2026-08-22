@@ -292,6 +292,20 @@ const AdminVerificationsQuery = z.object({
     .openapi({ example: "organization", description: "Filtrar por tipo de entidad" }),
 });
 
+/** GET /api/admin/verifications/paginated */
+const AdminVerificationsPagedQuery = z.object({
+  status: z.enum(VERIFICATION_STATUSES).optional()
+    .openapi({ example: "en_estudio", description: "Filtrar por estado de verificación" }),
+  entityType: z.enum(ENTITY_TYPES).optional()
+    .openapi({ example: "organization", description: "Filtrar por tipo de entidad" }),
+  search: z.string().optional()
+    .openapi({ example: "María", description: "Búsqueda por ownerName u ownerEmail" }),
+  limit: z.coerce.number().int().min(1).max(200).default(50)
+    .openapi({ example: 50, description: "Máximo de resultados (1-200)" }),
+  offset: z.coerce.number().int().min(0).default(0)
+    .openapi({ example: 0, description: "Offset para paginación" }),
+});
+
 // ---------------------------------------------------------------------------
 // Schemas de respuesta
 // ---------------------------------------------------------------------------
@@ -320,6 +334,16 @@ const VerificationRequestResponse = z.object({
   reviewedBy: z.string().uuid().nullable().optional(),
   reviewedAt: z.string().datetime().nullable().optional(),
 }).openapi({ description: "Solicitud de verificación" });
+
+const AdminVerificationsResponse = z.object({
+  items: z.array(VerificationRequestResponse.extend({
+    ownerName: z.string(),
+    ownerEmail: z.string().email(),
+  })),
+  total: z.number().int().openapi({ example: 150, description: "Total de solicitudes que coinciden con los filtros" }),
+  limit: z.number().int().openapi({ example: 50, description: "Límite aplicado" }),
+  offset: z.number().int().openapi({ example: 0, description: "Offset aplicado" }),
+}).openapi({ description: "Respuesta paginada para la lista de solicitudes de verificación" });
 
 const VerificationDocumentResponse = z.object({
   id: z.number().int().openapi({ example: 1 }),
@@ -423,6 +447,8 @@ module.exports = {
   // Schemas Zod — query params
   CatalogQuery,
   AdminVerificationsQuery,
+  AdminVerificationsPagedQuery,
+  AdminVerificationsResponse,
 
   // Schemas Zod — respuestas
   CatalogItemResponse,
