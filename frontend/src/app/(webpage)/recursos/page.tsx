@@ -27,56 +27,19 @@ const categories = [
   },
 ];
 
-const resources = [
-  {
-    category: "movilidad",
-    icon: "accessible",
-    title: "Evacuación para movilidad reducida",
-    description: "Guía paso a paso para traslado seguro con silla de ruedas o muletas en situaciones de emergencia.",
-    tags: ["Movilidad", "Evacuación"],
-    readTime: "5 min",
-  },
-  {
-    category: "sensorial",
-    icon: "visibility_off",
-    title: "Comunicación accesible en crisis",
-    description: "Protocolos para personas sordas, ciegas o con desafíos del habla. Incluye pictogramas imprimibles.",
-    tags: ["Sensorial", "Comunicación"],
-    readTime: "8 min",
-  },
-  {
-    category: "cognitiva",
-    icon: "psychology",
-    title: "Regulación emocional en emergencias",
-    description: "Técnicas simples para reducir ansiedad durante eventos críticos. Adaptado para perfiles neurodivergentes.",
-    tags: ["Cognitiva", "Bienestar"],
-    readTime: "6 min",
-  },
-  {
-    category: "comunicacion",
-    icon: "interpreter_mode",
-    title: "Señas de emergencia básicas",
-    description: "15 señas esenciales en Lengua de Señas Venezolana para situaciones de ayuda y coordinación.",
-    tags: ["LSV", "Comunicación"],
-    readTime: "10 min",
-  },
-  {
-    category: "movilidad",
-    icon: "escalator",
-    title: "Rutas de evacuación accesibles",
-    description: "Mapas y descripciones de rutas libres de escaleras para los principales sectores urbanos.",
-    tags: ["Movilidad", "Mapas"],
-    readTime: "4 min",
-  },
-  {
-    category: "cognitiva",
-    icon: "checklist",
-    title: "Kit de emergencia para familias",
-    description: "Lista visual y checklist adaptable para preparar un kit de emergencia con todos los tipos de necesidades.",
-    tags: ["Cognitiva", "Preparación"],
-    readTime: "3 min",
-  },
-];
+// TODO: popular con protocolos reales (revisados por el equipo) cuando
+// estén listos. Las categorías de arriba se mantienen porque son la
+// taxonomía que van a usar esos protocolos reales, no contenido de ejemplo.
+type ResourceArticle = {
+  category: string;
+  icon: string;
+  title: string;
+  description: string;
+  tags: string[];
+  readTime: string;
+};
+
+const resources: ResourceArticle[] = [];
 
 export default function RecursosPage() {
   return (
@@ -107,6 +70,15 @@ export default function RecursosPage() {
       </div>
 
       {/* Resources grid */}
+      {resources.length === 0 ? (
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-10 text-center">
+          <span className="material-symbols-rounded text-4xl text-on-surface-variant" aria-hidden="true">auto_stories</span>
+          <p className="mt-3 text-sm font-semibold text-on-surface">Aún no hay protocolos publicados</p>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            Estamos preparando guías revisadas por el equipo. Vuelve pronto.
+          </p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {resources.map((r) => {
           const cat = categories.find((c) => c.id === r.category);
@@ -138,6 +110,7 @@ export default function RecursosPage() {
           );
         })}
       </div>
+      )}
 
       {/* CTA */}
       <div className="mt-10 rounded-2xl bg-primary-fixed border border-outline-variant p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
