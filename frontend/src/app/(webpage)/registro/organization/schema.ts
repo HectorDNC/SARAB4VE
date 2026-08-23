@@ -47,11 +47,11 @@ export const organizationSchema = z.object({
   legalDocument: z
     .string()
     .trim()
-    .min(5, "Ingresa un documento legal válido (RIF o equivalente)"),
+    .optional(),
 
   workArea: z
     .array(z.string())
-    .min(1, "Selecciona al menos un área de trabajo"),
+    .optional(),
 
   // NUEVOS CAMPOS: Identificación Fiscal
   countryFiscal: z
@@ -169,7 +169,7 @@ export const organizationSchema = z.object({
   services: z
     .string()
     .trim()
-    .min(20, "Describe los servicios ofrecidos con más detalle"),
+    .min(10, "Describe los servicios ofrecidos con más detalle"),
 
 
   acceptedTerms: z

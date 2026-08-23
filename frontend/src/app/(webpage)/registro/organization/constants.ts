@@ -60,6 +60,7 @@ export const COUNTRIES_FISCAL_ID = [
     "Enfermedades raras",
     "Multidiscapacidad",
     "Otras",
+    "Logística",
   ] as const;
   
   // Documentación requerida (adjuntos)
@@ -72,11 +73,42 @@ export const COUNTRIES_FISCAL_ID = [
     { id: "seguro_responsabilidad", name: "Seguro de responsabilidad civil", required: true },
     {
       id: "politica_proteccion_datos",
-      name: "Política de Protección de Datos (firmada)",
+      name: "Acuerdo de Participación (firmado)",
       required: true,
-      hasTemplate: true, // requiere link de descarga + carga del firmado
+      hasTemplate: true, // requiere link de descarga (sin firmar) + carga del firmado
+      templateHref: "/documentos/acuerdo-participacion-sin-firmar.pdf",
     },
     { id: "codigo_etico", name: "Código Ético", required: true },
     { id: "politica_accesibilidad", name: "Política de Accesibilidad", required: true },
   ] as const;
-  
+
+  // Documentos de referencia que la organización debe revisar antes de
+  // registrarse (se muestran como links al inicio del formulario). El
+  // "Acuerdo de Participación (sin firmar)" es el mismo archivo que se
+  // descarga desde la tarjeta de "Acuerdo de Participación (firmado)" en
+  // REQUIRED_DOCUMENTS — se linkea acá también para que quede visible desde
+  // el inicio de la página.
+  export const PARTICIPATION_REFERENCE_DOCS = [
+    { name: "Carta institucional", href: "/documentos/carta-institucional.pdf" },
+    {
+      name: "Manual de Trabajo Plataforma S.A.R.A. — Misión, Visión y Valores",
+      href: "/documentos/manual-mision-vision-valores.pdf",
+    },
+    { name: "Manual - Código Ético", href: "/documentos/manual-codigo-etico.pdf" },
+    {
+      name: "Política Internacional de Igualdad, Diversidad, Inclusión y Accesibilidad Universal",
+      href: "/documentos/politica-igualdad-diversidad-inclusion-accesibilidad.pdf",
+    },
+    {
+      name: "Política Internacional de Protección de Datos y Privacidad S.A.R.A. Sistema de Apoyo y Respuesta Accesible",
+      href: "/documentos/politica-proteccion-datos-privacidad.pdf",
+    },
+    {
+      name: "Acuerdo de Participación (sin firmar)",
+      href: "/documentos/acuerdo-participacion-sin-firmar.pdf",
+    },
+    {
+      name: "Política Internacional de Salvaguarda y Protección de Personas en Situación de Vulnerabilidad",
+      href: "/documentos/politica-salvaguarda-proteccion-vulnerabilidad.pdf",
+    },
+  ] as const;

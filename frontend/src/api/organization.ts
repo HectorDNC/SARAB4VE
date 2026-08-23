@@ -1,42 +1,8 @@
 import { API, getAuthHeaders } from "./client";
+import type { OrganizationRegisterPayload } from "./verification";
 
-export type OrganizationPayload = {
-  fullName: string;
-  email: string;
-  phone: string;
-  password: string;
-  location: { lat: number; lng: number } | null;
-  zone: string;
-  organizationName: string;
-  legalDocument: string;
-  workArea: string[];
-  acceptedTerms: boolean;
-
-  // Nuevos campos
-  countryFiscal: string;
-  fiscalIdType: string;
-  fiscalNumber: string;
-  entityType: string;
-  otherEntityType?: string;
-  registrationNumber: number;
-  constitutionDate: string;
-  legalAddress: string;
-  legalCountry: string;
-  province: string;
-  city: string;
-  legalRepresentativeName: string;
-  legalRepresentativePosition: string;
-  legalRepresentativePhone: string;
-  legalRepresentativeEmail: string;
-  website?: string;
-  socialMedia?: string;
-  mission: string;
-  vision: string;
-  scope: string;
-  collectiveServed: string;
-  disabilityTypes: string[];
-  services: string;
-};
+// El payload de registro usa el formato extendido del backend
+export type OrganizationPayload = OrganizationRegisterPayload;
 
 // Rama feat/verificaciones-users-back (aún no mergeada a main, pero ya
 // desplegada): este endpoint ahora devuelve { token, user } en vez de solo
@@ -51,6 +17,36 @@ export type OrganizationRegisterResponse = {
     role: string;
     status: string;
     [key: string]: unknown;
+  };
+  // Campos extendidos del perfil (pueden estar presentes)
+  profile?: {
+    userId: string;
+    organizationTypeId: number | null;
+    taxId: string | null;
+    registryNumber: string | null;
+    foundedAt: string | null;
+    country: string | null;
+    province: string | null;
+    city: string | null;
+    address: string | null;
+    website: string | null;
+    socialLinks: Record<string, string> | null;
+    mission: string | null;
+    vision: string | null;
+    scope: string | null;
+    servedGroups: string | null;
+  };
+  legalRepresentatives?: Array<{
+    fullName: string;
+    position?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  }>;
+  verification?: {
+    id: number;
+    ownerId: string;
+    entityType: string;
+    status: string;
   };
 };
 
@@ -71,7 +67,9 @@ export async function sendOrganization(payload: OrganizationPayload): Promise<Or
   }
 
   try {
-    return await res.json();
+    const body = await res.json();
+    // El backend devuelve { data: { token, user, profile?, legalRepresentatives?, verification? } }
+    return body.data ?? body;
   } catch {
     return null;
   }

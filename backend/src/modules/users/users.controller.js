@@ -170,10 +170,42 @@ function rejectUser(service, repository) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// GET /api/users/:id/organization-profile — Obtener perfil completo de organización (admin only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Obtiene el perfil completo de una organización: datos de usuario, perfil extendido,
+ * representantes legales, tipos de discapacidad, servicios, verificación y documentos.
+ * @param {Object} service — users.service
+ * @param {Object} repository — users.repository
+ * @returns {(req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => Promise<void>}
+ */
+function getOrganizationProfile(service, repository) {
+  return async (req, res, next) => {
+    try {
+      const result = await service.getOrganizationProfile(
+        req.params.id,
+        req.user,
+        repository,
+      );
+
+      if (result.errors) {
+        return res.status(result.status).json({ errors: result.errors });
+      }
+
+      return res.status(200).json({ data: result.data });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
 module.exports = {
   listUsers,
   getUserById,
   updateUser,
   approveUser,
   rejectUser,
+  getOrganizationProfile,
 };

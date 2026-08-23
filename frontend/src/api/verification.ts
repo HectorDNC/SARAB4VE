@@ -43,6 +43,16 @@ export type LegalRepresentativeInput = {
 };
 
 export type OrganizationRegisterPayload = {
+  // Campos básicos requeridos por el backend (CommonFields + organización)
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+  organizationName: string;
+  legalDocument: string;
+  acceptedTerms: true;
+  
+  // Campos extendidos del perfil de organización
   organizationTypeId: number;
   taxId?: string;
   registryNumber?: string;
@@ -176,6 +186,38 @@ export async function requestDocumentUpload(
   return handleResponse<DocumentUploadResponse>(res);
 }
 
+/**
+ * Sube un documento de verificación usando multipart/form-data.
+ * El backend espera el archivo en el campo "file" y documentTypeId como campo de texto.
+ */
+export async function uploadVerificationDocument(
+  file: File,
+  documentTypeId: number,
+  token?: string
+): Promise<VerificationDocument> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("documentTypeId", String(documentTypeId));
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  } else {
+    const authHeaders = getAuthHeaders();
+    if (authHeaders["Authorization"]) {
+      headers["Authorization"] = authHeaders["Authorization"];
+    }
+  }
+
+  const res = await fetch(`${API}/api/verification-documents`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  return handleResponse<VerificationDocument>(res);
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/verification-documents/:ownerId
 // ---------------------------------------------------------------------------
@@ -186,4 +228,42 @@ export async function getDocumentChecklist(ownerId: string): Promise<DocumentChe
     headers: getAuthHeaders(),
   });
   return handleResponse<DocumentChecklistItem[]>(res);
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/verification-documents/:id/download — URL prefirmada temporal
+// ---------------------------------------------------------------------------
+
+export type DownloadUrlResponse = {
+  downloadUrl: string;
+  expiresIn: number;
+};
+
+export async function getDocumentDownloadUrl(documentId: number): Promise<DownloadUrlResponse> {
+  const res = await fetch(`${API}/api/verification-documents/${documentId}/download`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+  return handleResponse<DownloadUrlResponse>(res);
+}
+
+// ---------------------------------------------------------------------------
+// PATCH /api/verification-documents/:id/review — admin aprueba/rechaza
+// ---------------------------------------------------------------------------
+
+export type DocumentReviewPayload = {
+  status: "approved" | "rejected";
+  reason?: string;
+};
+
+export async function reviewVerificationDocument(
+  documentId: number,
+  payload: DocumentReviewPayload,
+): Promise<VerificationDocument> {
+  const res = await fetch(`${API}/api/verification-documents/${documentId}/review`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<VerificationDocument>(res);
 }

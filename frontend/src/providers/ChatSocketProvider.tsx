@@ -18,6 +18,8 @@ interface ChatSocketContextValue {
   status: SocketStatus;
   /** Suscribe a una conversación. Retorna cleanup. */
   subscribe: (conversationId: string) => () => void;
+  /** Suscribe a la lista de conversaciones del usuario. Retorna cleanup. */
+  subscribeToList: (params: { userId?: string; emergencyId?: string }) => () => void;
   /** Registra handler global de mensajes. */
   onMessage: (handler: MessageHandler) => () => void;
   /** Fuerza una reconexión. Útil tras login/guardado de token en la misma pestaña. */
@@ -51,6 +53,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
   const MAX_BACKOFF = 15000; // 15s máximo
   const handlersRef = useRef<Set<MessageHandler>>(new Set());
   const subscriptionsRef = useRef<Map<string, number>>(new Map()); // conversationId -> refCount
+  const listSubscriptionsRef = useRef<Map<string, { userId?: string; emergencyId?: string }>>(new Map()); // subscriptionKey -> params
 
   // Obtener token de acceso (ciudadano anónimo) o JWT
   const getAuthToken = useCallback(() => {
@@ -116,6 +119,19 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
             } catch (err) {
               console.error("[ChatWS] Error re-suscribiendo:", err);
             }
+          }
+        }
+
+        // Re-suscribirse a listas de conversaciones
+        for (const [, params] of listSubscriptionsRef.current.entries()) {
+          try {
+            const msg: Record<string, string> = { type: "subscribe_conversation_list" };
+            if (params.userId) msg.userId = params.userId;
+            if (params.emergencyId) msg.emergencyId = params.emergencyId;
+            ws.send(JSON.stringify(msg));
+            console.log(`[ChatWS] Re-suscrito a lista de conversaciones`, params);
+          } catch (err) {
+            console.error("[ChatWS] Error re-suscribiendo a lista:", err);
           }
         }
       };
@@ -266,7 +282,51 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // Registrar handler de mensajes
+  // Suscribirse a la lista de conversaciones (usuario o ciudadano)
+  const subscribeToList = useCallback((params: { userId?: string; emergencyId?: string }) => {
+    const key = params.userId ? `user:${params.userId}` : `citizen:${params.emergencyId}`;
+
+    // Si ya está suscrito, no duplicar
+    if (listSubscriptionsRef.current.has(key)) {
+      return () => {
+        // Cleanup: no hacer nada si otro componente aún necesita la suscripción
+      };
+    }
+
+    listSubscriptionsRef.current.set(key, { ...params });
+
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      try {
+        const msg: Record<string, string> = { type: "subscribe_conversation_list" };
+        if (params.userId) msg.userId = params.userId;
+        if (params.emergencyId) msg.emergencyId = params.emergencyId;
+        ws.send(JSON.stringify(msg));
+        console.log(`[ChatWS] suscrito a lista de conversaciones`, params);
+      } catch (err) {
+        console.error("[ChatWS] Error al suscribir a lista:", err);
+      }
+    } else {
+      console.warn("[ChatWS] Socket no abierto aún, suscripción a lista diferida", params);
+    }
+
+    // Cleanup: desuscribir
+    return () => {
+      listSubscriptionsRef.current.delete(key);
+      const currentWs = wsRef.current;
+      if (currentWs && currentWs.readyState === WebSocket.OPEN) {
+        try {
+          const msg: Record<string, string> = { type: "unsubscribe_conversation_list" };
+          if (params.userId) msg.userId = params.userId;
+          if (params.emergencyId) msg.emergencyId = params.emergencyId;
+          currentWs.send(JSON.stringify(msg));
+        } catch (err) {
+          console.error("[ChatWS] Error al desuscribir de lista:", err);
+        }
+      }
+    };
+  }, []);
+
   const onMessage = useCallback((handler: MessageHandler) => {
     handlersRef.current.add(handler);
     return () => {
@@ -290,7 +350,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
   }, [connect]);
 
   return (
-    <ChatSocketContext.Provider value={{ status, subscribe, onMessage, forceReconnect }}>
+    <ChatSocketContext.Provider value={{ status, subscribe, subscribeToList, onMessage, forceReconnect }}>
       {children}
     </ChatSocketContext.Provider>
   );
