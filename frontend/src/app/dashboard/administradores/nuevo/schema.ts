@@ -30,7 +30,7 @@ export const adminSchema = z.object({
             lng: z.number(),
         })
         .nullable()
-        .refine((val) => val !== null, "Selecciona tu ubicación en el mapa"),
+        .refine((val) => val !== null, "Selecciona la ubicación en el mapa"),
 
     zone: z
         .string()

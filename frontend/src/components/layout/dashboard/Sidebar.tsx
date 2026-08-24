@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Resumen", icon: "dashboard" },
   { href: "/dashboard/voluntarios", label: "Voluntarios", icon: "volunteer_activism" },
   { href: "/dashboard/organizaciones", label: "Organizaciones", icon: "corporate_fare" },
+  { href: "/dashboard/administradores", label: "Administradores", icon: "admin_panel_settings" },
 ];
 
 export default function Sidebar() {

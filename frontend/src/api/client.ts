@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "https://sarab4ve-back.vercel.app";
+const API = process.env.NEXT_PUBLIC_API_URL || "https://api.ayudasara.org";
 
 /**
  * Retorna los headers base para peticiones HTTP.
