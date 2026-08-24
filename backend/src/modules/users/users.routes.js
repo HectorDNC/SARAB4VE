@@ -18,6 +18,15 @@ router.get(
   controller.listUsers(service, repository),
 );
 
+// GET /api/users/stats — Estadísticas agregadas por rol y estado (solo admin)
+// Debe ir antes de GET /:id, si no Express interpreta "stats" como el :id
+router.get(
+  "/stats",
+  authenticate,
+  authorize("admin"),
+  controller.getUserStats(service, repository),
+);
+
 // GET /api/users/:id — Obtener usuario por ID
 // Accesible por admin o por el propio usuario (el servicio verifica permisos)
 router.get(

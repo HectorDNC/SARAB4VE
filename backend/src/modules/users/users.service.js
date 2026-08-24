@@ -3,6 +3,7 @@
  * Orquesta validación, permisos y transacciones atómicas.
  */
 const bcrypt = require("bcrypt");
+const { ROLES, STATUSES } = require("./users.schema");
 
 /** Costo del hash bcrypt (12 rondas ≈ buena seguridad sin ser muy lento). */
 const BCRYPT_ROUNDS = 12;
@@ -55,6 +56,36 @@ function parseUniqueViolation(error) {
 async function listUsers(filters, repository) {
   const result = await repository.listUsers(filters);
   return { data: result, status: 200 };
+}
+
+// ---------------------------------------------------------------------------
+// Estadísticas agregadas por rol y estado (solo admin)
+// ---------------------------------------------------------------------------
+
+/**
+ * Obtiene el conteo de usuarios agrupado por rol, con desglose por estado.
+ * Inicializa todos los roles/estados en 0 para que el frontend no tenga que
+ * manejar valores undefined.
+ *
+ * @param {Object} repository — users.repository
+ * @returns {Promise<{ data: Object, status: number }>}
+ */
+async function getUserStats(repository) {
+  const rows = await repository.getUserStats();
+
+  const stats = {};
+  for (const role of ROLES) {
+    stats[role] = { total: 0 };
+    for (const status of STATUSES) stats[role][status] = 0;
+  }
+
+  for (const row of rows) {
+    if (!stats[row.role]) continue;
+    stats[row.role][row.status] = row.count;
+    stats[row.role].total += row.count;
+  }
+
+  return { data: stats, status: 200 };
 }
 
 // ---------------------------------------------------------------------------
@@ -341,6 +372,7 @@ async function getOrganizationProfile(organizationId, requester, repository) {
 
 module.exports = {
   listUsers,
+  getUserStats,
   getUserById,
   updateUser,
   approveUser,

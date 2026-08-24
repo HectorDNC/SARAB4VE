@@ -263,6 +263,16 @@ export interface ListUsersResponse {
     };
 }
 
+export interface UserStatsByRole {
+    total: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+    suspended: number;
+}
+
+export type UserStats = Record<ROLES_USER, UserStatsByRole>;
+
 export interface ListUsersParams {
     role?: ROLES_USER;
     status?: STATUS_USERS;
