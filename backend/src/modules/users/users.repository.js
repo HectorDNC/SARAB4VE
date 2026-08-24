@@ -129,6 +129,25 @@ async function listUsers(filters = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// SELECT — estadísticas agregadas por rol y estado
+// ---------------------------------------------------------------------------
+
+const USER_STATS_QUERY = `
+  SELECT role, status, COUNT(*)::int AS count
+  FROM users
+  GROUP BY role, status
+`;
+
+/**
+ * Obtiene el conteo de usuarios agrupado por rol y estado.
+ * @returns {Promise<{ role: string, status: string, count: number }[]>}
+ */
+async function getUserStats() {
+  const result = await db.query(USER_STATS_QUERY);
+  return result.rows;
+}
+
+// ---------------------------------------------------------------------------
 // SELECT — buscar usuario por ID
 // ---------------------------------------------------------------------------
 
@@ -432,6 +451,7 @@ module.exports = {
   USER_DETAILS_SELECT_COLUMNS,
   buildListUsersQuery,
   listUsers,
+  getUserStats,
   findUserById,
   findUserDetailsById,
   findOrganizationProfileById,

@@ -1,5 +1,5 @@
 import { normalizeUser } from "@/lib/normalizeUser";
-import { ApiUser, ListUsersParams, ListUsersResponse, OrganizationProfileResponse } from "@/types";
+import { ApiUser, ListUsersParams, ListUsersResponse, OrganizationProfileResponse, UserStats } from "@/types";
 import { API, getAuthHeaders } from "./client";
 
 export async function listUsers(params: ListUsersParams = {}): Promise<ListUsersResponse> {
@@ -34,6 +34,24 @@ export async function listUsers(params: ListUsersParams = {}): Promise<ListUsers
             offset: rawData.data.offset,
         },
     };
+}
+
+export async function getUserStats(): Promise<UserStats> {
+    const res = await fetch(`${API}/api/users/stats`, {
+        headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message = body?.errors?.join(", ") ?? `HTTP ${res.status}`;
+
+        if (res.status === 401) throw new Error("Sesión expirada. Inicia sesión nuevamente.");
+        if (res.status === 403) throw new Error("No tienes permisos de administrador para ver esta sección.");
+        throw new Error(message);
+    }
+
+    const rawData = await res.json();
+    return rawData.data;
 }
 
 export async function getUserById(id: string): Promise<ApiUser> {

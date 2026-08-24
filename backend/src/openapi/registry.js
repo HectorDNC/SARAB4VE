@@ -60,6 +60,7 @@ const {
   ListUsersQuery,
   UpdateUserBody,
   ListUsersResponse,
+  UserStatsResponse,
 } = require("../modules/users/users.schema");
 
 // ---------------------------------------------------------------------------
@@ -833,6 +834,33 @@ registry.registerPath({
     400: {
       description: "Error de validación en query params",
       content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Acceso denegado — solo administradores",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/users/stats",
+  summary: "Estadísticas agregadas de usuarios",
+  description: [
+    "Conteo de usuarios agrupado por rol (citizen, volunteer, organization, admin),",
+    "desglosado por estado (pending, approved, rejected, suspended).",
+    "Solo accesible por administradores.",
+  ].join(" "),
+  tags: ["Users"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      description: "Conteo de usuarios agrupado por rol y estado",
+      content: { "application/json": { schema: UserStatsResponse } },
     },
     401: {
       description: "No autenticado",

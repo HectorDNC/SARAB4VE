@@ -52,6 +52,26 @@ function listUsers(service, repository) {
 }
 
 // ---------------------------------------------------------------------------
+// GET /api/users/stats — Estadísticas agregadas por rol y estado (admin only)
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {Object} service — users.service
+ * @param {Object} repository — users.repository
+ * @returns {(req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => Promise<void>}
+ */
+function getUserStats(service, repository) {
+  return async (req, res, next) => {
+    try {
+      const result = await service.getUserStats(repository);
+      return res.status(result.status).json({ data: result.data });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
 // GET /api/users/:id — Obtener usuario por ID
 // ---------------------------------------------------------------------------
 
@@ -203,6 +223,7 @@ function getOrganizationProfile(service, repository) {
 
 module.exports = {
   listUsers,
+  getUserStats,
   getUserById,
   updateUser,
   approveUser,
