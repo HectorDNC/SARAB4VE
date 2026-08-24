@@ -1,6 +1,8 @@
 "use client";
 
 import Label from "@/components/ui/Label";
+import Button from "@/components/ui/Button";
+import { useRouter } from "next/navigation";
 import { useState } from 'react';
 import { iAdmin } from "@/types/index";
 import { sendAdministrator } from "@/api/administrator";
@@ -13,7 +15,7 @@ import PhoneField from "@/components/ui/PhoneField";
 const Location = dynamic(() => import("@/components/ui/Location"), {
     ssr: false,
     loading: () => <div className="h-[300px] rounded-xl bg-surface-container animate-pulse" />,
-});;
+});
 
 const InitAdminForm: iAdmin = {
     fullName: "",
@@ -25,10 +27,12 @@ const InitAdminForm: iAdmin = {
     adminSecret: "",
 }
 
-export default function OrganizationRegister() {
+export default function NewAdministratorPage() {
 
+    const router = useRouter();
     const [formData, setFormData] = useState<iAdmin>(InitAdminForm);
     const [errors, setErrors] = useState<Partial<Record<keyof adminFormData, string>>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -42,6 +46,7 @@ export default function OrganizationRegister() {
         }
 
         setErrors({});
+        setIsSubmitting(true);
 
         try {
             await sendAdministrator({
@@ -54,23 +59,25 @@ export default function OrganizationRegister() {
                 adminSecret: result.data.adminSecret,
             });
 
-            alertService.success("Tu registro fue exitoso.");
-            setFormData(InitAdminForm);
+            alertService.success("Administrador creado correctamente.");
+            router.push("/dashboard/administradores");
 
         } catch (error) {
-            const message = error instanceof Error ? error.message : "No se pudo enviar tu solicitud.";
+            const message = error instanceof Error ? error.message : "No se pudo crear el administrador.";
             alertService.error(message);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     return (
-        <section className="px-5 lg:px-10 py-8 lg:py-12">
+        <section>
             <div className="max-w-3xl mx-auto">
                 <h1 className="text-2xl font-bold text-on-surface">
-                    Registro de Organización / ONG
+                    Crear nuevo administrador
                 </h1>
                 <p className="text-on-surface-variant mt-2">
-                    Formulario inicial para unirte a la red SARA como organización.
+                    Registra un nuevo administrador para el panel SARA.
                 </p>
 
                 <form
@@ -80,7 +87,7 @@ export default function OrganizationRegister() {
                     <div>
                         <input
                             className="w-full rounded-xl border border-outline-variant bg-background px-4 py-3"
-                            placeholder="Nombre completo del representante"
+                            placeholder="Nombre completo"
                             value={formData.fullName}
                             onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                         />
@@ -93,7 +100,7 @@ export default function OrganizationRegister() {
                         <input
                             type="email"
                             className="w-full rounded-xl border border-outline-variant bg-background px-4 py-3"
-                            placeholder="Correo electrónico institucional"
+                            placeholder="Correo electrónico"
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         />
@@ -153,7 +160,7 @@ export default function OrganizationRegister() {
                     <div>
                         <input
                             className="w-full rounded-xl border border-outline-variant bg-background px-4 py-3"
-                            placeholder="Palabra secreta"
+                            placeholder="Palabra secreta de administrador"
                             value={formData.adminSecret}
                             onChange={(e) => setFormData({ ...formData, adminSecret: e.target.value })}
                         />
@@ -162,12 +169,9 @@ export default function OrganizationRegister() {
                         )}
                     </div>
 
-                    <button
-                        type="submit"
-                        className="rounded-full bg-primary text-on-primary px-6 py-3 font-semibold hover:opacity-90 transition-opacity"
-                    >
-                        Enviar solicitud
-                    </button>
+                    <Button type="submit" disabled={isSubmitting} className="justify-self-end">
+                        {isSubmitting ? "Creando..." : "Crear administrador"}
+                    </Button>
                 </form>
             </div>
         </section>
