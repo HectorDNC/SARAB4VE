@@ -347,6 +347,86 @@ async function insertOrganizationService(client, organizationId, serviceId) {
 }
 
 // ---------------------------------------------------------------------------
+// INSERT — volunteer_profiles (perfil extendido)
+// ---------------------------------------------------------------------------
+
+const INSERT_VOLUNTEER_PROFILE = `
+  INSERT INTO volunteer_profiles (
+    user_id, volunteer_type, document_type, document_number, birth_date,
+    profession, languages, availability_mode, has_prior_experience,
+    transport_available
+  )
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+  RETURNING user_id AS "userId", volunteer_type AS "volunteerType",
+            document_type AS "documentType", document_number AS "documentNumber",
+            birth_date AS "birthDate", profession, languages,
+            availability_mode AS "availabilityMode",
+            has_prior_experience AS "hasPriorExperience",
+            transport_available AS "transportAvailable",
+            created_at AS "createdAt", updated_at AS "updatedAt"
+`;
+
+/**
+ * Inserta el perfil extendido de un voluntario.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {Object} profile — Payload normalizado del perfil
+ * @returns {Promise<Object>} — Fila insertada
+ */
+async function insertVolunteerProfile(client, profile) {
+  const result = await client.query(INSERT_VOLUNTEER_PROFILE, [
+    profile.userId,
+    profile.volunteerType,
+    profile.documentType,
+    profile.documentNumber,
+    profile.birthDate,
+    profile.profession,
+    profile.languages,
+    profile.availabilityMode,
+    profile.hasPriorExperience,
+    profile.transportAvailable,
+  ]);
+  return result.rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// INSERT — volunteer_interest_areas / volunteer_experience (relaciones many-to-many)
+// ---------------------------------------------------------------------------
+
+const INSERT_VOLUNTEER_INTEREST_AREA = `
+  INSERT INTO volunteer_interest_areas (user_id, catalog_id, catalog_type)
+  VALUES ($1, $2, 'interest_area')
+  ON CONFLICT DO NOTHING
+`;
+
+/**
+ * Inserta la relación entre voluntario y área de interés.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} userId — UUID del voluntario
+ * @param {number} catalogId — ID del área de interés (catálogo)
+ * @returns {Promise<void>}
+ */
+async function insertVolunteerInterestArea(client, userId, catalogId) {
+  await client.query(INSERT_VOLUNTEER_INTEREST_AREA, [userId, catalogId]);
+}
+
+const INSERT_VOLUNTEER_EXPERIENCE = `
+  INSERT INTO volunteer_experience (user_id, catalog_id, catalog_type)
+  VALUES ($1, $2, 'experience_category')
+  ON CONFLICT DO NOTHING
+`;
+
+/**
+ * Inserta la relación entre voluntario y categoría de experiencia.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} userId — UUID del voluntario
+ * @param {number} catalogId — ID de la categoría de experiencia (catálogo)
+ * @returns {Promise<void>}
+ */
+async function insertVolunteerExperience(client, userId, catalogId) {
+  await client.query(INSERT_VOLUNTEER_EXPERIENCE, [userId, catalogId]);
+}
+
+// ---------------------------------------------------------------------------
 // INSERT — verification_requests
 // ---------------------------------------------------------------------------
 
@@ -479,6 +559,9 @@ module.exports = {
   insertLegalRepresentative,
   insertOrganizationDisabilityType,
   insertOrganizationService,
+  insertVolunteerProfile,
+  insertVolunteerInterestArea,
+  insertVolunteerExperience,
   insertVerificationRequest,
   insertVerificationToken,
   findCompletionToken,

@@ -142,6 +142,44 @@ const RegisterVolunteerBody = CommonFields.extend({
   acceptedTerms: z.literal(true, {
     errorMap: () => ({ message: "acceptedTerms debe ser true para registrarse como voluntario" }),
   }).openapi({ example: true, description: "Debe ser true" }),
+
+  // Campos extendidos del perfil de voluntario (volunteer_profiles)
+  volunteerType: z.enum(["professional", "non_professional"])
+    .optional()
+    .openapi({ example: "professional", description: "Tipo de voluntario" }),
+
+  documentType: z.string().max(20).optional()
+    .openapi({ example: "cedula", description: "Tipo de documento (cédula, pasaporte)" }),
+
+  documentNumber: z.string().max(30).optional()
+    .openapi({ example: "V12345678", description: "Número de documento" }),
+
+  birthDate: z.string().optional()
+    .openapi({ example: "1985-03-20", description: "Fecha de nacimiento (YYYY-MM-DD)" }),
+
+  profession: z.string().max(100).optional()
+    .openapi({ example: "Médico cirujano", description: "Profesión" }),
+
+  languages: z.array(z.string().min(1)).optional()
+    .openapi({ example: ["español", "lengua de señas venezolana"], description: "Idiomas" }),
+
+  availabilityMode: z.enum(["presential", "online", "both"])
+    .optional()
+    .openapi({ example: "both", description: "Modalidad de disponibilidad" }),
+
+  hasPriorExperience: z.boolean().optional()
+    .openapi({ example: true, description: "¿Tiene experiencia previa como voluntario?" }),
+
+  transportAvailable: z.boolean().optional()
+    .openapi({ example: false, description: "¿Dispone de medio de transporte propio?" }),
+
+  interestAreaIds: z.array(z.number().int().positive())
+    .optional()
+    .openapi({ example: [23, 25], description: "IDs del catálogo (type = 'interest_area')" }),
+
+  experienceCategoryIds: z.array(z.number().int().positive())
+    .optional()
+    .openapi({ example: [36], description: "IDs del catálogo (type = 'experience_category')" }),
 }).openapi({
   description: "Payload para registrar un voluntario (requiere aprobación)",
   example: {
@@ -155,6 +193,16 @@ const RegisterVolunteerBody = CommonFields.extend({
     availableHours: 20,
     availableDays: ["lunes", "miercoles", "sabado"],
     acceptedTerms: true,
+    volunteerType: "professional",
+    documentType: "cedula",
+    documentNumber: "V12345678",
+    birthDate: "1985-03-20",
+    profession: "Médico cirujano",
+    languages: ["español"],
+    availabilityMode: "both",
+    hasPriorExperience: true,
+    interestAreaIds: [23, 25],
+    experienceCategoryIds: [36],
   },
 });
 
@@ -474,6 +522,57 @@ function normalizeRegisterVolunteer(payload) {
 }
 
 /**
+ * Normaliza el payload extendido de voluntario para inserción completa.
+ * Separa campos de users/user_details vs volunteer_profiles.
+ * @param {Object} payload — ya validado por Zod
+ * @returns {{ user: Object, details: Object, profile: Object, entityType: string, interestAreaIds: number[], experienceCategoryIds: number[] }}
+ */
+function normalizeRegisterVolunteerExtended(payload) {
+  const user = {
+    fullName: payload.fullName.trim(),
+    email: payload.email.trim().toLowerCase(),
+    phone: payload.phone.trim().replace(/[\s-]/g, ""),
+    password: payload.password,
+    role: "volunteer",
+    status: "pending",
+    location: payload.location || null,
+    zone: payload.zone?.trim() || null,
+  };
+
+  const details = {
+    skills: payload.skills.map((s) => s.trim()),
+    availableHours: Number(payload.availableHours),
+    availableDays: payload.availableDays.map((d) => d.toLowerCase().trim()),
+    acceptedTerms: true,
+  };
+
+  const profile = {
+    volunteerType: payload.volunteerType,
+    documentType: payload.documentType?.trim() || null,
+    documentNumber: payload.documentNumber?.trim() || null,
+    birthDate: payload.birthDate || null,
+    profession: payload.profession?.trim() || null,
+    languages: payload.languages?.map((l) => l.trim()) || null,
+    availabilityMode: payload.availabilityMode || null,
+    hasPriorExperience: payload.hasPriorExperience ?? null,
+    transportAvailable: payload.transportAvailable ?? null,
+  };
+
+  const entityType = payload.volunteerType === "professional"
+    ? "volunteer_professional"
+    : "volunteer_non_professional";
+
+  return {
+    user,
+    details,
+    profile,
+    entityType,
+    interestAreaIds: payload.interestAreaIds || [],
+    experienceCategoryIds: payload.experienceCategoryIds || [],
+  };
+}
+
+/**
  * Normaliza el payload de registro de organización para inserción en DB.
  * Versión básica (legacy) — solo crea user + user_details.
  * @param {Object} payload — ya validado por Zod
@@ -618,6 +717,7 @@ module.exports = {
   // Normalizadores
   normalizeRegisterCitizen,
   normalizeRegisterVolunteer,
+  normalizeRegisterVolunteerExtended,
   normalizeRegisterOrganization,
   normalizeRegisterOrganizationExtended,
   normalizeRegisterAdmin,
