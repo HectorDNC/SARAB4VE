@@ -173,35 +173,78 @@ async function registerCitizen(payload, schema, repository) {
  * @returns {Promise<{ data: Object, status: number, errors?: string[] }>}
  */
 async function registerVolunteer(payload, schema, repository) {
-  const normalized = schema.normalizeRegisterVolunteer(payload);
-  const passwordHash = await hashPassword(normalized.user.password);
+  const hasExtendedFields = !!payload.volunteerType;
+
+  const passwordHash = hasExtendedFields
+    ? await hashPassword(schema.normalizeRegisterVolunteerExtended(payload).user.password)
+    : await hashPassword(schema.normalizeRegisterVolunteer(payload).user.password);
 
   try {
     const result = await repository.withTransaction(async (client) => {
-      const user = await repository.insertUser(client, {
-        ...normalized.user,
-        passwordHash,
-      });
+      if (hasExtendedFields) {
+        // Flujo extendido: crear usuario + perfil completo + verificación
+        const normalized = schema.normalizeRegisterVolunteerExtended(payload);
 
-      const details = await repository.insertUserDetails(
-        client,
-        user.id,
-        normalized.details,
-      );
+        const user = await repository.insertUser(client, {
+          ...normalized.user,
+          passwordHash,
+        });
 
-      const verification = await repository.insertVerificationRequest(
-        client,
-        user.id,
-        "volunteer_professional",
-      );
+        const details = await repository.insertUserDetails(
+          client,
+          user.id,
+          normalized.details,
+        );
 
-      return { ...user, details, verification };
+        const profile = await repository.insertVolunteerProfile(client, {
+          userId: user.id,
+          ...normalized.profile,
+        });
+
+        for (const catalogId of normalized.interestAreaIds) {
+          await repository.insertVolunteerInterestArea(client, user.id, catalogId);
+        }
+
+        for (const catalogId of normalized.experienceCategoryIds) {
+          await repository.insertVolunteerExperience(client, user.id, catalogId);
+        }
+
+        const verification = await repository.insertVerificationRequest(
+          client,
+          user.id,
+          normalized.entityType,
+        );
+
+        return { ...user, details, profile, verification };
+      } else {
+        // Flujo básico (legacy): solo usuario + detalles
+        const normalized = schema.normalizeRegisterVolunteer(payload);
+
+        const user = await repository.insertUser(client, {
+          ...normalized.user,
+          passwordHash,
+        });
+
+        const details = await repository.insertUserDetails(
+          client,
+          user.id,
+          normalized.details,
+        );
+
+        const verification = await repository.insertVerificationRequest(
+          client,
+          user.id,
+          "volunteer_professional",
+        );
+
+        return { ...user, details, verification };
+      }
     });
 
     await createVerificationTokensAndEmails({
       result,
       ownerName: result.fullName,
-      entityType: "volunteer_professional",
+      entityType: result.verification.entityType,
       verificationRequest: result.verification,
       repository,
       trigger: { client: null },

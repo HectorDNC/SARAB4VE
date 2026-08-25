@@ -1,4 +1,5 @@
 import { API, getAuthHeaders } from "./client";
+import type { ApiUser } from "@/types";
 
 export type VolunteerPayload = {
   fullName?: string;
@@ -12,22 +13,25 @@ export type VolunteerPayload = {
   availableDays?: string[] | null;
   acceptedTerms: boolean;
 
-  // Nuevos campos
-  documentNumber: string;
-  birthDate: string;
-  address: string;
-  volunteerType: string;
+  // Perfil extendido (volunteer_profiles)
+  volunteerType?: "professional" | "non_professional";
+  documentType?: string;
+  documentNumber?: string;
+  birthDate?: string;
   profession?: string;
   languages?: string[];
-  experienceCategories?: string[];
-  scheduleHours: number[];
-  modalityPresential: boolean;
-  modalityOnline: boolean;
-  interestAreas: string[];
-  hasPriorExperience?: boolean | null;
+  availabilityMode?: "presential" | "online" | "both";
+  hasPriorExperience?: boolean;
+  interestAreaIds?: number[];
+  experienceCategoryIds?: number[];
 };
 
-export async function sendVolunteer(payload: VolunteerPayload) {
+export type VolunteerRegisterResponse = {
+  token: string;
+  user: ApiUser;
+};
+
+export async function sendVolunteer(payload: VolunteerPayload): Promise<VolunteerRegisterResponse> {
   const res = await fetch(`${API}/api/auth/register/volunteer`, {
     method: "POST",
     headers: getAuthHeaders(),
@@ -43,9 +47,6 @@ export async function sendVolunteer(payload: VolunteerPayload) {
     throw new Error(message);
   }
 
-  try {
-    return await res.json();
-  } catch {
-    return null;
-  }
+  const rawData = await res.json();
+  return rawData.data as VolunteerRegisterResponse;
 }

@@ -14,6 +14,8 @@ import {
     REQUIRED_DOCUMENTS_NON_PROFESSIONAL,
 } from "./constants";
 import { sendVolunteer } from "@/api/volunteer";
+import { getDocumentChecklist, uploadVerificationDocument } from "@/api/verification";
+import { buildVolunteerRegisterPayload } from "./mapper";
 import { volunteerSchema, getFieldErrors, type VolunteerFormData } from "./schema";
 import { alertService } from "@/services/alertService";
 import dynamic from "next/dynamic";
@@ -66,21 +68,10 @@ const fieldClass =
 
 const errorClass = "text-error text-sm mt-1";
 
-// Genera una contraseña temporal para cuentas creadas sin el campo de
-// credenciales visible en la UI (ver handleSubmit).
-function generateTempPassword(): string {
-    const bytes = new Uint8Array(12);
-    if (typeof window !== "undefined" && window.crypto) {
-        window.crypto.getRandomValues(bytes);
-    } else {
-        for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
-    }
-    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 export default function VolunteerRegister() {
     const [formData, setFormData] = useState<iVolunteerForm>(InitVolunteerForm);
     const [errors, setErrors] = useState<Partial<Record<keyof VolunteerFormData, string>>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const ids = {
         fullName: useId(),
@@ -178,13 +169,10 @@ export default function VolunteerRegister() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // password y acceptedTerms ya no se piden en la UI de este formulario;
-        // se autocompletan aquí para que la validación y el envío sigan funcionando.
-        const dataToValidate = {
-            ...formData,
-            password: formData.password || generateTempPassword(),
-            acceptedTerms: true as const,
-        };
+        // acceptedTerms no se pide como checkbox aparte (mismo criterio que
+        // el formulario de organización: al enviar la solicitud se asume la
+        // aceptación de términos).
+        const dataToValidate = { ...formData, acceptedTerms: true as const };
 
         const result = volunteerSchema.safeParse(dataToValidate);
 
@@ -216,16 +204,40 @@ export default function VolunteerRegister() {
         }
 
         setDocumentErrors({});
+        setIsSubmitting(true);
 
         try {
-            await sendVolunteer(result.data);
+            // Paso 1: registrar al voluntario (perfil extendido en una sola transacción)
+            const payload = buildVolunteerRegisterPayload(result.data);
+            const { token, user } = await sendVolunteer(payload);
+
+            // Paso 2: subir los documentos adjuntos, emparejando por "code" contra
+            // el checklist real que el backend generó para este voluntario
+            // (evita hardcodear IDs de document_types en el frontend).
+            const checklist = await getDocumentChecklist(user.id, token);
+            const uploadPromises = Object.entries(documentFiles)
+                .filter((entry): entry is [string, File] => entry[1] !== null)
+                .map(async ([docId, file]) => {
+                    const match = checklist.find((item) => item.documentType.code === docId);
+                    if (!match) {
+                        console.warn(`No se encontró un document_type para "${docId}" en el checklist del backend`);
+                        return null;
+                    }
+                    return uploadVerificationDocument(file, match.documentType.id, token);
+                });
+
+            await Promise.all(uploadPromises);
 
             alertService.success("Tu solicitud fue enviada. Te contactaremos pronto.");
-            setFormData(InitVolunteerForm)
+            setFormData(InitVolunteerForm);
+            setDocumentFiles(Object.fromEntries(ALL_DOCUMENT_IDS.map((id) => [id, null])));
+            setDocumentErrors({});
 
         } catch (error) {
-            console.error("Error al enviar la solicitud de voluntariado:", error);
-            return;
+            const message = error instanceof Error ? error.message : "No se pudo enviar tu solicitud.";
+            alertService.error(message);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -302,6 +314,23 @@ export default function VolunteerRegister() {
                                     <p className={errorClass}>{errors.phone}</p>
                                 )}
                             </div>
+                        </div>
+
+                        <div>
+                            <Label htmlFor={ids.password} name="Contraseña para tu cuenta" />
+                            <input
+                                id={ids.password}
+                                type="password"
+                                className={`${fieldClass} mt-2 ${errors.password ? "border-error" : ""}`}
+                                placeholder="Mínimo 8 caracteres"
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                aria-invalid={!!errors.password}
+                                aria-describedby={errors.password ? `${ids.password}-err` : undefined}
+                            />
+                            {errors.password && (
+                                <p id={`${ids.password}-err`} className={errorClass}>{errors.password}</p>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -833,8 +862,8 @@ export default function VolunteerRegister() {
                     )}
 
                     <div className="pt-2 flex justify-end">
-                        <Button type="submit" variant="filled" size="lg" icon="send">
-                            Enviar solicitud
+                        <Button type="submit" variant="filled" size="lg" icon="send" disabled={isSubmitting}>
+                            {isSubmitting ? "Enviando..." : "Enviar solicitud"}
                         </Button>
                     </div>
                 </form>

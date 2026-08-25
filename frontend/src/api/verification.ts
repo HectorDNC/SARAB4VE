@@ -132,6 +132,19 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return body.data as T;
 }
 
+/**
+ * Resuelve el header Authorization: usa `token` si se pasa explícitamente
+ * (caso de un registro recién creado, todavía sin sesión en localStorage),
+ * o cae a `getAuthHeaders()` para el caso de un usuario ya logueado.
+ */
+function resolveAuthHeader(token?: string): Record<string, string> {
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  const authHeaders = getAuthHeaders();
+  return authHeaders["Authorization"] ? { Authorization: authHeaders["Authorization"] } : {};
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/catalog?type=...
 // ---------------------------------------------------------------------------
@@ -199,19 +212,9 @@ export async function uploadVerificationDocument(
   formData.append("file", file);
   formData.append("documentTypeId", String(documentTypeId));
 
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  } else {
-    const authHeaders = getAuthHeaders();
-    if (authHeaders["Authorization"]) {
-      headers["Authorization"] = authHeaders["Authorization"];
-    }
-  }
-
   const res = await fetch(`${API}/api/verification-documents`, {
     method: "POST",
-    headers,
+    headers: resolveAuthHeader(token),
     body: formData,
   });
 
@@ -222,10 +225,10 @@ export async function uploadVerificationDocument(
 // GET /api/verification-documents/:ownerId
 // ---------------------------------------------------------------------------
 
-export async function getDocumentChecklist(ownerId: string): Promise<DocumentChecklistItem[]> {
+export async function getDocumentChecklist(ownerId: string, token?: string): Promise<DocumentChecklistItem[]> {
   const res = await fetch(`${API}/api/verification-documents/${ownerId}`, {
     method: "GET",
-    headers: getAuthHeaders(),
+    headers: resolveAuthHeader(token),
   });
   return handleResponse<DocumentChecklistItem[]>(res);
 }
