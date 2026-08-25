@@ -1,28 +1,9 @@
 import Link from "next/link";
-import PointCard from "@/components/ui/PointCard";
 
-const nearbyPoints = [
-  {
-    icon: "emergency",
-    title: "Centro de Salud Chacao",
-    description: "Atención médica accesible · Rampas · Personal especializado",
-    badge: "Abierto",
-    distance: "350 m",
-  },
-  {
-    icon: "night_shelter",
-    title: "Refugio Municipal #3",
-    description: "Espacios con accesibilidad garantizada para pernocta",
-    badge: "Disponible",
-    distance: "1.2 km",
-  },
-  {
-    icon: "volunteer_activism",
-    title: "Cruz Roja Venezolana",
-    description: "Voluntarios activos — respuesta en menos de 15 min",
-    distance: "800 m",
-  },
-];
+// TODO: conectar al conteo real de voluntarios activos cuando exista un
+// endpoint público para eso. Mientras sea null, el stat del hero y el texto
+// de la sección de colaboración quedan ocultos/genéricos automáticamente.
+const activeVolunteersCount: number | null = null;
 
 export default function HomePage() {
   return (
@@ -60,14 +41,13 @@ export default function HomePage() {
               </Link>
             </div>
 
-
-            <div className="mt-6 inline-flex items-center gap-2 text-sm text-on-surface-variant">
-              <span className="material-symbols-rounded text-base text-primary" aria-hidden="true">group</span>
-              <span><strong className="text-on-surface">2,450 voluntarios</strong> activos hoy en la Red SARA</span>
-            </div>
+            {activeVolunteersCount !== null && activeVolunteersCount > 0 && (
+              <div className="mt-6 inline-flex items-center gap-2 text-sm text-on-surface-variant">
+                <span className="material-symbols-rounded text-base text-primary" aria-hidden="true">group</span>
+                <span><strong className="text-on-surface">{activeVolunteersCount.toLocaleString("es")} voluntarios</strong> activos hoy en la Red SARA</span>
+              </div>
+            )}
           </div>
-
-          
         </div>
       </section>
 
@@ -106,16 +86,8 @@ export default function HomePage() {
           <p className="text-on-surface-variant mb-8">
             Recursos diseñados para situaciones de emergencia con accesibilidad garantizada.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              {
-                icon: "location_on",
-                title: "Puntos Seguros",
-                description: "Refugios accesibles y centros de asistencia médica cercanos.",
-                href: "/refugios",
-                bg: "bg-primary-fixed",
-                fg: "text-primary",
-              },
               {
                 icon: "auto_stories",
                 title: "Recursos de Guía",
@@ -123,6 +95,7 @@ export default function HomePage() {
                 href: "/recursos",
                 bg: "bg-secondary-fixed",
                 fg: "text-secondary",
+                active: true,
               },
               {
                 icon: "corporate_fare",
@@ -131,47 +104,44 @@ export default function HomePage() {
                 href: "/directorio",
                 bg: "bg-surface-container-high",
                 fg: "text-on-surface",
+                active: false,
               },
-            ].map((f) => (
-              <Link
-                key={f.href}
-                href={f.href}
-                className={`group flex flex-col gap-4 p-6 rounded-2xl ${f.bg} hover:shadow-md transition-all hover:-translate-y-0.5 focus-visible:outline-3 focus-visible:outline-primary`}
-              >
-                <div className={`w-12 h-12 rounded-2xl bg-white/60 flex items-center justify-center ${f.fg}`}>
-                  <span className="material-symbols-rounded text-2xl" aria-hidden="true">{f.icon}</span>
+            ].map((f) =>
+              f.active ? (
+                <Link
+                  key={f.href}
+                  href={f.href}
+                  className={`group flex flex-col gap-4 p-6 rounded-2xl ${f.bg} hover:shadow-md transition-all hover:-translate-y-0.5 focus-visible:outline-3 focus-visible:outline-primary`}
+                >
+                  <div className={`w-12 h-12 rounded-2xl bg-white/60 flex items-center justify-center ${f.fg}`}>
+                    <span className="material-symbols-rounded text-2xl" aria-hidden="true">{f.icon}</span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-on-surface group-hover:text-primary transition-colors">{f.title}</h3>
+                    <p className="text-sm text-on-surface-variant mt-1">{f.description}</p>
+                  </div>
+                  <span className="material-symbols-rounded text-on-surface-variant text-base mt-auto" aria-hidden="true">arrow_forward</span>
+                </Link>
+              ) : (
+                <div
+                  key={f.href}
+                  aria-disabled="true"
+                  className={`flex flex-col gap-4 p-6 rounded-2xl ${f.bg} opacity-60 cursor-not-allowed`}
+                >
+                  <div className={`w-12 h-12 rounded-2xl bg-white/60 flex items-center justify-center ${f.fg}`}>
+                    <span className="material-symbols-rounded text-2xl" aria-hidden="true">{f.icon}</span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-on-surface">{f.title}</h3>
+                    <p className="text-sm text-on-surface-variant mt-1">{f.description}</p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-on-surface-variant mt-auto">
+                    <span className="material-symbols-rounded text-sm" aria-hidden="true">schedule</span>
+                    Próximamente
+                  </span>
                 </div>
-                <div>
-                  <h3 className="font-bold text-base text-on-surface group-hover:text-primary transition-colors">{f.title}</h3>
-                  <p className="text-sm text-on-surface-variant mt-1">{f.description}</p>
-                </div>
-                <span className="material-symbols-rounded text-on-surface-variant text-base mt-auto" aria-hidden="true">arrow_forward</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* NEARBY */}
-      <section className="px-5 lg:px-10 py-10 bg-surface-container-low border-t border-outline-variant" aria-labelledby="nearby-heading">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-rounded text-primary" aria-hidden="true">location_on</span>
-              <h2 id="nearby-heading" className="text-xl font-bold text-on-surface">Cerca de ti</h2>
-            </div>
-            <Link href="/mapa" className="text-sm font-semibold text-primary flex items-center gap-1 hover:underline">
-              Ver mapa
-              <span className="material-symbols-rounded text-base" aria-hidden="true">arrow_forward</span>
-            </Link>
-          </div>
-          <p className="text-sm text-on-surface-variant mb-5">
-            Hay <strong>3 puntos de auxilio accesibles</strong> identificados en tu zona actual.
-          </p>
-          <div className="flex flex-col gap-3">
-            {nearbyPoints.map((p) => (
-              <PointCard key={p.title} {...p} />
-            ))}
+              )
+            )}
           </div>
         </div>
       </section>
@@ -185,7 +155,9 @@ export default function HomePage() {
                 ¿Quieres colaborar en la red de apoyo?
               </h2>
               <p className="text-on-primary/80 mt-2 text-base">
-                Únete a los 2,450 voluntarios que ya forman parte de la Red SARA.
+                {activeVolunteersCount !== null && activeVolunteersCount > 0
+                  ? `Únete a los ${activeVolunteersCount.toLocaleString("es")} voluntarios que ya forman parte de la Red SARA.`
+                  : "Únete a la red de voluntarios y organizaciones que ya forman parte de SARA."}
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">

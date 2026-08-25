@@ -20,7 +20,6 @@ type NavLink = {
 const navLinks: NavLink[] = [
   { href: "/", label: "Inicio", icon: "home" },
   { href: "/mapa", label: "Mapa", icon: "map", roles: ["admin", "organization", "volunteer"] },
-  { href: "/refugios", label: "Refugios", icon: "holiday_village" },
   { href: "/recursos", label: "Recursos", icon: "inventory_2" },
   { href: "/directorio", label: "Directorio", icon: "contact_page" },
   { href: "/chat", label: "Chat", icon: "chat" },
