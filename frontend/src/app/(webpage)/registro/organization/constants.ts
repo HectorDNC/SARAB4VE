@@ -47,6 +47,13 @@ export const COUNTRIES_FISCAL_ID = [
     "Otra (cual)",
   ] as const;
   
+  // Ámbito de actuación
+  export const SCOPE_OPTIONS = [
+    "Local",
+    "Regional",
+    "Nacional",
+  ] as const;
+
   // Tipos de discapacidad (multipicklist)
   export const DISABILITY_TYPES = [
     "Visual",
