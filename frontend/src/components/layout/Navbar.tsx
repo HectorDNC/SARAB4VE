@@ -22,7 +22,6 @@ const navLinks: NavLink[] = [
   { href: "/mapa", label: "Mapa", icon: "map", roles: ["admin", "organization", "volunteer"] },
   { href: "/recursos", label: "Recursos", icon: "inventory_2" },
   { href: "/directorio", label: "Directorio", icon: "contact_page" },
-  { href: "/chat", label: "Chat", icon: "chat" },
 ];
 
 export default function Navbar() {
