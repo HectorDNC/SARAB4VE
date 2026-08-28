@@ -1,5 +1,5 @@
 import { normalizeUser } from "@/lib/normalizeUser";
-import { ApiUser, ListUsersParams, ListUsersResponse, OrganizationProfileResponse } from "@/types";
+import { ApiUser, ListUsersParams, ListUsersResponse, OrganizationProfileResponse, VolunteerProfileResponse, UserStats } from "@/types";
 import { API, getAuthHeaders } from "./client";
 
 export async function listUsers(params: ListUsersParams = {}): Promise<ListUsersResponse> {
@@ -34,6 +34,24 @@ export async function listUsers(params: ListUsersParams = {}): Promise<ListUsers
             offset: rawData.data.offset,
         },
     };
+}
+
+export async function getUserStats(): Promise<UserStats> {
+    const res = await fetch(`${API}/api/users/stats`, {
+        headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message = body?.errors?.join(", ") ?? `HTTP ${res.status}`;
+
+        if (res.status === 401) throw new Error("Sesión expirada. Inicia sesión nuevamente.");
+        if (res.status === 403) throw new Error("No tienes permisos de administrador para ver esta sección.");
+        throw new Error(message);
+    }
+
+    const rawData = await res.json();
+    return rawData.data;
 }
 
 export async function getUserById(id: string): Promise<ApiUser> {
@@ -143,5 +161,38 @@ export async function getOrganizationProfile(id: string): Promise<OrganizationPr
         };
     } catch (error) {
         throw new Error(`Error al procesar el perfil de la organización. ${error}`);
+    }
+}
+
+export async function getVolunteerProfile(id: string): Promise<VolunteerProfileResponse> {
+    const res = await fetch(`${API}/api/users/${id}/volunteer-profile`, {
+        headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message = body?.errors?.join(", ") ?? `HTTP ${res.status}`;
+
+        if (res.status === 401) throw new Error("Sesión expirada. Inicia sesión nuevamente.");
+        if (res.status === 403) throw new Error("No tienes permisos para ver este perfil.");
+        if (res.status === 404) throw new Error("Usuario no encontrado.");
+        throw new Error(message);
+    }
+
+    try {
+        const rawData = await res.json();
+        const data = rawData.data;
+
+        return {
+            user: normalizeUser(data.user),
+            details: data.details ?? null,
+            volunteerProfile: data.volunteerProfile ?? null,
+            interestAreas: data.interestAreas ?? [],
+            experience: data.experience ?? [],
+            verification: data.verification ?? null,
+            documents: data.documents ?? [],
+        };
+    } catch (error) {
+        throw new Error(`Error al procesar el perfil del voluntario. ${error}`);
     }
 }

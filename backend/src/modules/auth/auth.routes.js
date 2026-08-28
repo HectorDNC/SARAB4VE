@@ -49,4 +49,16 @@ router.get(
   controller.me(service, repository),
 );
 
+// Validar token de completar registro (público — el solicitante aún no tiene sesión)
+router.get(
+  "/validate-completion-token",
+  controller.validateCompletionToken(service, schema, repository),
+);
+
+// Completar registro definiendo la contraseña (público)
+router.post(
+  "/complete-registration",
+  controller.completeRegistration(service, schema, repository),
+);
+
 module.exports = router;

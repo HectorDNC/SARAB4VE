@@ -142,6 +142,44 @@ const RegisterVolunteerBody = CommonFields.extend({
   acceptedTerms: z.literal(true, {
     errorMap: () => ({ message: "acceptedTerms debe ser true para registrarse como voluntario" }),
   }).openapi({ example: true, description: "Debe ser true" }),
+
+  // Campos extendidos del perfil de voluntario (volunteer_profiles)
+  volunteerType: z.enum(["professional", "non_professional"])
+    .optional()
+    .openapi({ example: "professional", description: "Tipo de voluntario" }),
+
+  documentType: z.string().max(20).optional()
+    .openapi({ example: "cedula", description: "Tipo de documento (cédula, pasaporte)" }),
+
+  documentNumber: z.string().max(30).optional()
+    .openapi({ example: "V12345678", description: "Número de documento" }),
+
+  birthDate: z.string().optional()
+    .openapi({ example: "1985-03-20", description: "Fecha de nacimiento (YYYY-MM-DD)" }),
+
+  profession: z.string().max(100).optional()
+    .openapi({ example: "Médico cirujano", description: "Profesión" }),
+
+  languages: z.array(z.string().min(1)).optional()
+    .openapi({ example: ["español", "lengua de señas venezolana"], description: "Idiomas" }),
+
+  availabilityMode: z.enum(["presential", "online", "both"])
+    .optional()
+    .openapi({ example: "both", description: "Modalidad de disponibilidad" }),
+
+  hasPriorExperience: z.boolean().optional()
+    .openapi({ example: true, description: "¿Tiene experiencia previa como voluntario?" }),
+
+  transportAvailable: z.boolean().optional()
+    .openapi({ example: false, description: "¿Dispone de medio de transporte propio?" }),
+
+  interestAreaIds: z.array(z.number().int().positive())
+    .optional()
+    .openapi({ example: [23, 25], description: "IDs del catálogo (type = 'interest_area')" }),
+
+  experienceCategoryIds: z.array(z.number().int().positive())
+    .optional()
+    .openapi({ example: [36], description: "IDs del catálogo (type = 'experience_category')" }),
 }).openapi({
   description: "Payload para registrar un voluntario (requiere aprobación)",
   example: {
@@ -155,6 +193,16 @@ const RegisterVolunteerBody = CommonFields.extend({
     availableHours: 20,
     availableDays: ["lunes", "miercoles", "sabado"],
     acceptedTerms: true,
+    volunteerType: "professional",
+    documentType: "cedula",
+    documentNumber: "V12345678",
+    birthDate: "1985-03-20",
+    profession: "Médico cirujano",
+    languages: ["español"],
+    availabilityMode: "both",
+    hasPriorExperience: true,
+    interestAreaIds: [23, 25],
+    experienceCategoryIds: [36],
   },
 });
 
@@ -346,6 +394,33 @@ const LoginBody = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/auth/validate-completion-token
+// ---------------------------------------------------------------------------
+
+const ValidateCompletionTokenQuery = z.object({
+  token: z.string()
+    .uuid("token no tiene un formato válido")
+    .openapi({ example: "550e8400-e29b-41d4-a716-446655440000", description: "Token de completar registro" }),
+}).openapi({ description: "Query param para validar un token de completar registro" });
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/complete-registration
+// ---------------------------------------------------------------------------
+
+const CompleteRegistrationBody = z.object({
+  token: z.string()
+    .uuid("token no tiene un formato válido")
+    .openapi({ example: "550e8400-e29b-41d4-a716-446655440000", description: "Token de completar registro" }),
+
+  password: z.string()
+    .min(8, "La contraseña debe tener al menos 8 caracteres.")
+    .openapi({ example: "unaClaveSegura2024!", description: "Nueva contraseña (mín. 8 caracteres)" }),
+}).openapi({
+  description: "Payload para completar el registro tras la aprobación",
+  example: { token: "550e8400-e29b-41d4-a716-446655440000", password: "unaClaveSegura2024!" },
+});
+
+// ---------------------------------------------------------------------------
 // Schemas de respuesta (para documentación OpenAPI)
 // ---------------------------------------------------------------------------
 
@@ -380,6 +455,21 @@ const LoginResponse = z.object({
     user: UserProfile,
   }),
 }).openapi({ description: "Token JWT + perfil del usuario" });
+
+/** Respuesta de validate-completion-token: { data: { valid, status? } } */
+const ValidateCompletionTokenResponse = z.object({
+  data: z.object({
+    valid: z.boolean().openapi({ example: true }),
+    status: z.string().optional().openapi({ example: "aceptada" }),
+  }),
+}).openapi({ description: "Resultado de validar un token de completar registro" });
+
+/** Respuesta de complete-registration: { data: { completed: true } } */
+const CompleteRegistrationResponse = z.object({
+  data: z.object({
+    completed: z.literal(true),
+  }),
+}).openapi({ description: "Confirmación de registro completado" });
 
 // ---------------------------------------------------------------------------
 // Normalizadores (SIN cambios — los servicios dependen de ellos)
@@ -428,6 +518,57 @@ function normalizeRegisterVolunteer(payload) {
       availableDays: payload.availableDays.map((d) => d.toLowerCase().trim()),
       acceptedTerms: true,
     },
+  };
+}
+
+/**
+ * Normaliza el payload extendido de voluntario para inserción completa.
+ * Separa campos de users/user_details vs volunteer_profiles.
+ * @param {Object} payload — ya validado por Zod
+ * @returns {{ user: Object, details: Object, profile: Object, entityType: string, interestAreaIds: number[], experienceCategoryIds: number[] }}
+ */
+function normalizeRegisterVolunteerExtended(payload) {
+  const user = {
+    fullName: payload.fullName.trim(),
+    email: payload.email.trim().toLowerCase(),
+    phone: payload.phone.trim().replace(/[\s-]/g, ""),
+    password: payload.password,
+    role: "volunteer",
+    status: "pending",
+    location: payload.location || null,
+    zone: payload.zone?.trim() || null,
+  };
+
+  const details = {
+    skills: payload.skills.map((s) => s.trim()),
+    availableHours: Number(payload.availableHours),
+    availableDays: payload.availableDays.map((d) => d.toLowerCase().trim()),
+    acceptedTerms: true,
+  };
+
+  const profile = {
+    volunteerType: payload.volunteerType,
+    documentType: payload.documentType?.trim() || null,
+    documentNumber: payload.documentNumber?.trim() || null,
+    birthDate: payload.birthDate || null,
+    profession: payload.profession?.trim() || null,
+    languages: payload.languages?.map((l) => l.trim()) || null,
+    availabilityMode: payload.availabilityMode || null,
+    hasPriorExperience: payload.hasPriorExperience ?? null,
+    transportAvailable: payload.transportAvailable ?? null,
+  };
+
+  const entityType = payload.volunteerType === "professional"
+    ? "volunteer_professional"
+    : "volunteer_non_professional";
+
+  return {
+    user,
+    details,
+    profile,
+    entityType,
+    interestAreaIds: payload.interestAreaIds || [],
+    experienceCategoryIds: payload.experienceCategoryIds || [],
   };
 }
 
@@ -562,16 +703,21 @@ module.exports = {
   RegisterOrganizationBody,
   RegisterAdminBody,
   LoginBody,
+  ValidateCompletionTokenQuery,
+  CompleteRegistrationBody,
 
-  // Schemas de respuesta para OpenAPI 
+  // Schemas de respuesta para OpenAPI
   UserProfile,
   LoginResponse,
   ErrorResponse,
   LocationSchema,
+  ValidateCompletionTokenResponse,
+  CompleteRegistrationResponse,
 
   // Normalizadores
   normalizeRegisterCitizen,
   normalizeRegisterVolunteer,
+  normalizeRegisterVolunteerExtended,
   normalizeRegisterOrganization,
   normalizeRegisterOrganizationExtended,
   normalizeRegisterAdmin,

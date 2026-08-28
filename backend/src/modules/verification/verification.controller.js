@@ -12,6 +12,7 @@ const {
   DocumentReviewBody,
   CatalogQuery,
   AdminVerificationsQuery,
+  AdminVerificationsPagedQuery,
 } = require("./verification.schema");
 
 // ---------------------------------------------------------------------------
@@ -347,6 +348,23 @@ function listAdminVerifications(service, repository) {
   };
 }
 
+function listAdminVerificationsPaginated(service, repository) {
+  return async (req, res, next) => {
+    const validation = AdminVerificationsPagedQuery.safeParse(req.query);
+
+    if (!validation.success) {
+      return res.status(400).json({ errors: formatZodErrors(validation.error) });
+    }
+
+    try {
+      const result = await service.listAdminVerificationsPaginated(validation.data, repository);
+      return res.json({ data: result.data });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
 // ---------------------------------------------------------------------------
 // PATCH /api/admin/verifications/:id/transition (admin)
 // ---------------------------------------------------------------------------
@@ -402,5 +420,6 @@ module.exports = {
   getDownloadUrl,
   reviewDocument,
   listAdminVerifications,
+  listAdminVerificationsPaginated,
   transitionVerification,
 };

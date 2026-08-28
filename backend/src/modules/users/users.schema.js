@@ -161,6 +161,25 @@ const ListUsersResponse = z.object({
   }),
 }).openapi({ description: "Respuesta paginada de listado de usuarios" });
 
+/** Conteo de usuarios de un rol, desglosado por estado. */
+const UserStatsByRole = z.object({
+  total: z.number().int().openapi({ example: 12 }),
+  pending: z.number().int().openapi({ example: 3 }),
+  approved: z.number().int().openapi({ example: 8 }),
+  rejected: z.number().int().openapi({ example: 1 }),
+  suspended: z.number().int().openapi({ example: 0 }),
+}).openapi({ description: "Conteo de usuarios de un rol, desglosado por estado" });
+
+/** Respuesta de estadísticas agregadas por rol y estado. */
+const UserStatsResponse = z.object({
+  data: z.object({
+    citizen: UserStatsByRole,
+    volunteer: UserStatsByRole,
+    organization: UserStatsByRole,
+    admin: UserStatsByRole,
+  }),
+}).openapi({ description: "Conteo de usuarios agrupado por rol y estado" });
+
 module.exports = {
   ROLES,
   STATUSES,
@@ -173,4 +192,6 @@ module.exports = {
   ErrorResponse,
   UserProfile,
   ListUsersResponse,
+  UserStatsByRole,
+  UserStatsResponse,
 };

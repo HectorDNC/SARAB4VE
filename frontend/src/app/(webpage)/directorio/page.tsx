@@ -1,47 +1,21 @@
 import Link from "next/link";
 
-const organizations = [
-  {
-    type: "ong",
-    icon: "corporate_fare",
-    name: "Fundación Apoyo Inclusivo",
-    description: "Logística de evacuación y acompañamiento especializado para personas con discapacidad motriz.",
-    services: ["Movilidad", "Evacuación", "Traslado"],
-    volunteers: 48,
-    distance: "1.7 km",
-    active: true,
-  },
-  {
-    type: "voluntarios",
-    icon: "volunteer_activism",
-    name: "Red de Voluntarios SARA — Zona Este",
-    description: "120 voluntarios capacitados disponibles para apoyo inmediato y coordinación de rescates.",
-    services: ["Apoyo General", "Primeros Auxilios"],
-    volunteers: 120,
-    distance: "900 m",
-    active: true,
-  },
-  {
-    type: "salud",
-    icon: "medical_services",
-    name: "Centro de Salud Chacao",
-    description: "Atención médica accesible con guardia 24/7, rampas y personal especializado en discapacidades.",
-    services: ["Atención Médica", "Medicamentos", "Traslado"],
-    volunteers: 0,
-    distance: "350 m",
-    active: true,
-  },
-  {
-    type: "logistica",
-    icon: "shield_with_heart",
-    name: "Centro Logístico SARA",
-    description: "Coordinación central de suministros y comunicaciones para la red de respuesta en emergencias.",
-    services: ["Logística", "Suministros", "Comunicación"],
-    volunteers: 25,
-    distance: "2.3 km",
-    active: false,
-  },
-];
+// TODO: conectar a un endpoint público que liste organizaciones aprobadas
+// (aún no existe en el backend — ver GET /api/users?role=organization,
+// hoy protegido solo para admin). Mientras tanto queda vacío a propósito,
+// sin datos de ejemplo, hasta que haya organizaciones reales inscritas.
+type DirectoryOrg = {
+  type: string;
+  icon: string;
+  name: string;
+  description: string;
+  services: string[];
+  volunteers: number;
+  distance: string;
+  active: boolean;
+};
+
+const organizations: DirectoryOrg[] = [];
 
 const typeConfig: Record<string, { label: string; color: string }> = {
   ong: { label: "ONG", color: "bg-secondary-fixed text-secondary" },
@@ -80,13 +54,20 @@ export default function DirectorioPage() {
         />
       </div>
 
-      {/* Stats bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-7">
+      {/* Stats bar — derivados de `organizations`, no hardcodeados */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-7">
         {[
-          { label: "Organizaciones", value: "4", icon: "corporate_fare" },
-          { label: "Voluntarios activos", value: "193", icon: "group" },
-          { label: "Servicios", value: "12", icon: "category" },
-          { label: "Cobertura", value: "8 km", icon: "radar" },
+          { label: "Organizaciones", value: organizations.length, icon: "corporate_fare" },
+          {
+            label: "Voluntarios activos",
+            value: organizations.reduce((sum, o) => sum + o.volunteers, 0),
+            icon: "group",
+          },
+          {
+            label: "Servicios",
+            value: new Set(organizations.flatMap((o) => o.services)).size,
+            icon: "category",
+          },
         ].map((stat) => (
           <div key={stat.label} className="bg-surface-container-low border border-outline-variant rounded-2xl p-4 flex flex-col gap-1">
             <span className="material-symbols-rounded text-primary text-xl" aria-hidden="true">{stat.icon}</span>
@@ -97,6 +78,15 @@ export default function DirectorioPage() {
       </div>
 
       {/* Organizations list */}
+      {organizations.length === 0 ? (
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-10 text-center">
+          <span className="material-symbols-rounded text-4xl text-on-surface-variant" aria-hidden="true">corporate_fare</span>
+          <p className="mt-3 text-sm font-semibold text-on-surface">Aún no hay organizaciones registradas</p>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            En cuanto se aprueben organizaciones inscritas en la plataforma, aparecerán aquí.
+          </p>
+        </div>
+      ) : (
       <div className="flex flex-col gap-4">
         {organizations.map((org) => {
           const tc = typeConfig[org.type];
@@ -163,6 +153,7 @@ export default function DirectorioPage() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }

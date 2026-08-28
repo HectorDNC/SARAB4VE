@@ -18,6 +18,15 @@ router.get(
   controller.listUsers(service, repository),
 );
 
+// GET /api/users/stats — Estadísticas agregadas por rol y estado (solo admin)
+// Debe ir antes de GET /:id, si no Express interpreta "stats" como el :id
+router.get(
+  "/stats",
+  authenticate,
+  authorize("admin"),
+  controller.getUserStats(service, repository),
+);
+
 // GET /api/users/:id — Obtener usuario por ID
 // Accesible por admin o por el propio usuario (el servicio verifica permisos)
 router.get(
@@ -58,6 +67,16 @@ router.get(
   authenticate,
   authorize("admin"),
   controller.getOrganizationProfile(service, repository),
+);
+
+// GET /api/users/:id/volunteer-profile — Obtener perfil completo de voluntario (solo admin)
+// Retorna: datos de usuario, perfil extendido, áreas de interés,
+// categorías de experiencia, verificación y documentos
+router.get(
+  "/:id/volunteer-profile",
+  authenticate,
+  authorize("admin"),
+  controller.getVolunteerProfile(service, repository),
 );
 
 module.exports = router;

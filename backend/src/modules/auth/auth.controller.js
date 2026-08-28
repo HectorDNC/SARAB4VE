@@ -10,6 +10,8 @@ const {
   RegisterOrganizationBody,
   RegisterAdminBody,
   LoginBody,
+  ValidateCompletionTokenQuery,
+  CompleteRegistrationBody,
 } = require("./auth.schema");
 
 // ---------------------------------------------------------------------------
@@ -228,6 +230,72 @@ function me(service, repository) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// GET /api/auth/validate-completion-token
+// ---------------------------------------------------------------------------
+
+/**
+ * Endpoint público: valida un token de completar-registro sin exponer el
+ * motivo específico de invalidez (no existe, usado, expirado, o la
+ * solicitud no está en 'aceptada' se ven todos igual desde afuera).
+ *
+ * @param {Object} service — auth.service
+ * @param {Object} schema  — auth.schema
+ * @param {Object} repository — auth.repository
+ * @returns {(req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => Promise<void>}
+ */
+function validateCompletionToken(service, schema, repository) {
+  return async (req, res, next) => {
+    const validation = ValidateCompletionTokenQuery.safeParse(req.query);
+
+    if (!validation.success) {
+      return res.status(200).json({ data: { valid: false } });
+    }
+
+    try {
+      const result = await service.validateCompletionToken(validation.data.token, repository);
+      return res.status(200).json(result);
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/complete-registration
+// ---------------------------------------------------------------------------
+
+/**
+ * Endpoint público: define la contraseña definitiva de un usuario ya
+ * aprobado y consume el token de un solo uso.
+ *
+ * @param {Object} service — auth.service
+ * @param {Object} schema  — auth.schema
+ * @param {Object} repository — auth.repository
+ * @returns {(req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => Promise<void>}
+ */
+function completeRegistration(service, schema, repository) {
+  return async (req, res, next) => {
+    const validation = CompleteRegistrationBody.safeParse(req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({ errors: formatZodErrors(validation.error) });
+    }
+
+    try {
+      const result = await service.completeRegistration(validation.data, repository);
+
+      if (result.errors) {
+        return res.status(result.status).json({ errors: result.errors });
+      }
+
+      return res.status(200).json({ data: result.data });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
 module.exports = {
   registerCitizen,
   registerVolunteer,
@@ -235,4 +303,6 @@ module.exports = {
   registerAdmin,
   login,
   me,
+  validateCompletionToken,
+  completeRegistration,
 };

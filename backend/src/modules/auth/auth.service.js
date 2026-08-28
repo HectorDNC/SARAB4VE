@@ -4,7 +4,10 @@
  */
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { jwtSecret, adminSecret } = require("../../config");
+const crypto = require("crypto");
+const { jwtSecret, adminSecret, appBaseUrl, validatorEmails } = require("../../config");
+const emailService = require("../../services/email.service");
+const { buildConfirmationEmail, buildValidatorEmail } = require("../../services/emailTemplates/verificationEmails");
 
 /** Costo del hash bcrypt (12 rondas ≈ buena seguridad sin ser muy lento). */
 const BCRYPT_ROUNDS = 12;
@@ -67,6 +70,53 @@ function parseUniqueViolation(error) {
   return { isUniqueViolation: false, field: null };
 }
 
+function buildVerificationLink(token) {
+  return `${appBaseUrl.replace(/\/$/, "")}/api/verification/tokens/${token}?action=iniciar_revision`;
+}
+
+async function createVerificationTokensAndEmails({ result, ownerName, entityType, verificationRequest, repository, trigger }) {
+  if (!verificationRequest || !verificationRequest.id) {
+    return;
+  }
+
+  try {
+    const tokenRecord = await repository.insertVerificationToken(
+      trigger.client || null,
+      verificationRequest.id,
+      "iniciar_revision",
+    );
+
+    const confirmation = buildConfirmationEmail({
+      nombreSolicitante: ownerName,
+      tipoSolicitud: entityType === "organization" ? "Organización" : "Voluntariado",
+      idSolicitud: verificationRequest.ownerId || result?.id || ownerName,
+      fechaEnvio: new Date().toISOString(),
+    });
+
+    const tokenLink = buildVerificationLink(tokenRecord?.token || crypto.randomUUID());
+    const validatorList = (validatorEmails || "")
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+    const validatorEmail = buildValidatorEmail({
+      nombreSolicitante: ownerName,
+      tipoSolicitud: entityType === "organization" ? "Organización" : "Voluntariado",
+      idSolicitud: verificationRequest.ownerId || result?.id || ownerName,
+      fechaEnvio: new Date().toISOString(),
+      resumenDatos: `Solicitante: ${ownerName} | Tipo: ${entityType === "organization" ? "Organización" : "Voluntariado"}`,
+      listaDocumentos: "Documentación adjunta según formulario del registro",
+      linkIniciarRevision: tokenLink,
+    });
+
+    await emailService.sendEmail(result.email || ownerName, confirmation.subject, confirmation.html);
+    const validatorsTarget = validatorList.length > 0 ? validatorList.join(",") : "validadores@sara.org";
+    await emailService.sendEmail(validatorsTarget, validatorEmail.subject, validatorEmail.html);
+  } catch (error) {
+    console.error("Error enviando correos de verificación:", error);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Registro — Citizen
 // ---------------------------------------------------------------------------
@@ -123,23 +173,81 @@ async function registerCitizen(payload, schema, repository) {
  * @returns {Promise<{ data: Object, status: number, errors?: string[] }>}
  */
 async function registerVolunteer(payload, schema, repository) {
-  const normalized = schema.normalizeRegisterVolunteer(payload);
-  const passwordHash = await hashPassword(normalized.user.password);
+  const hasExtendedFields = !!payload.volunteerType;
+
+  const passwordHash = hasExtendedFields
+    ? await hashPassword(schema.normalizeRegisterVolunteerExtended(payload).user.password)
+    : await hashPassword(schema.normalizeRegisterVolunteer(payload).user.password);
 
   try {
     const result = await repository.withTransaction(async (client) => {
-      const user = await repository.insertUser(client, {
-        ...normalized.user,
-        passwordHash,
-      });
+      if (hasExtendedFields) {
+        // Flujo extendido: crear usuario + perfil completo + verificación
+        const normalized = schema.normalizeRegisterVolunteerExtended(payload);
 
-      const details = await repository.insertUserDetails(
-        client,
-        user.id,
-        normalized.details,
-      );
+        const user = await repository.insertUser(client, {
+          ...normalized.user,
+          passwordHash,
+        });
 
-      return { ...user, details };
+        const details = await repository.insertUserDetails(
+          client,
+          user.id,
+          normalized.details,
+        );
+
+        const profile = await repository.insertVolunteerProfile(client, {
+          userId: user.id,
+          ...normalized.profile,
+        });
+
+        for (const catalogId of normalized.interestAreaIds) {
+          await repository.insertVolunteerInterestArea(client, user.id, catalogId);
+        }
+
+        for (const catalogId of normalized.experienceCategoryIds) {
+          await repository.insertVolunteerExperience(client, user.id, catalogId);
+        }
+
+        const verification = await repository.insertVerificationRequest(
+          client,
+          user.id,
+          normalized.entityType,
+        );
+
+        return { ...user, details, profile, verification };
+      } else {
+        // Flujo básico (legacy): solo usuario + detalles
+        const normalized = schema.normalizeRegisterVolunteer(payload);
+
+        const user = await repository.insertUser(client, {
+          ...normalized.user,
+          passwordHash,
+        });
+
+        const details = await repository.insertUserDetails(
+          client,
+          user.id,
+          normalized.details,
+        );
+
+        const verification = await repository.insertVerificationRequest(
+          client,
+          user.id,
+          "volunteer_professional",
+        );
+
+        return { ...user, details, verification };
+      }
+    });
+
+    await createVerificationTokensAndEmails({
+      result,
+      ownerName: result.fullName,
+      entityType: result.verification.entityType,
+      verificationRequest: result.verification,
+      repository,
+      trigger: { client: null },
     });
 
     const token = issueToken(result);
@@ -248,6 +356,15 @@ async function registerOrganization(payload, schema, repository) {
 
         return { ...user, details };
       }
+    });
+
+    await createVerificationTokensAndEmails({
+      result,
+      ownerName: result.fullName,
+      entityType: "organization",
+      verificationRequest: result.verification,
+      repository,
+      trigger: { client: null },
     });
 
     const token = issueToken(result);
@@ -400,6 +517,82 @@ function verifyToken(token) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Completar registro — token de acción 'completar_registro' (HU-3)
+// ---------------------------------------------------------------------------
+
+/** Mensaje genérico: no distingue "no existe" de "usado" o "expirado". */
+const COMPLETION_TOKEN_ERROR = "El enlace no es válido o ya fue usado";
+
+/**
+ * Carga un token de completar-registro solo si está en condiciones de
+ * usarse: existe, no fue usado, no expiró, y la solicitud sigue en
+ * 'aceptada'. Devuelve null en cualquier otro caso sin distinguir el motivo.
+ * @param {string} token
+ * @param {Object} repository — auth.repository
+ * @returns {Promise<Object|null>}
+ */
+async function loadUsableCompletionToken(token, repository) {
+  const record = await repository.findCompletionToken(token);
+
+  if (!record) return null;
+  if (record.usedAt) return null;
+  if (record.expiresAt && new Date(record.expiresAt) <= new Date()) return null;
+  if (record.requestStatus !== "aceptada") return null;
+
+  return record;
+}
+
+/**
+ * Valida un token de completar-registro para la pantalla pública.
+ * @param {string} token
+ * @param {Object} repository — auth.repository
+ * @returns {Promise<{ data: { valid: boolean, status?: string } }>}
+ */
+async function validateCompletionToken(token, repository) {
+  const record = await loadUsableCompletionToken(token, repository);
+
+  if (!record) {
+    return { data: { valid: false } };
+  }
+
+  return { data: { valid: true, status: record.requestStatus } };
+}
+
+/**
+ * Completa el registro: define la contraseña definitiva del usuario ya
+ * aprobado y consume el token de un solo uso.
+ * @param {{ token: string, password: string }} payload
+ * @param {Object} repository — auth.repository
+ * @returns {Promise<import("./auth.types").ServiceResult>}
+ */
+async function completeRegistration(payload, repository) {
+  const record = await loadUsableCompletionToken(payload.token, repository);
+
+  if (!record) {
+    return { errors: [COMPLETION_TOKEN_ERROR], status: 400 };
+  }
+
+  const passwordHash = await hashPassword(payload.password);
+
+  try {
+    await repository.withTransaction(async (client) => {
+      const marked = await repository.markCompletionTokenUsed(client, record.tokenId);
+      if (!marked) {
+        throw new Error("COMPLETION_TOKEN_ALREADY_USED");
+      }
+      await repository.updateUserPassword(client, record.ownerId, passwordHash);
+    });
+  } catch (error) {
+    if (error.message === "COMPLETION_TOKEN_ALREADY_USED") {
+      return { errors: [COMPLETION_TOKEN_ERROR], status: 400 };
+    }
+    throw error;
+  }
+
+  return { data: { completed: true } };
+}
+
 module.exports = {
   registerCitizen,
   registerVolunteer,
@@ -408,4 +601,6 @@ module.exports = {
   login,
   verifyToken,
   issueToken,
+  validateCompletionToken,
+  completeRegistration,
 };

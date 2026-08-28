@@ -126,6 +126,13 @@ router.get(
   controller.listAdminVerifications(service, repository),
 );
 
+router.get(
+  "/admin/verifications/paginated",
+  authenticate,
+  authorize("admin"),
+  controller.listAdminVerificationsPaginated(service, repository),
+);
+
 // Transicionar estado
 router.patch(
   "/admin/verifications/:id/transition",

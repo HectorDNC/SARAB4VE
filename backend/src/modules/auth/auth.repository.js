@@ -3,6 +3,7 @@
  * Todas las funciones de escritura reciben un cliente de transacción (PoolClient)
  * para que el servicio pueda coordinarlas atómicamente.
  */
+const crypto = require("crypto");
 const db = require("../../db");
 
 // ---------------------------------------------------------------------------
@@ -346,6 +347,86 @@ async function insertOrganizationService(client, organizationId, serviceId) {
 }
 
 // ---------------------------------------------------------------------------
+// INSERT — volunteer_profiles (perfil extendido)
+// ---------------------------------------------------------------------------
+
+const INSERT_VOLUNTEER_PROFILE = `
+  INSERT INTO volunteer_profiles (
+    user_id, volunteer_type, document_type, document_number, birth_date,
+    profession, languages, availability_mode, has_prior_experience,
+    transport_available
+  )
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+  RETURNING user_id AS "userId", volunteer_type AS "volunteerType",
+            document_type AS "documentType", document_number AS "documentNumber",
+            birth_date AS "birthDate", profession, languages,
+            availability_mode AS "availabilityMode",
+            has_prior_experience AS "hasPriorExperience",
+            transport_available AS "transportAvailable",
+            created_at AS "createdAt", updated_at AS "updatedAt"
+`;
+
+/**
+ * Inserta el perfil extendido de un voluntario.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {Object} profile — Payload normalizado del perfil
+ * @returns {Promise<Object>} — Fila insertada
+ */
+async function insertVolunteerProfile(client, profile) {
+  const result = await client.query(INSERT_VOLUNTEER_PROFILE, [
+    profile.userId,
+    profile.volunteerType,
+    profile.documentType,
+    profile.documentNumber,
+    profile.birthDate,
+    profile.profession,
+    profile.languages,
+    profile.availabilityMode,
+    profile.hasPriorExperience,
+    profile.transportAvailable,
+  ]);
+  return result.rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// INSERT — volunteer_interest_areas / volunteer_experience (relaciones many-to-many)
+// ---------------------------------------------------------------------------
+
+const INSERT_VOLUNTEER_INTEREST_AREA = `
+  INSERT INTO volunteer_interest_areas (user_id, catalog_id, catalog_type)
+  VALUES ($1, $2, 'interest_area')
+  ON CONFLICT DO NOTHING
+`;
+
+/**
+ * Inserta la relación entre voluntario y área de interés.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} userId — UUID del voluntario
+ * @param {number} catalogId — ID del área de interés (catálogo)
+ * @returns {Promise<void>}
+ */
+async function insertVolunteerInterestArea(client, userId, catalogId) {
+  await client.query(INSERT_VOLUNTEER_INTEREST_AREA, [userId, catalogId]);
+}
+
+const INSERT_VOLUNTEER_EXPERIENCE = `
+  INSERT INTO volunteer_experience (user_id, catalog_id, catalog_type)
+  VALUES ($1, $2, 'experience_category')
+  ON CONFLICT DO NOTHING
+`;
+
+/**
+ * Inserta la relación entre voluntario y categoría de experiencia.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} userId — UUID del voluntario
+ * @param {number} catalogId — ID de la categoría de experiencia (catálogo)
+ * @returns {Promise<void>}
+ */
+async function insertVolunteerExperience(client, userId, catalogId) {
+  await client.query(INSERT_VOLUNTEER_EXPERIENCE, [userId, catalogId]);
+}
+
+// ---------------------------------------------------------------------------
 // INSERT — verification_requests
 // ---------------------------------------------------------------------------
 
@@ -369,6 +450,106 @@ async function insertVerificationRequest(client, ownerId, entityType) {
   return result.rows[0];
 }
 
+// ---------------------------------------------------------------------------
+// INSERT — verification_tokens
+// ---------------------------------------------------------------------------
+
+const INSERT_VERIFICATION_TOKEN = `
+  INSERT INTO verification_tokens (verification_request_id, token, action, expires_at)
+  VALUES ($1, $2, $3, $4)
+  RETURNING id,
+            verification_request_id AS "verificationRequestId",
+            token,
+            action,
+            used_at AS "usedAt",
+            expires_at AS "expiresAt",
+            created_at AS "createdAt"
+`;
+
+/**
+ * Crea un token de acción para una solicitud de verificación.
+ * Si no se pasa cliente, se ejecuta en la conexión global de la app.
+ * @param {import("pg").PoolClient | null} client
+ * @param {number} verificationRequestId
+ * @param {string} action
+ * @param {string} [tokenValue]
+ * @param {Date|null} [expiresAt]
+ * @returns {Promise<Object>}
+ */
+async function insertVerificationToken(client, verificationRequestId, action, tokenValue, expiresAt) {
+  const token = tokenValue || crypto.randomUUID();
+  const query = client ? client.query.bind(client) : db.query.bind(db);
+  const result = await query(INSERT_VERIFICATION_TOKEN, [verificationRequestId, token, action, expiresAt || null]);
+  return result.rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// SELECT / UPDATE — verification_tokens (acción 'completar_registro')
+// ---------------------------------------------------------------------------
+
+const FIND_COMPLETION_TOKEN = `
+  SELECT
+    vt.id AS "tokenId",
+    vt.used_at AS "usedAt",
+    vt.expires_at AS "expiresAt",
+    vr.status AS "requestStatus",
+    u.id AS "ownerId",
+    u.email AS "ownerEmail",
+    u.full_name AS "ownerName"
+  FROM verification_tokens vt
+  JOIN verification_requests vr ON vr.id = vt.verification_request_id
+  JOIN users u ON u.id = vr.owner_id
+  WHERE vt.token = $1 AND vt.action = 'completar_registro'
+`;
+
+/**
+ * Busca un token de acción 'completar_registro' junto con el estado de la
+ * solicitud y los datos del dueño. No valida vigencia; eso es responsabilidad
+ * del servicio.
+ * @param {string} token — UUID del token
+ * @returns {Promise<Object|null>}
+ */
+async function findCompletionToken(token) {
+  const result = await db.query(FIND_COMPLETION_TOKEN, [token]);
+  return result.rows[0] || null;
+}
+
+const MARK_COMPLETION_TOKEN_USED = `
+  UPDATE verification_tokens
+  SET used_at = now()
+  WHERE id = $1 AND used_at IS NULL
+  RETURNING id
+`;
+
+/**
+ * Marca un token como usado, solo si no lo estaba ya (evita doble-canje
+ * concurrente). Devuelve null si el token ya estaba usado.
+ * @param {import("pg").PoolClient} client
+ * @param {string} tokenId — UUID (id de verification_tokens, no el token en sí)
+ * @returns {Promise<Object|null>}
+ */
+async function markCompletionTokenUsed(client, tokenId) {
+  const result = await client.query(MARK_COMPLETION_TOKEN_USED, [tokenId]);
+  return result.rows[0] || null;
+}
+
+const UPDATE_USER_PASSWORD = `
+  UPDATE users
+  SET password_hash = $2, email_verified = true, updated_at = now()
+  WHERE id = $1
+`;
+
+/**
+ * Actualiza la contraseña de un usuario al completar su registro.
+ * @param {import("pg").PoolClient} client
+ * @param {string} userId
+ * @param {string} passwordHash
+ * @returns {Promise<void>}
+ */
+async function updateUserPassword(client, userId, passwordHash) {
+  await client.query(UPDATE_USER_PASSWORD, [userId, passwordHash]);
+}
+
 module.exports = {
   USER_SELECT_COLUMNS,
   USER_DETAILS_SELECT_COLUMNS,
@@ -378,7 +559,14 @@ module.exports = {
   insertLegalRepresentative,
   insertOrganizationDisabilityType,
   insertOrganizationService,
+  insertVolunteerProfile,
+  insertVolunteerInterestArea,
+  insertVolunteerExperience,
   insertVerificationRequest,
+  insertVerificationToken,
+  findCompletionToken,
+  markCompletionTokenUsed,
+  updateUserPassword,
   withTransaction,
   findUserByEmail,
   findUserById,

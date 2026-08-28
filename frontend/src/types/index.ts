@@ -263,6 +263,16 @@ export interface ListUsersResponse {
     };
 }
 
+export interface UserStatsByRole {
+    total: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+    suspended: number;
+}
+
+export type UserStats = Record<ROLES_USER, UserStatsByRole>;
+
 export interface ListUsersParams {
     role?: ROLES_USER;
     status?: STATUS_USERS;
@@ -354,6 +364,48 @@ export interface OrganizationProfileResponse {
     legalRepresentatives: LegalRepresentative[];
     disabilityTypes: CatalogItem[];
     services: CatalogItem[];
+    verification: VerificationRequest | null;
+    documents: VerificationDocument[];
+}
+
+// ── Perfil completo de voluntario (GET /api/users/:id/volunteer-profile) ─────────────
+
+export type VolunteerType = "professional" | "non_professional";
+export type AvailabilityMode = "presential" | "online" | "both";
+
+/** Perfil extendido de voluntario (volunteer_profiles). */
+export interface VolunteerProfile {
+    userId: string;
+    volunteerType: VolunteerType;
+    documentType: string | null;
+    documentNumber: string | null;
+    birthDate: string | null;
+    profession: string | null;
+    languages: string[] | null;
+    availabilityMode: AvailabilityMode | null;
+    hasPriorExperience: boolean | null;
+    transportAvailable: boolean | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** Disponibilidad y habilidades de un voluntario (user_details). */
+export interface VolunteerDetails {
+    userId: string;
+    skills: string[] | null;
+    availableHours: number | null;
+    availableDays: string[] | null;
+    acceptedTerms: boolean | null;
+    termsAcceptedAt: string | null;
+}
+
+/** Respuesta completa del endpoint de perfil de voluntario. */
+export interface VolunteerProfileResponse {
+    user: ApiUser;
+    details: VolunteerDetails | null;
+    volunteerProfile: VolunteerProfile | null;
+    interestAreas: CatalogItem[];
+    experience: CatalogItem[];
     verification: VerificationRequest | null;
     documents: VerificationDocument[];
 }
