@@ -243,6 +243,16 @@ const RegisterOrganizationBody = CommonFields.extend({
     .optional()
     .openapi({ example: "J123456789", description: "Identificación fiscal (RIF, CIF, NIF)" }),
 
+  taxIdType: z.string()
+    .max(30, "taxIdType no puede exceder 30 caracteres")
+    .optional()
+    .openapi({ example: "RIF", description: "Tipo de identificador fiscal (RIF, NIT, RUC, o 'Documento de identidad' para organizaciones en trámite)" }),
+
+  otherEntityType: z.string()
+    .max(100, "otherEntityType no puede exceder 100 caracteres")
+    .optional()
+    .openapi({ example: "Cooperativa", description: "Especificación del tipo de entidad cuando es 'Otra'" }),
+
   registryNumber: z.string()
     .max(50, "registryNumber no puede exceder 50 caracteres")
     .optional()
@@ -629,6 +639,8 @@ function normalizeRegisterOrganizationExtended(payload) {
   const profile = {
     organizationTypeId: payload.organizationTypeId || null,
     taxId: payload.taxId?.trim() || null,
+    taxIdType: payload.taxIdType?.trim() || null,
+    otherEntityType: payload.otherEntityType?.trim() || null,
     registryNumber: payload.registryNumber?.trim() || null,
     foundedAt: payload.foundedAt || null,
     country: payload.country?.trim() || null,
