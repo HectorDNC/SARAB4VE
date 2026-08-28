@@ -446,6 +446,73 @@ async function findVerificationDocuments(ownerId) {
   return result.rows;
 }
 
+// ---------------------------------------------------------------------------
+// SELECT — obtener perfil completo de voluntario
+// ---------------------------------------------------------------------------
+
+const VOLUNTEER_PROFILE_SELECT = `
+  user_id AS "userId",
+  volunteer_type AS "volunteerType",
+  document_type AS "documentType",
+  document_number AS "documentNumber",
+  birth_date AS "birthDate",
+  profession, languages,
+  availability_mode AS "availabilityMode",
+  has_prior_experience AS "hasPriorExperience",
+  transport_available AS "transportAvailable",
+  created_at AS "createdAt",
+  updated_at AS "updatedAt"
+`;
+
+/**
+ * Obtiene el perfil completo de un voluntario.
+ * @param {string} userId - ID del usuario/voluntario
+ * @returns {Promise<Object|null>}
+ */
+async function findVolunteerProfileById(userId) {
+  const query = `
+    SELECT ${VOLUNTEER_PROFILE_SELECT}
+    FROM volunteer_profiles
+    WHERE user_id = $1
+  `;
+  const result = await db.query(query, [userId]);
+  return result.rows[0] || null;
+}
+
+/**
+ * Obtiene las áreas de interés de un voluntario.
+ * @param {string} userId - ID del voluntario
+ * @returns {Promise<Array>}
+ */
+async function findVolunteerInterestAreas(userId) {
+  const query = `
+    SELECT c.id, c.name, c.type
+    FROM volunteer_interest_areas via
+    JOIN catalog c ON c.id = via.catalog_id
+    WHERE via.user_id = $1
+    ORDER BY c.name ASC
+  `;
+  const result = await db.query(query, [userId]);
+  return result.rows;
+}
+
+/**
+ * Obtiene las categorías de experiencia de un voluntario.
+ * @param {string} userId - ID del voluntario
+ * @returns {Promise<Array>}
+ */
+async function findVolunteerExperience(userId) {
+  const query = `
+    SELECT c.id, c.name, c.type
+    FROM volunteer_experience ve
+    JOIN catalog c ON c.id = ve.catalog_id
+    WHERE ve.user_id = $1
+    ORDER BY c.name ASC
+  `;
+  const result = await db.query(query, [userId]);
+  return result.rows;
+}
+
 module.exports = {
   USER_SELECT_COLUMNS,
   USER_DETAILS_SELECT_COLUMNS,
@@ -457,6 +524,9 @@ module.exports = {
   findOrganizationProfileById,
   findLegalRepresentatives,
   findOrganizationDisabilityTypes,
+  findVolunteerProfileById,
+  findVolunteerInterestAreas,
+  findVolunteerExperience,
   findOrganizationServices,
   findVerificationByOwner,
   findVerificationDocuments,

@@ -370,6 +370,79 @@ async function getOrganizationProfile(organizationId, requester, repository) {
   return { data, status: 200 };
 }
 
+/**
+ * Obtiene el perfil completo de un voluntario, incluyendo:
+ * - Datos básicos del usuario
+ * - Detalles de disponibilidad y habilidades (user_details)
+ * - Perfil de voluntario (volunteer_profiles)
+ * - Áreas de interés
+ * - Categorías de experiencia
+ * - Solicitud de verificación
+ * - Documentos de verificación
+ *
+ * @param {string} volunteerId — ID del voluntario
+ * @param {Object} requester — req.user (JWT payload del que hace la petición)
+ * @param {Object} repository — users.repository
+ * @returns {Promise<{ data?: Object, status: number, errors?: string[] }>}
+ */
+async function getVolunteerProfile(volunteerId, requester, repository) {
+  // Verificar permisos: solo admin
+  const isAdmin = requester.role === "admin";
+
+  if (!isAdmin) {
+    return {
+      errors: ["No tienes permiso para ver este perfil"],
+      status: 403,
+    };
+  }
+
+  // Obtener datos básicos del usuario
+  const user = await repository.findUserById(volunteerId);
+
+  if (!user) {
+    return { errors: ["Usuario no encontrado"], status: 404 };
+  }
+
+  // Verificar que sea un voluntario
+  if (user.role !== "volunteer") {
+    return {
+      errors: ["El usuario no es un voluntario"],
+      status: 400,
+    };
+  }
+
+  // Obtener detalles de disponibilidad y habilidades (user_details)
+  const details = await repository.findUserDetailsById(volunteerId);
+
+  // Obtener perfil de voluntario
+  const volunteerProfile = await repository.findVolunteerProfileById(volunteerId);
+
+  // Obtener áreas de interés
+  const interestAreas = await repository.findVolunteerInterestAreas(volunteerId);
+
+  // Obtener categorías de experiencia
+  const experience = await repository.findVolunteerExperience(volunteerId);
+
+  // Obtener solicitud de verificación
+  const verification = await repository.findVerificationByOwner(volunteerId);
+
+  // Obtener documentos de verificación
+  const documents = await repository.findVerificationDocuments(volunteerId);
+
+  // Construir respuesta completa
+  const data = {
+    user,
+    details: details || null,
+    volunteerProfile: volunteerProfile || null,
+    interestAreas,
+    experience,
+    verification: verification || null,
+    documents,
+  };
+
+  return { data, status: 200 };
+}
+
 module.exports = {
   listUsers,
   getUserStats,
@@ -378,4 +451,5 @@ module.exports = {
   approveUser,
   rejectUser,
   getOrganizationProfile,
+  getVolunteerProfile,
 };

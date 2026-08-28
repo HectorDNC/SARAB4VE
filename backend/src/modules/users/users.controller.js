@@ -221,6 +221,37 @@ function getOrganizationProfile(service, repository) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// GET /api/users/:id/volunteer-profile — Obtener perfil completo de voluntario (admin only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Obtiene el perfil completo de un voluntario: datos de usuario, perfil extendido,
+ * áreas de interés, categorías de experiencia, verificación y documentos.
+ * @param {Object} service — users.service
+ * @param {Object} repository — users.repository
+ * @returns {(req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => Promise<void>}
+ */
+function getVolunteerProfile(service, repository) {
+  return async (req, res, next) => {
+    try {
+      const result = await service.getVolunteerProfile(
+        req.params.id,
+        req.user,
+        repository,
+      );
+
+      if (result.errors) {
+        return res.status(result.status).json({ errors: result.errors });
+      }
+
+      return res.status(200).json({ data: result.data });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
 module.exports = {
   listUsers,
   getUserStats,
@@ -229,4 +260,5 @@ module.exports = {
   approveUser,
   rejectUser,
   getOrganizationProfile,
+  getVolunteerProfile,
 };

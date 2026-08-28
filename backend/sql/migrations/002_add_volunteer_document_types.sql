@@ -30,7 +30,7 @@ BEGIN
   WHERE rel.relname = 'document_types'
     AND con.contype = 'u'
     AND (
-      SELECT array_agg(attname ORDER BY attname)
+      SELECT array_agg(attname::text ORDER BY attname)
       FROM pg_attribute
       WHERE attrelid = con.conrelid AND attnum = ANY(con.conkey)
     ) = ARRAY['code'];
