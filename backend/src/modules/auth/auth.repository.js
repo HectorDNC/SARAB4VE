@@ -352,14 +352,14 @@ async function insertOrganizationService(client, organizationId, serviceId) {
 
 const INSERT_VOLUNTEER_PROFILE = `
   INSERT INTO volunteer_profiles (
-    user_id, volunteer_type, document_type, document_number, birth_date,
+    user_id, volunteer_type, document_type, document_number, birth_date, address,
     profession, languages, availability_mode, has_prior_experience,
     transport_available
   )
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
   RETURNING user_id AS "userId", volunteer_type AS "volunteerType",
             document_type AS "documentType", document_number AS "documentNumber",
-            birth_date AS "birthDate", profession, languages,
+            birth_date AS "birthDate", address, profession, languages,
             availability_mode AS "availabilityMode",
             has_prior_experience AS "hasPriorExperience",
             transport_available AS "transportAvailable",
@@ -379,6 +379,7 @@ async function insertVolunteerProfile(client, profile) {
     profile.documentType,
     profile.documentNumber,
     profile.birthDate,
+    profile.address,
     profile.profession,
     profile.languages,
     profile.availabilityMode,

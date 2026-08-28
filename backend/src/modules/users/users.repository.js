@@ -456,6 +456,7 @@ const VOLUNTEER_PROFILE_SELECT = `
   document_type AS "documentType",
   document_number AS "documentNumber",
   birth_date AS "birthDate",
+  address,
   profession, languages,
   availability_mode AS "availabilityMode",
   has_prior_experience AS "hasPriorExperience",
