@@ -53,6 +53,17 @@ const InitVolunteerForm: iVolunteerForm = {
     hasPriorExperience: null,
 }
 
+/** Aplica máscara DD/MM/AAAA mientras el usuario escribe, solo dígitos, máx. 8. */
+function formatBirthDateInput(raw: string): string {
+    const digits = raw.replace(/\D/g, "").slice(0, 8);
+    const day = digits.slice(0, 2);
+    const month = digits.slice(2, 4);
+    const year = digits.slice(4, 8);
+    if (digits.length <= 2) return day;
+    if (digits.length <= 4) return `${day}/${month}`;
+    return `${day}/${month}/${year}`;
+}
+
 const ALL_DOCUMENT_IDS = Array.from(
     new Set([
         ...REQUIRED_DOCUMENTS_PROFESSIONAL.map((d) => d.id),
@@ -72,6 +83,18 @@ export default function VolunteerRegister() {
     const [formData, setFormData] = useState<iVolunteerForm>(InitVolunteerForm);
     const [errors, setErrors] = useState<Partial<Record<keyof VolunteerFormData, string>>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [birthDateInput, setBirthDateInput] = useState("");
+
+    function handleBirthDateChange(raw: string) {
+        const formatted = formatBirthDateInput(raw);
+        setBirthDateInput(formatted);
+
+        const match = formatted.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        setFormData({
+            ...formData,
+            birthDate: match ? `${match[3]}-${match[2]}-${match[1]}` : "",
+        });
+    }
 
     const ids = {
         fullName: useId(),
@@ -269,7 +292,7 @@ export default function VolunteerRegister() {
                         </legend>
 
                         <div>
-                            <Label htmlFor={ids.fullName} name="Nombre completo" />
+                            <Label htmlFor={ids.fullName} name="Nombre completo" required />
                             <input
                                 id={ids.fullName}
                                 className={`${fieldClass} mt-2 ${errors.fullName ? "border-error" : ""}`}
@@ -286,7 +309,7 @@ export default function VolunteerRegister() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor={ids.email} name="Correo electrónico" />
+                                <Label htmlFor={ids.email} name="Correo electrónico" required />
                                 <input
                                     id={ids.email}
                                     type="email"
@@ -303,7 +326,7 @@ export default function VolunteerRegister() {
                             </div>
 
                             <div>
-                                <Label htmlFor={ids.phone} name="Teléfono" />
+                                <Label htmlFor={ids.phone} name="Teléfono" required />
                                 <div id={ids.phone} className="mt-2">
                                     <PhoneField
                                         value={formData.phone}
@@ -317,7 +340,7 @@ export default function VolunteerRegister() {
                         </div>
 
                         <div>
-                            <Label htmlFor={ids.password} name="Contraseña para tu cuenta" />
+                            <Label htmlFor={ids.password} name="Contraseña para tu cuenta" required />
                             <input
                                 id={ids.password}
                                 type="password"
@@ -335,7 +358,7 @@ export default function VolunteerRegister() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor={ids.documentNumber} name="Documento de identidad" />
+                                <Label htmlFor={ids.documentNumber} name="Documento de identidad" required />
                                 <input
                                     id={ids.documentNumber}
                                     className={`${fieldClass} mt-2 ${errors.documentNumber ? "border-error" : ""}`}
@@ -351,13 +374,15 @@ export default function VolunteerRegister() {
                             </div>
 
                             <div>
-                                <Label htmlFor={ids.birthDate} name="Fecha de nacimiento" />
+                                <Label htmlFor={ids.birthDate} name="Fecha de nacimiento" required />
                                 <input
                                     id={ids.birthDate}
-                                    type="date"
+                                    inputMode="numeric"
+                                    autoComplete="bday"
                                     className={`${fieldClass} mt-2 ${errors.birthDate ? "border-error" : ""}`}
-                                    value={formData.birthDate}
-                                    onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                                    placeholder="DD/MM/AAAA"
+                                    value={birthDateInput}
+                                    onChange={(e) => handleBirthDateChange(e.target.value)}
                                     aria-invalid={!!errors.birthDate}
                                     aria-describedby={errors.birthDate ? `${ids.birthDate}-err` : undefined}
                                 />
@@ -368,7 +393,7 @@ export default function VolunteerRegister() {
                         </div>
 
                         <div>
-                            <Label htmlFor={ids.address} name="Dirección" />
+                            <Label htmlFor={ids.address} name="Dirección" required />
                             <input
                                 id={ids.address}
                                 className={`${fieldClass} mt-2 ${errors.address ? "border-error" : ""}`}
@@ -391,7 +416,7 @@ export default function VolunteerRegister() {
                         </legend>
 
                         <div>
-                            <Label htmlFor={ids.zone} name="Zona donde puede operar" />
+                            <Label htmlFor={ids.zone} name="Zona donde puede operar" required />
                             <input
                                 id={ids.zone}
                                 className={`${fieldClass} mt-2 ${errors.zone ? "border-error" : ""}`}
@@ -412,7 +437,7 @@ export default function VolunteerRegister() {
                         <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
                             Ubicación
                         </legend>
-                        <Label htmlFor={ids.location} name="Marca en el mapa la zona donde puedes operar" />
+                        <Label htmlFor={ids.location} name="Marca en el mapa la zona donde puedes operar" required />
                         <div id={ids.location} className="mt-2">
                             <Location
                                 value={formData.location}
@@ -431,7 +456,7 @@ export default function VolunteerRegister() {
                         </legend>
 
                         <div>
-                            <Label htmlFor={ids.skills} name="Habilidades" />
+                            <Label htmlFor={ids.skills} name="Habilidades" required />
                             <div
                                 id={ids.skills}
                                 role="group"
@@ -468,7 +493,7 @@ export default function VolunteerRegister() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
-                                <Label htmlFor={ids.availableHours} name="Horas / semana" />
+                                <Label htmlFor={ids.availableHours} name="Horas / semana" required />
                                 <input
                                     id={ids.availableHours}
                                     type="number"
@@ -489,7 +514,7 @@ export default function VolunteerRegister() {
                             </div>
 
                             <div className="sm:col-span-2">
-                                <Label htmlFor={ids.availableDays} name="Días disponibles" />
+                                <Label htmlFor={ids.availableDays} name="Días disponibles" required />
                                 <div
                                     id={ids.availableDays}
                                     role="group"
@@ -575,7 +600,7 @@ export default function VolunteerRegister() {
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <Label htmlFor={ids.profession} name="Profesión / Formación" />
+                                    <Label htmlFor={ids.profession} name="Profesión / Formación" required />
                                     <input
                                         id={ids.profession}
                                         className={`${fieldClass} mt-2 ${errors.profession ? "border-error" : ""}`}
@@ -591,7 +616,7 @@ export default function VolunteerRegister() {
                                 </div>
 
                                 <div>
-                                    <Label htmlFor={ids.languages} name="Idiomas (separados por coma)" />
+                                    <Label htmlFor={ids.languages} name="Idiomas (separados por coma)" required />
                                     <input
                                         id={ids.languages}
                                         className={`${fieldClass} mt-2 ${errors.languages ? "border-error" : ""}`}
@@ -608,7 +633,7 @@ export default function VolunteerRegister() {
                             </div>
 
                             <div>
-                                <Label htmlFor={ids.experienceCategories} name="Experiencia" />
+                                <Label htmlFor={ids.experienceCategories} name="Experiencia" required />
                                 <div
                                     id={ids.experienceCategories}
                                     role="group"
@@ -690,7 +715,7 @@ export default function VolunteerRegister() {
                             </legend>
 
                             <div>
-                                <Label htmlFor={ids.scheduleHours} name="Horarios disponibles" />
+                                <Label htmlFor={ids.scheduleHours} name="Horarios disponibles" required />
                                 <div className="mt-2 flex flex-wrap gap-2">
                                     {TIME_BLOCKS.map((block) => {
                                         const allSelected = block.hours.every((h) => formData.scheduleHours.includes(h));
@@ -742,7 +767,7 @@ export default function VolunteerRegister() {
                             </div>
 
                             <div>
-                                <Label htmlFor={ids.modalityPresential} name="Modalidad" />
+                                <Label htmlFor={ids.modalityPresential} name="Modalidad" required />
                                 <div className="mt-2 flex flex-wrap gap-2">
                                     <label className={[
                                         "flex items-center gap-2 rounded-xl border bg-background px-3 py-2.5 text-sm cursor-pointer transition-colors",
