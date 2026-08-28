@@ -104,7 +104,7 @@ export const COUNTRIES_FISCAL_ID = [
       href: "/documentos/politica-proteccion-datos-privacidad.pdf",
     },
     {
-      name: "Acuerdo de Participación (sin firmar)",
+      name: "Acuerdo de Participación (descargar, completar datos y firmar)",
       href: "/documentos/acuerdo-participacion-sin-firmar.pdf",
     },
     {
