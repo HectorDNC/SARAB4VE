@@ -69,4 +69,14 @@ router.get(
   controller.getOrganizationProfile(service, repository),
 );
 
+// GET /api/users/:id/volunteer-profile — Obtener perfil completo de voluntario (solo admin)
+// Retorna: datos de usuario, perfil extendido, áreas de interés,
+// categorías de experiencia, verificación y documentos
+router.get(
+  "/:id/volunteer-profile",
+  authenticate,
+  authorize("admin"),
+  controller.getVolunteerProfile(service, repository),
+);
+
 module.exports = router;
