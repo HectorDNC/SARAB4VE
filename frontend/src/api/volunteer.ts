@@ -18,6 +18,7 @@ export type VolunteerPayload = {
   documentType?: string;
   documentNumber?: string;
   birthDate?: string;
+  address?: string;
   profession?: string;
   languages?: string[];
   availabilityMode?: "presential" | "online" | "both";

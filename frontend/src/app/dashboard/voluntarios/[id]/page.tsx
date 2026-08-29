@@ -392,6 +392,12 @@ export default function VolunteerDetailPage() {
                             </InfoCard>
                         )}
 
+                        {volunteerProfile.address && (
+                            <InfoCard icon="home_pin" label="Dirección" span>
+                                <p className="text-sm font-medium text-on-surface">{volunteerProfile.address}</p>
+                            </InfoCard>
+                        )}
+
                         {volunteerProfile.profession && (
                             <InfoCard icon="work" label="Profesión">
                                 <p className="text-sm font-medium text-on-surface">{volunteerProfile.profession}</p>

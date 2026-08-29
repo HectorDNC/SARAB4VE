@@ -36,6 +36,9 @@ const VALID_DAYS = [
 
 const VALID_DAYS_SET = new Set(VALID_DAYS);
 
+/** Antigüedad máxima aceptada para la fecha de nacimiento de un voluntario. */
+const MAX_VOLUNTEER_AGE_YEARS = 80;
+
 /** Estados iniciales según el rol. */
 const INITIAL_STATUS = {
   citizen: "approved",
@@ -154,8 +157,19 @@ const RegisterVolunteerBody = CommonFields.extend({
   documentNumber: z.string().max(30).optional()
     .openapi({ example: "V12345678", description: "Número de documento" }),
 
-  birthDate: z.string().optional()
+  birthDate: z.string()
+    .refine((date) => !isNaN(Date.parse(date)), "birthDate no es una fecha válida")
+    .refine((date) => new Date(date) <= new Date(), "birthDate no puede ser posterior a hoy")
+    .refine((date) => {
+      const minDate = new Date();
+      minDate.setFullYear(minDate.getFullYear() - MAX_VOLUNTEER_AGE_YEARS);
+      return new Date(date) >= minDate;
+    }, `birthDate no puede ser mayor a ${MAX_VOLUNTEER_AGE_YEARS} años atrás`)
+    .optional()
     .openapi({ example: "1985-03-20", description: "Fecha de nacimiento (YYYY-MM-DD)" }),
+
+  address: z.string().optional()
+    .openapi({ example: "Av. Principal 123", description: "Dirección de residencia" }),
 
   profession: z.string().max(100).optional()
     .openapi({ example: "Médico cirujano", description: "Profesión" }),
@@ -561,6 +575,7 @@ function normalizeRegisterVolunteerExtended(payload) {
     documentType: payload.documentType?.trim() || null,
     documentNumber: payload.documentNumber?.trim() || null,
     birthDate: payload.birthDate || null,
+    address: payload.address?.trim() || null,
     profession: payload.profession?.trim() || null,
     languages: payload.languages?.map((l) => l.trim()) || null,
     availabilityMode: payload.availabilityMode || null,

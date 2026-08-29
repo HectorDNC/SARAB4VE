@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { isValidPhoneNumber } from "libphonenumber-js";
 
+const MAX_VOLUNTEER_AGE_YEARS = 80;
+
 export const volunteerSchema = z.object({
   fullName: z
     .string()
@@ -58,7 +60,13 @@ export const volunteerSchema = z.object({
 
   birthDate: z
     .string()
-    .refine((date) => !isNaN(Date.parse(date)), "Ingresa una fecha de nacimiento válida"),
+    .refine((date) => !isNaN(Date.parse(date)), "Ingresa una fecha de nacimiento válida")
+    .refine((date) => new Date(date) <= new Date(), "La fecha de nacimiento no puede ser posterior a hoy")
+    .refine((date) => {
+      const minDate = new Date();
+      minDate.setFullYear(minDate.getFullYear() - MAX_VOLUNTEER_AGE_YEARS);
+      return new Date(date) >= minDate;
+    }, `La fecha de nacimiento no puede ser mayor a ${MAX_VOLUNTEER_AGE_YEARS} años atrás`),
 
   address: z
     .string()

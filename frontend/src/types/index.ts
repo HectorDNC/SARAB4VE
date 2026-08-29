@@ -383,6 +383,7 @@ export interface VolunteerProfile {
     documentType: string | null;
     documentNumber: string | null;
     birthDate: string | null;
+    address: string | null;
     profession: string | null;
     languages: string[] | null;
     availabilityMode: AvailabilityMode | null;
