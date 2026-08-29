@@ -17,17 +17,16 @@ export default function HomePage() {
           <div className="text-center">
             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
               <span className="material-symbols-rounded text-base" aria-hidden="true">emergency_home</span>
-              Plataforma de Emergencia Accesible
+              Plataforma de emergencia accesible e inclusiva
             </div>
             <h1
               id="hero-heading"
               className="text-[2rem] lg:text-5xl font-bold text-on-surface leading-tight tracking-tight"
             >
-              Asistencia inmediata para personas con discapacidad
+              Asistencia inmediata para personas con discapacidades visibles y no visibles
             </h1>
             <p className="mt-4 text-base lg:text-lg text-on-surface-variant max-w-2xl mx-auto">
-              SARA facilita la comunicación, ayuda y el rescate en situaciones críticas. Para los afectados por el terremoto en Venezuela.
-              Pulsa el botón central para alertar a los equipos de emergencia cercanos.
+              SARA facilita la comunicación y ayuda con organizaciones y voluntarios, trabajando en red en países de Iberoamérica, con especial atención a las comunidades afectadas por emergencias y desastres naturales. Pulsa el botón central para alertar a los equipos de emergencia cercanos.
             </p>
 
             {/* Boton SOS de Emergencia */}
