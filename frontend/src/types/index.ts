@@ -308,7 +308,10 @@ export interface LegalRepresentative {
 export interface OrganizationProfile {
     userId: string;
     organizationTypeId: number;
+    organizationTypeName: string | null;
     taxId: string | null;
+    taxIdType: string | null;
+    otherEntityType: string | null;
     registryNumber: string | null;
     foundedAt: string | null;
     country: string | null;

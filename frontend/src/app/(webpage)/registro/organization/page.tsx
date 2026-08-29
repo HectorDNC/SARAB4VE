@@ -7,6 +7,7 @@ import { iOrganizationForm } from "@/types/index";
 import {
     COUNTRIES_FISCAL_ID,
     ENTITY_TYPES,
+    SCOPE_OPTIONS,
     DISABILITY_TYPES,
     REQUIRED_DOCUMENTS,
     PARTICIPATION_REFERENCE_DOCS,
@@ -299,7 +300,7 @@ export default function OrganizationRegister() {
                         </legend>
 
                         <div>
-                            <Label htmlFor={ids.organizationName} name="Nombre de la organización" />
+                            <Label htmlFor={ids.organizationName} name="Nombre de la organización" required />
                             <input
                                 id={ids.organizationName}
                                 className={`${fieldClass} mt-2 ${errors.organizationName ? "border-error" : ""}`}
@@ -315,7 +316,7 @@ export default function OrganizationRegister() {
                         </div>
 
                         <div>
-                            <Label htmlFor={ids.fiscalIdType} name="Tipo de identificador fiscal" />
+                            <Label htmlFor={ids.fiscalIdType} name="Tipo de identificador fiscal" required />
                             <select
                                 id={ids.fiscalIdType}
                                 className={`${fieldClass} mt-2 ${errors.fiscalIdType ? "border-error" : ""}`}
@@ -333,6 +334,7 @@ export default function OrganizationRegister() {
                                         {c.fiscalId} ({c.name})
                                     </option>
                                 ))}
+                                <option value="Otro|Documento de identidad">Otro (DNI / Cédula / documento de identidad)</option>
                             </select>
                             {errors.fiscalIdType && (
                                 <p id={`${ids.fiscalIdType}-err`} className={errorClass}>{errors.fiscalIdType}</p>
@@ -340,11 +342,15 @@ export default function OrganizationRegister() {
                         </div>
 
                         <div>
-                            <Label htmlFor={ids.fiscalNumber} name="Número de identificación fiscal" />
+                            <Label
+                                htmlFor={ids.fiscalNumber}
+                                name={formData.countryFiscal === "Otro" ? "Número de documento de identidad" : "Número de identificación fiscal"}
+                                required
+                            />
                             <input
                                 id={ids.fiscalNumber}
                                 className={`${fieldClass} mt-2 ${errors.fiscalNumber ? "border-error" : ""}`}
-                                placeholder="Ej. J-12345678-9"
+                                placeholder={formData.countryFiscal === "Otro" ? "Ej. 12345678" : "Ej. J-12345678-9"}
                                 value={formData.fiscalNumber}
                                 onChange={(e) => setFormData({ ...formData, fiscalNumber: e.target.value })}
                                 aria-invalid={!!errors.fiscalNumber}
@@ -356,7 +362,7 @@ export default function OrganizationRegister() {
                         </div>
 
                         <div>
-                            <Label htmlFor={ids.entityType} name="Tipo de entidad" />
+                            <Label htmlFor={ids.entityType} name="Tipo de entidad" required />
                             <select
                                 id={ids.entityType}
                                 className={`${fieldClass} mt-2 ${errors.entityType ? "border-error" : ""}`}
@@ -397,7 +403,7 @@ export default function OrganizationRegister() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor={ids.registrationNumber} name="Número de registro" />
+                                <Label htmlFor={ids.registrationNumber} name="Número de registro" required />
                                 <input
                                     id={ids.registrationNumber}
                                     type="number"
@@ -414,7 +420,7 @@ export default function OrganizationRegister() {
                             </div>
 
                             <div>
-                                <Label htmlFor={ids.constitutionDate} name="Fecha de constitución" />
+                                <Label htmlFor={ids.constitutionDate} name="Fecha de constitución" required />
                                 <input
                                     id={ids.constitutionDate}
                                     type="date"
@@ -431,7 +437,7 @@ export default function OrganizationRegister() {
                         </div>
 
                         <div>
-                            <Label htmlFor={ids.legalAddress} name="Dirección" />
+                            <Label htmlFor={ids.legalAddress} name="Dirección" required />
                             <input
                                 id={ids.legalAddress}
                                 className={`${fieldClass} mt-2 ${errors.legalAddress ? "border-error" : ""}`}
@@ -448,7 +454,7 @@ export default function OrganizationRegister() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
-                                <Label htmlFor={ids.legalCountry} name="País" />
+                                <Label htmlFor={ids.legalCountry} name="País" required />
                                 <select
                                     id={ids.legalCountry}
                                     className={`${fieldClass} mt-2 ${errors.legalCountry ? "border-error" : ""}`}
@@ -468,7 +474,7 @@ export default function OrganizationRegister() {
                             </div>
 
                             <div>
-                                <Label htmlFor={ids.province} name="Provincia" />
+                                <Label htmlFor={ids.province} name="Provincia" required />
                                 <input
                                     id={ids.province}
                                     className={`${fieldClass} mt-2 ${errors.province ? "border-error" : ""}`}
@@ -484,7 +490,7 @@ export default function OrganizationRegister() {
                             </div>
 
                             <div>
-                                <Label htmlFor={ids.city} name="Ciudad" />
+                                <Label htmlFor={ids.city} name="Ciudad" required />
                                 <input
                                     id={ids.city}
                                     className={`${fieldClass} mt-2 ${errors.city ? "border-error" : ""}`}
@@ -509,7 +515,7 @@ export default function OrganizationRegister() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor={ids.legalRepresentativeName} name="Nombre" />
+                                <Label htmlFor={ids.legalRepresentativeName} name="Nombre" required />
                                 <input
                                     id={ids.legalRepresentativeName}
                                     className={`${fieldClass} mt-2 ${errors.legalRepresentativeName ? "border-error" : ""}`}
@@ -525,7 +531,7 @@ export default function OrganizationRegister() {
                             </div>
 
                             <div>
-                                <Label htmlFor={ids.legalRepresentativePosition} name="Cargo" />
+                                <Label htmlFor={ids.legalRepresentativePosition} name="Cargo" required />
                                 <input
                                     id={ids.legalRepresentativePosition}
                                     className={`${fieldClass} mt-2 ${errors.legalRepresentativePosition ? "border-error" : ""}`}
@@ -543,7 +549,7 @@ export default function OrganizationRegister() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor={ids.legalRepresentativePhone} name="Teléfono" />
+                                <Label htmlFor={ids.legalRepresentativePhone} name="Teléfono" required />
                                 <div id={ids.legalRepresentativePhone} className="mt-2">
                                     <PhoneField
                                         value={formData.legalRepresentativePhone}
@@ -556,7 +562,7 @@ export default function OrganizationRegister() {
                             </div>
 
                             <div>
-                                <Label htmlFor={ids.legalRepresentativeEmail} name="Email" />
+                                <Label htmlFor={ids.legalRepresentativeEmail} name="Email" required />
                                 <input
                                     id={ids.legalRepresentativeEmail}
                                     type="email"
@@ -574,7 +580,7 @@ export default function OrganizationRegister() {
                         </div>
 
                         <div>
-                            <Label htmlFor={ids.password} name="Contraseña para tu cuenta" />
+                            <Label htmlFor={ids.password} name="Contraseña para tu cuenta" required />
                             <input
                                 id={ids.password}
                                 type="password"
@@ -598,7 +604,7 @@ export default function OrganizationRegister() {
                         </legend>
 
                         <div>
-                            <Label htmlFor={ids.zone} name="Zona / distrito de cobertura" />
+                            <Label htmlFor={ids.zone} name="Zona / distrito de cobertura" required />
                             <input
                                 id={ids.zone}
                                 className={`${fieldClass} mt-2 ${errors.zone ? "border-error" : ""}`}
@@ -619,7 +625,7 @@ export default function OrganizationRegister() {
                         <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
                             Ubicación
                         </legend>
-                        <Label htmlFor={ids.location} name="Marca en el mapa la zona / cobertura geográfica" />
+                        <Label htmlFor={ids.location} name="Marca en el mapa la zona / cobertura geográfica" required />
                         <div id={ids.location} className="mt-2">
                             <Location
                                 value={formData.location}
@@ -672,7 +678,7 @@ export default function OrganizationRegister() {
                         </div>
 
                         <div>
-                            <Label htmlFor={ids.mission} name="Misión" />
+                            <Label htmlFor={ids.mission} name="Misión" required />
                             <textarea
                                 id={ids.mission}
                                 rows={3}
@@ -689,7 +695,7 @@ export default function OrganizationRegister() {
                         </div>
 
                         <div>
-                            <Label htmlFor={ids.vision} name="Visión" />
+                            <Label htmlFor={ids.vision} name="Visión" required />
                             <textarea
                                 id={ids.vision}
                                 rows={3}
@@ -706,24 +712,27 @@ export default function OrganizationRegister() {
                         </div>
 
                         <div>
-                            <Label htmlFor={ids.scope} name="Ámbito de actuación" />
-                            <textarea
+                            <Label htmlFor={ids.scope} name="Ámbito de actuación" required />
+                            <select
                                 id={ids.scope}
-                                rows={2}
                                 className={`${fieldClass} mt-2 ${errors.scope ? "border-error" : ""}`}
-                                placeholder="Ej. Nacional, regional, local..."
                                 value={formData.scope}
                                 onChange={(e) => setFormData({ ...formData, scope: e.target.value })}
                                 aria-invalid={!!errors.scope}
                                 aria-describedby={errors.scope ? `${ids.scope}-err` : undefined}
-                            />
+                            >
+                                <option value="">Selecciona un ámbito de actuación</option>
+                                {SCOPE_OPTIONS.map((option) => (
+                                    <option key={option} value={option}>{option}</option>
+                                ))}
+                            </select>
                             {errors.scope && (
                                 <p id={`${ids.scope}-err`} className={errorClass}>{errors.scope}</p>
                             )}
                         </div>
 
                         <div>
-                            <Label htmlFor={ids.collectiveServed} name="Colectivos atendidos" />
+                            <Label htmlFor={ids.collectiveServed} name="Colectivos atendidos" required />
                             <textarea
                                 id={ids.collectiveServed}
                                 rows={2}
@@ -744,7 +753,7 @@ export default function OrganizationRegister() {
                         <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
                             Tipos de discapacidad con las que trabaja
                         </legend>
-                        <Label htmlFor={ids.disabilityTypes} name="Selecciona todas las que apliquen" />
+                        <Label htmlFor={ids.disabilityTypes} name="Selecciona todas las que apliquen" required />
                         <div
                             id={ids.disabilityTypes}
                             role="group"
@@ -783,7 +792,7 @@ export default function OrganizationRegister() {
                         <legend className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
                             Servicios ofrecidos
                         </legend>
-                        <Label htmlFor={ids.services} name="Describe los servicios que ofrece la organización" />
+                        <Label htmlFor={ids.services} name="Describe los servicios que ofrece la organización" required />
                         <textarea
                             id={ids.services}
                             rows={4}

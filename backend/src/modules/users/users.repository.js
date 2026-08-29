@@ -328,17 +328,20 @@ async function withTransaction(callback) {
 // ---------------------------------------------------------------------------
 
 const ORGANIZATION_PROFILE_SELECT = `
-  user_id AS "userId",
-  organization_type_id AS "organizationTypeId",
-  tax_id AS "taxId",
-  registry_number AS "registryNumber",
-  founded_at AS "foundedAt",
-  country, province, city, address,
-  website, social_links AS "socialLinks",
-  mission, vision, scope,
-  served_groups AS "servedGroups",
-  created_at AS "createdAt",
-  updated_at AS "updatedAt"
+  op.user_id AS "userId",
+  op.organization_type_id AS "organizationTypeId",
+  ct.name AS "organizationTypeName",
+  op.tax_id AS "taxId",
+  op.tax_id_type AS "taxIdType",
+  op.other_entity_type AS "otherEntityType",
+  op.registry_number AS "registryNumber",
+  op.founded_at AS "foundedAt",
+  op.country, op.province, op.city, op.address,
+  op.website, op.social_links AS "socialLinks",
+  op.mission, op.vision, op.scope,
+  op.served_groups AS "servedGroups",
+  op.created_at AS "createdAt",
+  op.updated_at AS "updatedAt"
 `;
 
 /**
@@ -349,8 +352,9 @@ const ORGANIZATION_PROFILE_SELECT = `
 async function findOrganizationProfileById(userId) {
   const query = `
     SELECT ${ORGANIZATION_PROFILE_SELECT}
-    FROM organization_profiles
-    WHERE user_id = $1
+    FROM organization_profiles op
+    LEFT JOIN catalog ct ON ct.id = op.organization_type_id AND ct.type = 'organization_type'
+    WHERE op.user_id = $1
   `;
   const result = await db.query(query, [userId]);
   return result.rows[0] || null;

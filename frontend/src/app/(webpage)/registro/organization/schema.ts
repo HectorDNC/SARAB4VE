@@ -153,7 +153,7 @@ export const organizationSchema = z.object({
   scope: z
     .string()
     .trim()
-    .min(10, "Describe el ámbito de actuación"),
+    .min(1, "Selecciona un ámbito de actuación"),
 
   collectiveServed: z
     .string()

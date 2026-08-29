@@ -51,10 +51,14 @@ export type OrganizationRegisterPayload = {
   organizationName: string;
   legalDocument: string;
   acceptedTerms: true;
-  
+  location?: { lat: number; lng: number } | null;
+  zone?: string;
+
   // Campos extendidos del perfil de organización
   organizationTypeId: number;
   taxId?: string;
+  taxIdType?: string;
+  otherEntityType?: string;
   registryNumber?: string;
   foundedAt?: string; // YYYY-MM-DD
   country?: string;

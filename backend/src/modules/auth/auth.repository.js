@@ -236,13 +236,14 @@ async function findUserById(userId) {
 
 const INSERT_ORGANIZATION_PROFILE = `
   INSERT INTO organization_profiles (
-    user_id, organization_type_id, tax_id, registry_number, founded_at,
+    user_id, organization_type_id, tax_id, tax_id_type, other_entity_type, registry_number, founded_at,
     country, province, city, address, website, social_links,
     mission, vision, scope, served_groups
   )
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, $17)
   RETURNING user_id AS "userId", organization_type_id AS "organizationTypeId",
-            tax_id AS "taxId", registry_number AS "registryNumber", founded_at AS "foundedAt",
+            tax_id AS "taxId", tax_id_type AS "taxIdType", other_entity_type AS "otherEntityType",
+            registry_number AS "registryNumber", founded_at AS "foundedAt",
             country, province, city, address, website, social_links AS "socialLinks",
             mission, vision, scope, served_groups AS "servedGroups",
             created_at AS "createdAt", updated_at AS "updatedAt"
@@ -260,6 +261,8 @@ async function insertOrganizationProfile(client, userId, profile) {
     userId,
     profile.organizationTypeId,
     profile.taxId,
+    profile.taxIdType,
+    profile.otherEntityType,
     profile.registryNumber,
     profile.foundedAt,
     profile.country,

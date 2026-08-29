@@ -351,9 +351,24 @@ export default function OrganizationDetailPage() {
                     <SectionTitle icon="account_balance" title="Perfil institucional" />
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {organizationProfile.organizationTypeName && (
+                            <InfoCard icon="corporate_fare" label="Tipo de entidad">
+                                <p className="text-sm font-medium text-on-surface">
+                                    {organizationProfile.organizationTypeName}
+                                    {organizationProfile.otherEntityType && (
+                                        <span className="text-on-surface-variant"> ({organizationProfile.otherEntityType})</span>
+                                    )}
+                                </p>
+                            </InfoCard>
+                        )}
                         {organizationProfile.taxId && (
                             <InfoCard icon="tag" label="ID Fiscal (CIF/NIF)">
-                                <p className="text-sm font-medium text-on-surface">{organizationProfile.taxId}</p>
+                                <p className="text-sm font-medium text-on-surface">
+                                    {organizationProfile.taxId}
+                                    {organizationProfile.taxIdType && (
+                                        <span className="text-on-surface-variant"> ({organizationProfile.taxIdType})</span>
+                                    )}
+                                </p>
                             </InfoCard>
                         )}
                         {organizationProfile.registryNumber && (
@@ -400,11 +415,12 @@ export default function OrganizationDetailPage() {
                             )}
                             {organizationProfile.socialLinks && Object.keys(organizationProfile.socialLinks).length > 0 && (
                                 <InfoCard icon="share" label="Redes sociales">
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex flex-col gap-1.5">
                                         {Object.entries(organizationProfile.socialLinks).map(([red, url]) => (
                                             <a key={red} href={url as string} target="_blank" rel="noopener noreferrer"
-                                                className="text-xs font-medium text-primary hover:underline bg-surface-container-high rounded-full px-2.5 py-0.5">
-                                                {red}
+                                                className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline break-all">
+                                                <span className="material-symbols-rounded text-base shrink-0" aria-hidden="true">link</span>
+                                                {url as string}
                                             </a>
                                         ))}
                                     </div>

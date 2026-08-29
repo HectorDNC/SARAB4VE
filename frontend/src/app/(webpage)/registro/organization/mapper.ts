@@ -75,12 +75,10 @@ export const DOCUMENT_TYPE_IDS: Record<string, number> = {
  * del formData de nuestro formulario.
  *
  * Huecos conocidos (no resueltos en el backend a la fecha):
- *   - otherEntityType: no existe campo de texto libre en organization_profiles
- *     para cuando se elige "Otra (cual)". Se pierde ese dato hasta que el
- *     backend agregue una columna.
- *   - countryFiscal / fiscalIdType: el backend solo tiene `taxId` genérico
- *     (VARCHAR 30). Se envía solo `fiscalNumber`; se pierde la distinción de
- *     tipo de identificador (RIF/NIT/RUC/etc.) y país.
+ *   - countryFiscal: el backend ahora guarda `taxIdType` (RIF/NIT/RUC/etc.,
+ *     o "Documento de identidad" para el caso "Otro" — ver migración 003),
+ *     pero el país del identificador fiscal (`countryFiscal`) sigue sin
+ *     tener columna propia — no se envía.
  *   - socialMedia (texto libre): se envuelve en un objeto { other: ... } como
  *     workaround, ya que `socialLinks` espera claves por red social.
  *   - services (texto libre): NO tiene mapeo posible a `serviceIds` (picklist
@@ -113,10 +111,14 @@ export function buildOrganizationRegisterPayload(
         organizationName: formData.organizationName,
         legalDocument: formData.fiscalNumber,
         acceptedTerms: true as const,
-        
+        location: formData.location || undefined,
+        zone: formData.zone || undefined,
+
         // Campos extendidos del perfil de organización
         organizationTypeId,
         taxId: formData.fiscalNumber || undefined,
+        taxIdType: formData.fiscalIdType || undefined,
+        otherEntityType: formData.otherEntityType || undefined,
         registryNumber: formData.registrationNumber ? String(formData.registrationNumber) : undefined,
         foundedAt: formData.constitutionDate || undefined,
         country: formData.legalCountry || undefined,
