@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Registro — SARA",
   description:
-    "Elige cómo quieres unirte a la red SARA: como voluntario o como organización.",
+    "Elige cómo quieres unirte a la red SARA: como ciudadano, voluntario o como organización.",
 };
 
 type RegistroOption = {
@@ -12,10 +12,18 @@ type RegistroOption = {
   title: string;
   description: string;
   icon: string;
-  variant: "filled" | "outlined";
+  variant: "filled" | "outlined" | "danger";
 };
 
 const registroOptions: RegistroOption[] = [
+  {
+    href: "/registro/citizen",
+    title: "Necesito ayuda",
+    description:
+      "Quiero crear una cuenta para solicitar apoyo o reportar una necesidad durante una emergencia.",
+    icon: "sos",
+    variant: "danger",
+  },
   {
     href: "/registro/volunteer",
     title: "Soy voluntario",
@@ -37,7 +45,7 @@ const registroOptions: RegistroOption[] = [
 export default function RegistroPage() {
   return (
     <section className="px-5 lg:px-10 py-10 lg:py-12">
-      <div className="max-w-3xl mx-auto min-h-[80dvh] flex items-center">
+      <div className="max-w-4xl mx-auto min-h-[80dvh] flex items-center">
         <div>
           <div className="text-center mb-10 lg:mb-12">
             <h1 className="text-3xl lg:text-4xl font-bold text-on-surface">
@@ -51,39 +59,48 @@ export default function RegistroPage() {
 
           <ul
             role="list"
-            className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6"
           >
             {registroOptions.map((option) => {
-              const isFilled = option.variant === "filled";
+              const isDanger = option.variant === "danger";
               return (
                 <li key={option.href}>
                   <Link
                     href={option.href}
                     aria-label={`Registrarse como ${option.title}`}
                     className={[
-                      "group flex items-center gap-3 rounded-full px-6 py-4",
-                      "font-semibold text-base transition-all",
-                      "active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary",
-                      isFilled
-                        ? "bg-primary text-on-primary shadow-md hover:brightness-110"
-                        : "border-2 border-primary text-primary bg-transparent hover:bg-primary/10",
+                      "group block rounded-2xl border-2 p-5 transition-all",
+                      "hover:shadow-md active:scale-[0.98]",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                      isDanger
+                        ? "border-error/40 hover:border-error focus-visible:ring-error"
+                        : "border-outline-variant hover:border-primary/50 focus-visible:ring-primary",
                     ].join(" ")}
                   >
-                    <span
-                      className={[
-                        "material-symbols-rounded text-2xl shrink-0",
-                        isFilled ? "text-on-primary" : "text-primary",
-                      ].join(" ")}
-                      aria-hidden="true"
-                    >
-                      {option.icon}
-                    </span>
-                    <span className="truncate">{option.title}</span>
-                  </Link>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={[
+                          "material-symbols-rounded text-2xl shrink-0",
+                          isDanger ? "text-error" : "text-primary",
+                        ].join(" ")}
+                        aria-hidden="true"
+                      >
+                        {option.icon}
+                      </span>
+                      <span
+                        className={[
+                          "font-semibold text-base",
+                          isDanger ? "text-error" : "text-on-surface",
+                        ].join(" ")}
+                      >
+                        {option.title}
+                      </span>
+                    </div>
 
-                  <p className="mt-2 px-2 text-sm text-on-surface-variant text-center sm:text-left">
-                    {option.description}
-                  </p>
+                    <p className="mt-3 text-sm text-on-surface-variant leading-relaxed">
+                      {option.description}
+                    </p>
+                  </Link>
                 </li>
               );
             })}
