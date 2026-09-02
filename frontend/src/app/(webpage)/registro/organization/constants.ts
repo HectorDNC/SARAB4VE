@@ -72,7 +72,7 @@ export const COUNTRIES_FISCAL_ID = [
   
   // Documentación requerida (adjuntos)
   export const REQUIRED_DOCUMENTS = [
-    { id: "cif", name: "CIF", required: true },
+    { id: "cif", name: "Identificación Fiscal", required: true },
     { id: "estatutos", name: "Estatutos", required: true },
     { id: "inscripcion", name: "Inscripción registral", required: true },
     { id: "id_representante", name: "Documento de identidad representante", required: true },
