@@ -53,21 +53,37 @@ export const SERVICE_CATALOG_IDS: Record<string, number> = {
     "Comedor / alimentación": 50,
 };
 
-// Mapeo de IDs de documentos del formulario a document_types del backend
-// Seed del backend (verification_schema.sql):
-//   ID 1: estatutos | ID 2: rif | ID 3: acta_constitutiva
-//   ID 4: identificacion_representante | ID 5: certificado_bancario
-//   ID 6: declaracion_impuestos | ID 7: memoria_actividades
+// Mapeo de IDs de documentos del formulario a document_types del backend.
+// Ver backend/sql/migrations/006_fix_organization_document_types.sql — los
+// nombres en la BD ya coinciden 1:1 con las etiquetas de REQUIRED_DOCUMENTS
+// en constants.ts, y cada documento tiene su propio ID (ya no comparten).
+//
+// IMPORTANTE — IDs 1-7 verificados contra la BD REAL de producción
+// (proyecto Supabase, base "sara", tabla document_types, 2026-08-31):
+// coinciden con el orden del seed (estatutos=1, rif=2 "Identificación
+// Fiscal", acta_constitutiva=3, identificacion_representante=4,
+// certificado_bancario=5 "Seguro de responsabilidad civil",
+// declaracion_impuestos=6 "Certificado fiscal", memoria_actividades=7
+// "Acuerdo de Participación"). PERO codigo_etico/politica_accesibilidad
+// son filas NUEVAS agregadas por la migración 006 — en una base recién
+// creada desde verification_schema.sql les tocaría 8/9, pero en la BD
+// real de producción (que ya tenía muchas más filas acumuladas en
+// document_types antes de correr esta migración) terminaron en 34/35.
+// Los valores de abajo son los reales de producción — si vuelves a correr
+// la migración 006 en otro entorno (ej. un nuevo ambiente de staging),
+// verifica los IDs reales con:
+//   SELECT id, code FROM document_types WHERE entity_type='organization';
+// y actualiza este mapa si no coinciden.
 export const DOCUMENT_TYPE_IDS: Record<string, number> = {
-    "cif": 2,              // RIF
-    "estatutos": 1,        // Estatutos
-    "inscripcion": 3,      // Acta constitutiva / Inscripción registral
-    "id_representante": 4, // Identificación del representante legal
-    "certificado_fiscal": 6, // Declaración de impuestos
-    "seguro_responsabilidad": 5, // Certificado bancario (aproximación)
-    "politica_proteccion_datos": 7, // No existe exacto — reutiliza 7
-    "codigo_etico": 7,     // No existe exacto — reutiliza 7
-    "politica_accesibilidad": 7, // No existe exacto — reutiliza 7
+    "cif": 2,
+    "estatutos": 1,
+    "inscripcion": 3,
+    "id_representante": 4,
+    "certificado_fiscal": 6,
+    "seguro_responsabilidad": 5,
+    "politica_proteccion_datos": 7,
+    "codigo_etico": 34,
+    "politica_accesibilidad": 35,
 };
 
 /**

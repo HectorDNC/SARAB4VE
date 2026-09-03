@@ -325,14 +325,22 @@ INSERT INTO catalog (type, name) VALUES
 -- =========================================================================
 
 -- Organización
+-- Nombres alineados 1:1 con las etiquetas del formulario de registro
+-- (frontend/.../registro/organization/constants.ts#REQUIRED_DOCUMENTS).
+-- 'certificado_bancario' y 'declaracion_impuestos' se repurponen como
+-- 'Seguro de responsabilidad civil' y 'Certificado fiscal' respectivamente
+-- (documentos que sí pide el formulario y no tenían tipo propio); ver
+-- migración 006_fix_organization_document_types.sql para el detalle.
 INSERT INTO document_types (code, name, entity_type, is_required) VALUES
-  ('estatutos', 'Estatutos de la organización', 'organization', true),
-  ('rif', 'Registro de Información Fiscal (RIF)', 'organization', true),
-  ('acta_constitutiva', 'Acta constitutiva', 'organization', true),
-  ('identificacion_representante', 'Identificación del representante legal', 'organization', true),
-  ('certificado_bancario', 'Certificado bancario', 'organization', false),
-  ('declaracion_impuestos', 'Declaración de impuestos del último ejercicio', 'organization', false),
-  ('memoria_actividades', 'Memoria de actividades', 'organization', false);
+  ('estatutos', 'Estatutos', 'organization', true),
+  ('rif', 'Identificación Fiscal', 'organization', true),
+  ('acta_constitutiva', 'Inscripción registral', 'organization', true),
+  ('identificacion_representante', 'Documento de identidad representante', 'organization', true),
+  ('certificado_bancario', 'Seguro de responsabilidad civil', 'organization', true),
+  ('declaracion_impuestos', 'Certificado fiscal', 'organization', true),
+  ('memoria_actividades', 'Acuerdo de Participación (firmado)', 'organization', true),
+  ('codigo_etico', 'Código Ético', 'organization', true),
+  ('politica_accesibilidad', 'Política de Accesibilidad', 'organization', true);
 
 -- Voluntario profesional
 INSERT INTO document_types (code, name, entity_type, is_required) VALUES
