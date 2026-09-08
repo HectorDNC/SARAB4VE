@@ -34,7 +34,12 @@ function createHelpRequest(service, schema, repository) {
     }
 
     try {
-      const row = await service.createHelpRequest(req.body, schema, repository);
+      const row = await service.createHelpRequest(
+        req.body,
+        schema,
+        repository,
+        req.user?.userId || null,
+      );
       return res.status(201).json({ data: row });
     } catch (error) {
       return next(error);

@@ -15,6 +15,7 @@ export type HelpRequestPayload = {
 
 export interface HelpRequestListItem {
   id: string;
+  userId?: string | null;
   requesterName: string;
   contactMethod: string;
   contactValue: string;
@@ -94,6 +95,7 @@ export async function sendHelpRequest(payload: HelpRequestPayload) {
 
 export interface HelpRequestDetail {
   id: string;
+  userId?: string | null;
   requesterName: string;
   contactMethod: string;
   contactValue: string;

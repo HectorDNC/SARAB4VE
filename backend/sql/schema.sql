@@ -2,6 +2,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS help_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
   requester_name TEXT NOT NULL,
   contact_method TEXT NOT NULL,
   contact_value TEXT NOT NULL,
@@ -20,6 +21,7 @@ CREATE TABLE IF NOT EXISTS help_requests (
 );
 
 ALTER TABLE help_requests
+  ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id),
   ADD COLUMN IF NOT EXISTS volunteer_name TEXT,
   ADD COLUMN IF NOT EXISTS volunteer_contact_method TEXT,
   ADD COLUMN IF NOT EXISTS volunteer_contact_value TEXT,
@@ -104,6 +106,9 @@ CREATE INDEX IF NOT EXISTS help_requests_status_idx
 CREATE INDEX IF NOT EXISTS help_requests_created_at_idx
   ON help_requests (created_at DESC);
 
+CREATE INDEX IF NOT EXISTS help_requests_user_id_idx
+  ON help_requests (user_id);
+
 -- ---------------------------------------------------------------------------
 -- Attendees — vinculan emergencies / help_requests con los usuarios que las atienden
 -- ---------------------------------------------------------------------------
@@ -138,6 +143,9 @@ ALTER TABLE emergencies
   ADD COLUMN IF NOT EXISTS report_origin TEXT NOT NULL DEFAULT 'form';
 
 ALTER TABLE emergencies
+  ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id);
+
+ALTER TABLE emergencies
   ADD COLUMN IF NOT EXISTS voice_note_url TEXT;
 
 ALTER TABLE emergencies
@@ -160,5 +168,9 @@ ALTER TABLE emergencies
 
 ALTER TABLE emergencies
   ADD COLUMN IF NOT EXISTS processing_status VARCHAR(20) DEFAULT null;
+
+-- Índice para consultas por usuario en emergencias
+CREATE INDEX IF NOT EXISTS emergencies_user_id_idx
+  ON emergencies (user_id);
   
 -- Valores: 'none' (no aplica), 'recibida', 'procesando', 'completa', 'pendiente_revision', 'error'

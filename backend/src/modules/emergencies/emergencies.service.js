@@ -30,8 +30,9 @@ async function hashAccessToken(token) {
  * @param {Object} payload — cuerpo del request sin procesar
  * @returns {Object} payload listo para INSERT
  */
-function normalizeCreateEmergency(payload) {
+function normalizeCreateEmergency(payload, userId) {
   return {
+    userId: userId || null,
     requesterName: (payload.requesterName || "Persona en emergencia").trim(),
     isInjured: Boolean(payload.isInjured),
     cannotMove: Boolean(payload.cannotMove),
@@ -56,10 +57,11 @@ function normalizeCreateEmergency(payload) {
  * Genera automáticamente un access_token para que el ciudadano anónimo pueda
  * acceder al chat sin necesidad de JWT.
  * @param {Object} payload — ya validado
+ * @param {string|null} [userId] — id del usuario autenticado (opcional)
  * @returns {Promise<Object>} fila insertada + accessToken en texto plano
  */
-async function createEmergency(payload) {
-  const data = normalizeCreateEmergency(payload);
+async function createEmergency(payload, userId) {
+  const data = normalizeCreateEmergency(payload, userId);
 
   // Generar access token para ciudadano anónimo
   const accessToken = generateAccessToken();
@@ -68,6 +70,7 @@ async function createEmergency(payload) {
   const result = await db.query(
     `
       INSERT INTO emergencies (
+        user_id,
         requester_name,
         is_injured,
         cannot_move,
@@ -84,14 +87,15 @@ async function createEmergency(payload) {
         description,
         access_token_hash
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-      RETURNING id, requester_name, is_injured, cannot_move, disability_type,
-                communication_mode, disability_subcategory, extra_info,
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      RETURNING id, user_id AS "userId", requester_name, is_injured, cannot_move,
+                disability_type, communication_mode, disability_subcategory, extra_info,
                 voice_note_url, voice_note_duration_sec, latitude, longitude,
                 urgency, need_type, description, status, assigned_at,
                 resolved_at, created_at, updated_at
     `,
     [
+      data.userId,
       data.requesterName,
       data.isInjured,
       data.cannotMove,

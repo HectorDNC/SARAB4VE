@@ -115,6 +115,7 @@ function buildListHelpRequestsQuery(filters) {
 
 const INSERT_HELP_REQUEST = `
   INSERT INTO help_requests (
+    user_id,
     requester_name,
     contact_method,
     contact_value,
@@ -124,8 +125,9 @@ const INSERT_HELP_REQUEST = `
     longitude,
     urgency
   )
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
   RETURNING id,
+            user_id AS "userId",
             requester_name AS "requesterName",
             contact_method AS "contactMethod",
             contact_value AS "contactValue",
@@ -143,6 +145,7 @@ const INSERT_HELP_REQUEST = `
  */
 async function insertHelpRequest(payload) {
   const result = await db.query(INSERT_HELP_REQUEST, [
+    payload.userId,
     payload.requesterName,
     payload.contactMethod,
     payload.contactValue,
@@ -235,6 +238,7 @@ async function findHelpRequestStatusById(id) {
 
 const FIND_BY_ID = `
   SELECT id,
+         user_id AS "userId",
          requester_name AS "requesterName",
          contact_method AS "contactMethod",
          contact_value AS "contactValue",

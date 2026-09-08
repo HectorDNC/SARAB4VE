@@ -33,13 +33,15 @@ const REQUEST_STATUS_SET = new Set(REQUEST_STATUSES);
 
 /**
  * @param {Object} payload
+ * @param {string|null} [userId] — id del usuario autenticado (opcional)
  * @returns {Object}
  */
-function normalizeCreateHelpRequest(payload) {
+function normalizeCreateHelpRequest(payload, userId) {
   const hasLat = payload.latitude != null && payload.latitude !== "";
   const hasLng = payload.longitude != null && payload.longitude !== "";
 
   return {
+    userId: userId || null,
     requesterName: payload.requesterName.trim(),
     contactMethod: payload.contactMethod.trim(),
     contactValue: payload.contactValue.trim(),
