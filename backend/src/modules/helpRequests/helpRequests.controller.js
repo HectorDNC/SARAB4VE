@@ -24,6 +24,7 @@ function listHelpRequests(service, repository, schema) {
 
 /**
  * POST /api/help-requests
+ * multipart/form-data: campos de texto + archivos opcionales "carnet" y "voiceNote"
  */
 function createHelpRequest(service, schema, repository) {
   return async (req, res, next) => {
@@ -34,7 +35,7 @@ function createHelpRequest(service, schema, repository) {
     }
 
     try {
-      const row = await service.createHelpRequest(req.body, schema, repository);
+      const row = await service.createHelpRequest(req.body, schema, repository, req.files || {});
       return res.status(201).json({ data: row });
     } catch (error) {
       return next(error);

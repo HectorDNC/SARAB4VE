@@ -1,16 +1,41 @@
 /**
  * Servicio — lógica de negocio para el dominio de help-requests.
  */
+const crypto = require("crypto");
+const storage = require("../../services/storage");
 
 /**
- * Crea un help-request.
+ * Crea un help-request. Si vienen archivos adjuntos (carnet de
+ * discapacidad y/o nota de voz), los sube a R2 antes de insertar la fila.
  * @param {Object} payload — ya validado
  * @param {Object} schema
  * @param {Object} repository
+ * @param {Object} [files] — req.files de multer, ej. { carnet: [file], voiceNote: [file] }
  * @returns {Promise<Object>}
  */
-async function createHelpRequest(payload, schema, repository) {
+async function createHelpRequest(payload, schema, repository, files = {}) {
   const normalized = schema.normalizeCreateHelpRequest(payload);
+
+  const carnetFile = files.carnet?.[0];
+  if (carnetFile) {
+    const { storageKey } = await storage.uploadDocument(
+      carnetFile.buffer,
+      carnetFile.originalname,
+      carnetFile.mimetype,
+      crypto.randomUUID(),
+    );
+    normalized.disabilityCardKey = storageKey;
+  }
+
+  const voiceNoteFile = files.voiceNote?.[0];
+  if (voiceNoteFile) {
+    normalized.voiceNoteUrl = await storage.uploadAudio(
+      voiceNoteFile.buffer,
+      voiceNoteFile.originalname,
+      voiceNoteFile.mimetype,
+    );
+  }
+
   return repository.insertHelpRequest(normalized);
 }
 

@@ -26,6 +26,30 @@ ALTER TABLE help_requests
   ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;
 
+-- Campos ampliados del formulario de solicitud de apoyo (/request).
+-- `requester_name` sigue siendo "Nombre Apellidos" concatenado (el
+-- formulario captura ambos por separado, pero no se agrega una columna
+-- last_name propia para no romper el resto de queries/vistas que ya
+-- dependen de un solo nombre completo, igual que en emergencies/users).
+ALTER TABLE help_requests
+  ADD COLUMN IF NOT EXISTS address TEXT,
+  ADD COLUMN IF NOT EXISTS gender TEXT,
+  ADD COLUMN IF NOT EXISTS age INT,
+  ADD COLUMN IF NOT EXISTS disability_type TEXT,
+  ADD COLUMN IF NOT EXISTS disability_other_note TEXT,
+  ADD COLUMN IF NOT EXISTS disability_card_key TEXT,
+  ADD COLUMN IF NOT EXISTS voice_note_url TEXT;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'help_requests_age_check'
+  ) THEN
+    ALTER TABLE help_requests
+      ADD CONSTRAINT help_requests_age_check CHECK (age IS NULL OR (age >= 0 AND age <= 120));
+  END IF;
+END $$;
+
 DO $$
 BEGIN
   IF NOT EXISTS (

@@ -122,9 +122,16 @@ const INSERT_HELP_REQUEST = `
     description,
     latitude,
     longitude,
-    urgency
+    urgency,
+    address,
+    gender,
+    age,
+    disability_type,
+    disability_other_note,
+    disability_card_key,
+    voice_note_url
   )
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
   RETURNING id,
             requester_name AS "requesterName",
             contact_method AS "contactMethod",
@@ -132,13 +139,21 @@ const INSERT_HELP_REQUEST = `
             need_type AS "needType",
             description,
             latitude, longitude, urgency, status,
+            address,
+            gender,
+            age,
+            disability_type AS "disabilityType",
+            disability_other_note AS "disabilityOtherNote",
+            disability_card_key AS "disabilityCardKey",
+            voice_note_url AS "voiceNoteUrl",
             assigned_at AS "assignedAt",
             resolved_at AS "resolvedAt",
             created_at AS "createdAt"
 `;
 
 /**
- * @param {Object} payload — ya normalizado
+ * @param {Object} payload — ya normalizado (incluye disabilityCardKey/voiceNoteUrl
+ *   ya subidos a R2 por el service, si se adjuntaron)
  * @returns {Promise<Object>}
  */
 async function insertHelpRequest(payload) {
@@ -151,6 +166,13 @@ async function insertHelpRequest(payload) {
     payload.latitude,
     payload.longitude,
     payload.urgency,
+    payload.address,
+    payload.gender,
+    payload.age,
+    payload.disabilityType,
+    payload.disabilityOtherNote,
+    payload.disabilityCardKey || null,
+    payload.voiceNoteUrl || null,
   ]);
   return result.rows[0];
 }
@@ -241,6 +263,13 @@ const FIND_BY_ID = `
          need_type AS "needType",
          description,
          latitude, longitude, urgency, status,
+         address,
+         gender,
+         age,
+         disability_type AS "disabilityType",
+         disability_other_note AS "disabilityOtherNote",
+         disability_card_key AS "disabilityCardKey",
+         voice_note_url AS "voiceNoteUrl",
          volunteer_name AS "volunteerName",
          volunteer_contact_method AS "volunteerContactMethod",
          volunteer_contact_value AS "volunteerContactValue",

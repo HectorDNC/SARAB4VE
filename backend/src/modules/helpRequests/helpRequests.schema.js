@@ -23,9 +23,31 @@ const REQUEST_STATUSES = ["open", "assigned", "resolved"];
 const DEFAULT_RADIUS_KM = 10;
 const MAX_RADIUS_KM = 100;
 
+// Mismo catálogo de 11 tipos que usan los formularios de registro de
+// voluntario/organización (backend/sql/verification_schema.sql), como
+// texto libre (sin FK al catálogo, que está pensado para roles
+// autenticados) — "Otras" habilita disabilityOtherNote.
+const DISABILITY_TYPES = [
+  "Visual",
+  "Auditiva",
+  "Física",
+  "Intelectual",
+  "Psicosocial",
+  "TEA",
+  "Daño cerebral",
+  "Discapacidad orgánica/visceral",
+  "Enfermedades raras",
+  "Multidiscapacidad",
+  "Otras",
+];
+
+const MIN_AGE = 0;
+const MAX_AGE = 120;
+
 const NEED_TYPE_SET = new Set(NEED_TYPES);
 const URGENCY_LEVEL_SET = new Set(URGENCY_LEVELS);
 const REQUEST_STATUS_SET = new Set(REQUEST_STATUSES);
+const DISABILITY_TYPE_SET = new Set(DISABILITY_TYPES);
 
 // ---------------------------------------------------------------------------
 // Normalización — creación
@@ -38,6 +60,8 @@ const REQUEST_STATUS_SET = new Set(REQUEST_STATUSES);
 function normalizeCreateHelpRequest(payload) {
   const hasLat = payload.latitude != null && payload.latitude !== "";
   const hasLng = payload.longitude != null && payload.longitude !== "";
+  const hasAge = payload.age != null && payload.age !== "";
+  const disabilityType = payload.disabilityType ? payload.disabilityType.trim() : null;
 
   return {
     requesterName: payload.requesterName.trim(),
@@ -48,6 +72,14 @@ function normalizeCreateHelpRequest(payload) {
     latitude: hasLat && hasLng ? Number(payload.latitude) : null,
     longitude: hasLat && hasLng ? Number(payload.longitude) : null,
     urgency: payload.urgency || "medium",
+    address: payload.address ? payload.address.trim() : null,
+    gender: payload.gender ? payload.gender.trim() : null,
+    age: hasAge ? Number(payload.age) : null,
+    disabilityType,
+    disabilityOtherNote:
+      disabilityType === "Otras" && payload.disabilityOtherNote
+        ? payload.disabilityOtherNote.trim()
+        : null,
   };
 }
 
@@ -108,6 +140,19 @@ function validateCreateHelpRequest(payload) {
 
   if (payload.urgency && !URGENCY_LEVEL_SET.has(payload.urgency)) {
     errors.push("urgency is invalid");
+  }
+
+  // age — opcional (acepta string numérico desde multipart/form-data)
+  const hasAge = payload.age != null && payload.age !== "";
+  if (hasAge) {
+    const age = toNumber(payload.age);
+    if (!Number.isFinite(age) || !Number.isInteger(age) || age < MIN_AGE || age > MAX_AGE) {
+      errors.push(`age must be an integer between ${MIN_AGE} and ${MAX_AGE}`);
+    }
+  }
+
+  if (payload.disabilityType && !DISABILITY_TYPE_SET.has(payload.disabilityType)) {
+    errors.push("disabilityType is invalid");
   }
 
   return {
@@ -240,11 +285,15 @@ module.exports = {
   NEED_TYPES,
   URGENCY_LEVELS,
   REQUEST_STATUSES,
+  DISABILITY_TYPES,
   DEFAULT_RADIUS_KM,
   MAX_RADIUS_KM,
+  MIN_AGE,
+  MAX_AGE,
   NEED_TYPE_SET,
   URGENCY_LEVEL_SET,
   REQUEST_STATUS_SET,
+  DISABILITY_TYPE_SET,
   // utilidades re-exportadas
   isBlank,
   isFiniteNumber,
