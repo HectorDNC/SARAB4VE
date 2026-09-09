@@ -168,3 +168,20 @@ export async function listHelpRequestAttendees(helpRequestId: string): Promise<H
   const json = await res.json();
   return json.data ?? [];
 }
+
+/**
+ * POST — vincula una solicitud enviada sin login con la cuenta de
+ * ciudadano recién creada (requiere el token de esa cuenta ya guardado
+ * en localStorage, vía getAuthHeaders()).
+ */
+export async function linkHelpRequestToAccount(helpRequestId: string): Promise<void> {
+  const res = await fetch(`${API}/api/help-requests/${encodeURIComponent(helpRequestId)}/link-account`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+}

@@ -246,7 +246,8 @@ const FIND_BY_ID = `
          volunteer_contact_value AS "volunteerContactValue",
          assigned_at AS "assignedAt",
          resolved_at AS "resolvedAt",
-         created_at AS "createdAt"
+         created_at AS "createdAt",
+         requester_user_id AS "requesterUserId"
   FROM help_requests
   WHERE id = $1
 `;
@@ -292,6 +293,25 @@ async function updateHelpRequestStatusToAssigned(id, volunteerId) {
   return result.rows[0] || null;
 }
 
+const LINK_REQUESTER_USER = `
+  UPDATE help_requests
+  SET requester_user_id = $2
+  WHERE id = $1 AND requester_user_id IS NULL
+  RETURNING id, requester_user_id AS "requesterUserId"
+`;
+
+/**
+ * Vincula un help request (creado sin login) con la cuenta del ciudadano
+ * que se registró después. No pisa un vínculo ya existente.
+ * @param {string} id
+ * @param {string} userId
+ * @returns {Promise<Object|null>}
+ */
+async function linkRequesterUser(id, userId) {
+  const result = await db.query(LINK_REQUESTER_USER, [id, userId]);
+  return result.rows[0] || null;
+}
+
 module.exports = {
   // queries de lectura
   buildListHelpRequestsQuery,
@@ -302,4 +322,5 @@ module.exports = {
   findHelpRequestStatusById,
   findHelpRequestById,
   updateHelpRequestStatusToAssigned,
+  linkRequesterUser,
 };

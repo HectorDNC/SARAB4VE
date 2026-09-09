@@ -86,10 +86,33 @@ async function getHelpRequestById(id, repository) {
   return { data: row, status: 200 };
 }
 
+/**
+ * Vincula un help request con la cuenta del ciudadano que se registró
+ * después de enviarlo. No pisa un vínculo ya existente.
+ * @param {string} id
+ * @param {string} userId
+ * @param {Object} repository
+ * @returns {Promise<{ data: Object|null, status: number, errors?: string[] }>}
+ */
+async function linkRequesterUser(id, userId, repository) {
+  const updated = await repository.linkRequesterUser(id, userId);
+  if (updated) {
+    return { data: updated, status: 200 };
+  }
+
+  const existing = await repository.findHelpRequestStatusById(id);
+  if (!existing) {
+    return { errors: ["help request not found"], status: 404 };
+  }
+
+  return { errors: ["help request is already linked to an account"], status: 409 };
+}
+
 module.exports = {
   createHelpRequest,
   listHelpRequests,
   acceptHelpRequest,
   resolveHelpRequest,
   getHelpRequestById,
+  linkRequesterUser,
 };

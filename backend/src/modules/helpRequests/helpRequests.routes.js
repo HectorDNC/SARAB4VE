@@ -22,8 +22,11 @@ router.post("/",
 router.post("/:id/accept", 
     authenticate, authorize("admin", "organization"), 
     controller.acceptHelpRequest(service, schema, repository));
-router.post("/:id/resolve", 
-    authenticate, authorize("admin", "organization"), 
+router.post("/:id/resolve",
+    authenticate, authorize("admin", "organization"),
     controller.resolveHelpRequest(service, schema, repository));
+router.post("/:id/link-account",
+    authenticate, authorize("citizen"),
+    controller.linkRequesterUser(service, schema, repository));
 
 module.exports = router;

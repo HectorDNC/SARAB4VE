@@ -160,5 +160,18 @@ ALTER TABLE emergencies
 
 ALTER TABLE emergencies
   ADD COLUMN IF NOT EXISTS processing_status VARCHAR(20) DEFAULT null;
-  
+
 -- Valores: 'none' (no aplica), 'recibida', 'procesando', 'completa', 'pendiente_revision', 'error'
+
+-- ---------------------------------------------------------------------------
+-- Vincular solicitudes anónimas con la cuenta que el solicitante crea después
+-- ---------------------------------------------------------------------------
+-- `help_requests` se puede crear sin login (POST /api/help-requests es
+-- público). Si la persona luego se registra como ciudadano, esta columna
+-- permite asociar esa cuenta con la(s) solicitud(es) que ya había enviado,
+-- para poder seguirlas. Queda NULL mientras la solicitud siga anónima.
+ALTER TABLE help_requests
+  ADD COLUMN IF NOT EXISTS requester_user_id UUID REFERENCES users(id);
+
+CREATE INDEX IF NOT EXISTS help_requests_requester_user_id_idx
+  ON help_requests (requester_user_id);

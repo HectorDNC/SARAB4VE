@@ -122,10 +122,34 @@ function getHelpRequestById(service, schema, repository) {
   };
 }
 
+/**
+ * POST /api/help-requests/:id/link-account
+ */
+function linkRequesterUser(service, schema, repository) {
+  return async (req, res, next) => {
+    if (!schema.isUuid(req.params.id)) {
+      return res.status(400).json({ errors: ["id must be a valid UUID"] });
+    }
+
+    try {
+      const result = await service.linkRequesterUser(req.params.id, req.user.userId, repository);
+
+      if (result.errors) {
+        return res.status(result.status).json({ errors: result.errors });
+      }
+
+      return res.json({ data: result.data });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
 module.exports = {
   listHelpRequests,
   createHelpRequest,
   acceptHelpRequest,
   resolveHelpRequest,
   getHelpRequestById,
+  linkRequesterUser,
 };
