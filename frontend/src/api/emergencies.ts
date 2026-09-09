@@ -19,6 +19,7 @@ export type EmergencyPayload = {
 
 export interface EmergencyListItem {
   id: string;
+  userId?: string | null;
   latitude: number;
   longitude: number;
   urgency: "low" | "medium" | "high" | "critical";
@@ -94,6 +95,7 @@ export async function listEmergencies(
 
 export interface EmergencyDetail {
   id: string;
+  userId?: string | null;
   requesterName: string | null;
   isInjured: boolean;
   cannotMove: boolean;

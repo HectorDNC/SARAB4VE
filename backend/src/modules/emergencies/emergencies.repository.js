@@ -96,6 +96,7 @@ function buildListEmergenciesQuery(filters) {
 
 const FIND_BY_ID = `
   SELECT id,
+         user_id AS "userId",
          requester_name AS "requesterName",
          is_injured AS "isInjured",
          cannot_move AS "cannotMove",

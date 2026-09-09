@@ -8,22 +8,31 @@ const repository = require("./helpRequests.repository");
 const schema = require("./helpRequests.schema");
 const { authenticate } = require("../../middleware/authenticate");
 const { authorize } = require("../../middleware/authorize");
+const { optionalAuthenticate } = require("../../middleware/optionalAuthenticate");
 
 const router = express.Router();
 
-router.get("/", 
-    authenticate, authorize("admin", "organization", "volunteer"), 
+router.get("/",
+    authenticate, authorize("admin", "organization", "volunteer"),
     controller.listHelpRequests(service, repository, schema));
-router.get("/:id", 
-    authenticate, authorize("admin", "organization", "volunteer"), 
+// Debe ir antes de "/:id" — si no, Express interpreta "mine" como un id.
+router.get("/mine",
+    authenticate, authorize("citizen"),
+    controller.listMyHelpRequests(service, repository));
+router.get("/:id",
+    authenticate, authorize("admin", "organization", "volunteer"),
     controller.getHelpRequestById(service, schema, repository));
-router.post("/",  
+router.post("/",
+    optionalAuthenticate,
     controller.createHelpRequest(service, schema, repository));
 router.post("/:id/accept", 
     authenticate, authorize("admin", "organization"), 
     controller.acceptHelpRequest(service, schema, repository));
-router.post("/:id/resolve", 
-    authenticate, authorize("admin", "organization"), 
+router.post("/:id/resolve",
+    authenticate, authorize("admin", "organization"),
     controller.resolveHelpRequest(service, schema, repository));
+router.post("/:id/link-account",
+    authenticate, authorize("citizen"),
+    controller.linkRequesterUser(service, schema, repository));
 
 module.exports = router;

@@ -15,6 +15,7 @@ export type HelpRequestPayload = {
 
 export interface HelpRequestListItem {
   id: string;
+  userId?: string | null;
   requesterName: string;
   contactMethod: string;
   contactValue: string;
@@ -68,6 +69,21 @@ export async function listHelpRequests(
   return json.data ?? [];
 }
 
+/** GET — solicitudes propias del ciudadano autenticado */
+export async function listMyHelpRequests(): Promise<HelpRequestListItem[]> {
+  const res = await fetch(`${API}/api/help-requests/mine`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data ?? [];
+}
+
 // ── POST — crear ────────────────────────────────────────────────────────────
 
 export async function sendHelpRequest(payload: HelpRequestPayload) {
@@ -94,6 +110,7 @@ export async function sendHelpRequest(payload: HelpRequestPayload) {
 
 export interface HelpRequestDetail {
   id: string;
+  userId?: string | null;
   requesterName: string;
   contactMethod: string;
   contactValue: string;
@@ -167,4 +184,21 @@ export async function listHelpRequestAttendees(helpRequestId: string): Promise<H
 
   const json = await res.json();
   return json.data ?? [];
+}
+
+/**
+ * POST — vincula una solicitud enviada sin login con la cuenta de
+ * ciudadano recién creada (requiere el token de esa cuenta ya guardado
+ * en localStorage, vía getAuthHeaders()).
+ */
+export async function linkHelpRequestToAccount(helpRequestId: string): Promise<void> {
+  const res = await fetch(`${API}/api/help-requests/${encodeURIComponent(helpRequestId)}/link-account`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
 }

@@ -34,7 +34,12 @@ function createHelpRequest(service, schema, repository) {
     }
 
     try {
-      const row = await service.createHelpRequest(req.body, schema, repository);
+      const row = await service.createHelpRequest(
+        req.body,
+        schema,
+        repository,
+        req.user?.userId || null,
+      );
       return res.status(201).json({ data: row });
     } catch (error) {
       return next(error);
@@ -122,10 +127,49 @@ function getHelpRequestById(service, schema, repository) {
   };
 }
 
+/**
+ * POST /api/help-requests/:id/link-account
+ */
+function linkRequesterUser(service, schema, repository) {
+  return async (req, res, next) => {
+    if (!schema.isUuid(req.params.id)) {
+      return res.status(400).json({ errors: ["id must be a valid UUID"] });
+    }
+
+    try {
+      const result = await service.linkRequesterUser(req.params.id, req.user.userId, repository);
+
+      if (result.errors) {
+        return res.status(result.status).json({ errors: result.errors });
+      }
+
+      return res.json({ data: result.data });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
+/**
+ * GET /api/help-requests/mine
+ */
+function listMyHelpRequests(service, repository) {
+  return async (req, res, next) => {
+    try {
+      const rows = await service.listMyHelpRequests(req.user.userId, repository);
+      return res.json({ data: rows });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
 module.exports = {
   listHelpRequests,
   createHelpRequest,
   acceptHelpRequest,
   resolveHelpRequest,
   getHelpRequestById,
+  linkRequesterUser,
+  listMyHelpRequests,
 };

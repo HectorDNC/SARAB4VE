@@ -37,7 +37,7 @@ function createEmergency(service, schema) {
     }
 
     try {
-      const emergency = await service.createEmergency(req.body);
+      const emergency = await service.createEmergency(req.body, req.user?.userId || null);
       return res.status(201).json({ data: emergency });
     } catch (error) {
       return next(error);

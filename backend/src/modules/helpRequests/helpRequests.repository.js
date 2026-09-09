@@ -115,6 +115,7 @@ function buildListHelpRequestsQuery(filters) {
 
 const INSERT_HELP_REQUEST = `
   INSERT INTO help_requests (
+    user_id,
     requester_name,
     contact_method,
     contact_value,
@@ -124,8 +125,9 @@ const INSERT_HELP_REQUEST = `
     longitude,
     urgency
   )
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
   RETURNING id,
+            user_id AS "userId",
             requester_name AS "requesterName",
             contact_method AS "contactMethod",
             contact_value AS "contactValue",
@@ -143,6 +145,7 @@ const INSERT_HELP_REQUEST = `
  */
 async function insertHelpRequest(payload) {
   const result = await db.query(INSERT_HELP_REQUEST, [
+    payload.userId,
     payload.requesterName,
     payload.contactMethod,
     payload.contactValue,
@@ -235,6 +238,7 @@ async function findHelpRequestStatusById(id) {
 
 const FIND_BY_ID = `
   SELECT id,
+         user_id AS "userId",
          requester_name AS "requesterName",
          contact_method AS "contactMethod",
          contact_value AS "contactValue",
@@ -292,9 +296,60 @@ async function updateHelpRequestStatusToAssigned(id, volunteerId) {
   return result.rows[0] || null;
 }
 
+const LINK_REQUESTER_USER = `
+  UPDATE help_requests
+  SET user_id = $2
+  WHERE id = $1 AND user_id IS NULL
+  RETURNING id, user_id AS "userId"
+`;
+
+/**
+ * Vincula un help request (creado sin login) con la cuenta del ciudadano
+ * que se registró después. No pisa un vínculo ya existente (p.ej. si ya
+ * quedó asociado al crearse, porque quien la envió ya tenía sesión).
+ * @param {string} id
+ * @param {string} userId
+ * @returns {Promise<Object|null>}
+ */
+async function linkRequesterUser(id, userId) {
+  const result = await db.query(LINK_REQUESTER_USER, [id, userId]);
+  return result.rows[0] || null;
+}
+
+const FIND_BY_USER_ID = `
+  SELECT id,
+         user_id AS "userId",
+         requester_name AS "requesterName",
+         contact_method AS "contactMethod",
+         contact_value AS "contactValue",
+         need_type AS "needType",
+         description,
+         latitude, longitude, urgency, status,
+         volunteer_name AS "volunteerName",
+         volunteer_contact_method AS "volunteerContactMethod",
+         volunteer_contact_value AS "volunteerContactValue",
+         assigned_at AS "assignedAt",
+         resolved_at AS "resolvedAt",
+         created_at AS "createdAt"
+  FROM help_requests
+  WHERE user_id = $1
+  ORDER BY created_at DESC
+`;
+
+/**
+ * Lista las solicitudes de ayuda vinculadas a un usuario (propias).
+ * @param {string} userId
+ * @returns {Promise<Array>}
+ */
+async function findHelpRequestsByUserId(userId) {
+  const result = await db.query(FIND_BY_USER_ID, [userId]);
+  return result.rows;
+}
+
 module.exports = {
   // queries de lectura
   buildListHelpRequestsQuery,
+  findHelpRequestsByUserId,
   // queries de escritura
   insertHelpRequest,
   acceptHelpRequestById,
@@ -302,4 +357,5 @@ module.exports = {
   findHelpRequestStatusById,
   findHelpRequestById,
   updateHelpRequestStatusToAssigned,
+  linkRequesterUser,
 };
