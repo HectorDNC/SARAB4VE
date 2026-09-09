@@ -150,6 +150,20 @@ function linkRequesterUser(service, schema, repository) {
   };
 }
 
+/**
+ * GET /api/help-requests/mine
+ */
+function listMyHelpRequests(service, repository) {
+  return async (req, res, next) => {
+    try {
+      const rows = await service.listMyHelpRequests(req.user.userId, repository);
+      return res.json({ data: rows });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
 module.exports = {
   listHelpRequests,
   createHelpRequest,
@@ -157,4 +171,5 @@ module.exports = {
   resolveHelpRequest,
   getHelpRequestById,
   linkRequesterUser,
+  listMyHelpRequests,
 };

@@ -7,6 +7,7 @@ import ApplicantForm, { type SOSFormValues } from "./components/ApplicantForm";
 import { alertService } from "@/services/alertService";
 import { sendHelpRequest } from "@/api/helpRequests";
 import { useFabVisibility } from "@/providers/FabVisibilityProvider";
+import { useAuth } from "@/providers/AuthProvider";
 
 const categories = [
   {
@@ -54,6 +55,7 @@ const categories = [
 ];
 
 export default function SOSPage() {
+  const { user } = useAuth();
   const { setFormFocused } = useFabVisibility();
   const [selected, setSelected] = useState<string | null>(null);
   const [step, setStep] = useState<number>(1);
@@ -181,6 +183,9 @@ export default function SOSPage() {
   })();
 
   if (sent) {
+    // Si ya hay sesión iniciada, la solicitud quedó vinculada a la cuenta
+    // desde que se creó (optionalAuthenticate en el backend) — no tiene
+    // sentido ofrecer crear una cuenta que ya existe.
     return (
       <div className="max-w-3xl mx-auto px-5 lg:px-10 py-8 lg:py-12">
         <div className="rounded-3xl border border-outline-variant bg-orange-50 p-5 sm:p-6 lg:p-8">
@@ -192,24 +197,35 @@ export default function SOSPage() {
             Gracias, ya recibimos tu solicitud
           </h1>
           <p className="mt-3 text-on-surface-variant leading-relaxed">
-            Un voluntario cercano se pondrá en contacto contigo. Crea tu perfil de ciudadano
-            para poder seguir el estado de tu solicitud y comunicarte directamente cuando alguien la tome.
+            {user
+              ? "Un voluntario cercano se pondrá en contacto contigo. Ya quedó vinculada a tu cuenta, puedes seguir su estado cuando quieras."
+              : "Un voluntario cercano se pondrá en contacto contigo. Crea tu perfil de ciudadano para poder seguir el estado de tu solicitud y comunicarte directamente cuando alguien la tome."}
           </p>
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2">
-            <Link
-              href={citizenSignupHref}
-              className="min-h-14 inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 font-bold text-white text-base hover:bg-orange-600 transition-colors"
-            >
-              <span className="material-symbols-rounded" aria-hidden="true">person_add</span>
-              Crear mi perfil para seguir la solicitud
-            </Link>
+            {user ? (
+              <Link
+                href="/mis-solicitudes"
+                className="min-h-14 inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 font-bold text-white text-base hover:bg-orange-600 transition-colors"
+              >
+                <span className="material-symbols-rounded" aria-hidden="true">handshake</span>
+                Ver mis solicitudes
+              </Link>
+            ) : (
+              <Link
+                href={citizenSignupHref}
+                className="min-h-14 inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 font-bold text-white text-base hover:bg-orange-600 transition-colors"
+              >
+                <span className="material-symbols-rounded" aria-hidden="true">person_add</span>
+                Crear mi perfil para seguir la solicitud
+              </Link>
+            )}
             <Link
               href="/"
               className="min-h-14 inline-flex items-center justify-center gap-2 rounded-2xl border border-outline px-5 py-3 font-semibold text-on-surface text-base hover:bg-surface-container transition-colors"
             >
               <span className="material-symbols-rounded" aria-hidden="true">home</span>
-              Ahora no
+              {user ? "Volver al inicio" : "Ahora no"}
             </Link>
           </div>
         </div>

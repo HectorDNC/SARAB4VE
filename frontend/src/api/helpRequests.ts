@@ -69,6 +69,21 @@ export async function listHelpRequests(
   return json.data ?? [];
 }
 
+/** GET — solicitudes propias del ciudadano autenticado */
+export async function listMyHelpRequests(): Promise<HelpRequestListItem[]> {
+  const res = await fetch(`${API}/api/help-requests/mine`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data ?? [];
+}
+
 // ── POST — crear ────────────────────────────────────────────────────────────
 
 export async function sendHelpRequest(payload: HelpRequestPayload) {

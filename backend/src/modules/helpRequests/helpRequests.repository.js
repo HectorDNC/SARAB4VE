@@ -316,9 +316,40 @@ async function linkRequesterUser(id, userId) {
   return result.rows[0] || null;
 }
 
+const FIND_BY_USER_ID = `
+  SELECT id,
+         user_id AS "userId",
+         requester_name AS "requesterName",
+         contact_method AS "contactMethod",
+         contact_value AS "contactValue",
+         need_type AS "needType",
+         description,
+         latitude, longitude, urgency, status,
+         volunteer_name AS "volunteerName",
+         volunteer_contact_method AS "volunteerContactMethod",
+         volunteer_contact_value AS "volunteerContactValue",
+         assigned_at AS "assignedAt",
+         resolved_at AS "resolvedAt",
+         created_at AS "createdAt"
+  FROM help_requests
+  WHERE user_id = $1
+  ORDER BY created_at DESC
+`;
+
+/**
+ * Lista las solicitudes de ayuda vinculadas a un usuario (propias).
+ * @param {string} userId
+ * @returns {Promise<Array>}
+ */
+async function findHelpRequestsByUserId(userId) {
+  const result = await db.query(FIND_BY_USER_ID, [userId]);
+  return result.rows;
+}
+
 module.exports = {
   // queries de lectura
   buildListHelpRequestsQuery,
+  findHelpRequestsByUserId,
   // queries de escritura
   insertHelpRequest,
   acceptHelpRequestById,

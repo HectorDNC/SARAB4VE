@@ -12,11 +12,15 @@ const { optionalAuthenticate } = require("../../middleware/optionalAuthenticate"
 
 const router = express.Router();
 
-router.get("/", 
-    authenticate, authorize("admin", "organization", "volunteer"), 
+router.get("/",
+    authenticate, authorize("admin", "organization", "volunteer"),
     controller.listHelpRequests(service, repository, schema));
-router.get("/:id", 
-    authenticate, authorize("admin", "organization", "volunteer"), 
+// Debe ir antes de "/:id" — si no, Express interpreta "mine" como un id.
+router.get("/mine",
+    authenticate, authorize("citizen"),
+    controller.listMyHelpRequests(service, repository));
+router.get("/:id",
+    authenticate, authorize("admin", "organization", "volunteer"),
     controller.getHelpRequestById(service, schema, repository));
 router.post("/",
     optionalAuthenticate,

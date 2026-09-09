@@ -109,6 +109,16 @@ async function linkRequesterUser(id, userId, repository) {
   return { errors: ["help request is already linked to an account"], status: 409 };
 }
 
+/**
+ * Lista las solicitudes de ayuda del usuario autenticado.
+ * @param {string} userId
+ * @param {Object} repository
+ * @returns {Promise<Array>}
+ */
+async function listMyHelpRequests(userId, repository) {
+  return repository.findHelpRequestsByUserId(userId);
+}
+
 module.exports = {
   createHelpRequest,
   listHelpRequests,
@@ -116,4 +126,5 @@ module.exports = {
   resolveHelpRequest,
   getHelpRequestById,
   linkRequesterUser,
+  listMyHelpRequests,
 };
