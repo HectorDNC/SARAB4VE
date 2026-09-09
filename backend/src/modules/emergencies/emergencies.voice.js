@@ -226,9 +226,10 @@ const { processVoiceEmergency } = require("./emergencies.processor");
  *
  * @param {Object} payload — cuerpo validado del request (campos en camelCase)
  * @param {Object|null} audioFile — archivo de audio subido por multer, o null
+ * @param {string|null} [userId] — id del usuario autenticado (opcional)
  * @returns {Promise<Object>} fila insertada con processing_status='recibida'
  */
-async function createEmergencyFromVoice(payload, audioFile) {
+async function createEmergencyFromVoice(payload, audioFile, userId) {
   // ── Preparar datos mínimos para INSERT inmediato ──
   // Solo lo esencial: ubicación, datos del formulario, estado inicial
   const requesterName = (payload.requesterName || "Persona en emergencia").trim();
@@ -262,16 +263,16 @@ async function createEmergencyFromVoice(payload, audioFile) {
   // ── INSERT inmediato ──
   const result = await db.query(
     `INSERT INTO emergencies (
-        requester_name, is_injured, cannot_move, disability_type,
+        user_id, requester_name, is_injured, cannot_move, disability_type,
         communication_mode, disability_subcategory, extra_info,
         voice_note_duration_sec,
         latitude, longitude, urgency, need_type, description,
         report_origin, transcript, transcript_method,
         processing_status, access_token_hash
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING
-        id, requester_name AS "requesterName", is_injured AS "isInjured",
+        id, user_id AS "userId", requester_name AS "requesterName", is_injured AS "isInjured",
         cannot_move AS "cannotMove", disability_type AS "disabilityType",
         communication_mode AS "communicationMode",
         disability_subcategory AS "disabilitySubcategory",
@@ -287,6 +288,7 @@ async function createEmergencyFromVoice(payload, audioFile) {
         created_at AS "createdAt", updated_at AS "updatedAt"
     `,
     [
+      userId || null,
       requesterName,
       isInjured,
       cannotMove,
@@ -362,7 +364,11 @@ function createEmergencyVoiceHandler(schema) {
       const audioFile = req.file || null;
 
       // INSERT inmediato + procesamiento asíncrono en background
-      const emergency = await createEmergencyFromVoice(parsed.data, audioFile);
+      const emergency = await createEmergencyFromVoice(
+        parsed.data,
+        audioFile,
+        req.user?.userId || null,
+      );
 
       // Responder INMEDIATAMENTE al cliente
       return res.status(201).json({

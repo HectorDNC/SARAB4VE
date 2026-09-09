@@ -115,6 +115,7 @@ function buildListHelpRequestsQuery(filters) {
 
 const INSERT_HELP_REQUEST = `
   INSERT INTO help_requests (
+    user_id,
     requester_name,
     contact_method,
     contact_value,
@@ -124,8 +125,9 @@ const INSERT_HELP_REQUEST = `
     longitude,
     urgency
   )
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
   RETURNING id,
+            user_id AS "userId",
             requester_name AS "requesterName",
             contact_method AS "contactMethod",
             contact_value AS "contactValue",
@@ -143,6 +145,7 @@ const INSERT_HELP_REQUEST = `
  */
 async function insertHelpRequest(payload) {
   const result = await db.query(INSERT_HELP_REQUEST, [
+    payload.userId,
     payload.requesterName,
     payload.contactMethod,
     payload.contactValue,
@@ -235,6 +238,7 @@ async function findHelpRequestStatusById(id) {
 
 const FIND_BY_ID = `
   SELECT id,
+         user_id AS "userId",
          requester_name AS "requesterName",
          contact_method AS "contactMethod",
          contact_value AS "contactValue",
@@ -246,8 +250,7 @@ const FIND_BY_ID = `
          volunteer_contact_value AS "volunteerContactValue",
          assigned_at AS "assignedAt",
          resolved_at AS "resolvedAt",
-         created_at AS "createdAt",
-         requester_user_id AS "requesterUserId"
+         created_at AS "createdAt"
   FROM help_requests
   WHERE id = $1
 `;
@@ -295,14 +298,15 @@ async function updateHelpRequestStatusToAssigned(id, volunteerId) {
 
 const LINK_REQUESTER_USER = `
   UPDATE help_requests
-  SET requester_user_id = $2
-  WHERE id = $1 AND requester_user_id IS NULL
-  RETURNING id, requester_user_id AS "requesterUserId"
+  SET user_id = $2
+  WHERE id = $1 AND user_id IS NULL
+  RETURNING id, user_id AS "userId"
 `;
 
 /**
  * Vincula un help request (creado sin login) con la cuenta del ciudadano
- * que se registró después. No pisa un vínculo ya existente.
+ * que se registró después. No pisa un vínculo ya existente (p.ej. si ya
+ * quedó asociado al crearse, porque quien la envió ya tenía sesión).
  * @param {string} id
  * @param {string} userId
  * @returns {Promise<Object|null>}

@@ -7,10 +7,11 @@
  * @param {Object} payload — ya validado
  * @param {Object} schema
  * @param {Object} repository
+ * @param {string|null} [userId] — id del usuario autenticado (opcional)
  * @returns {Promise<Object>}
  */
-async function createHelpRequest(payload, schema, repository) {
-  const normalized = schema.normalizeCreateHelpRequest(payload);
+async function createHelpRequest(payload, schema, repository, userId) {
+  const normalized = schema.normalizeCreateHelpRequest(payload, userId);
   return repository.insertHelpRequest(normalized);
 }
 

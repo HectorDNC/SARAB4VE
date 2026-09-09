@@ -8,6 +8,7 @@ const repository = require("./helpRequests.repository");
 const schema = require("./helpRequests.schema");
 const { authenticate } = require("../../middleware/authenticate");
 const { authorize } = require("../../middleware/authorize");
+const { optionalAuthenticate } = require("../../middleware/optionalAuthenticate");
 
 const router = express.Router();
 
@@ -17,7 +18,8 @@ router.get("/",
 router.get("/:id", 
     authenticate, authorize("admin", "organization", "volunteer"), 
     controller.getHelpRequestById(service, schema, repository));
-router.post("/",  
+router.post("/",
+    optionalAuthenticate,
     controller.createHelpRequest(service, schema, repository));
 router.post("/:id/accept", 
     authenticate, authorize("admin", "organization"), 
