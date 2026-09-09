@@ -14,14 +14,20 @@ export type DisabilityType = "visual" | "auditiva" | "neuro" | "motriz";
 export interface MapItem {
     kind: MapItemKind;
     id: string;
-    lat: number;
-    lng: number;
+    // Sin coordenadas cuando la solicitud se envió sin geolocalización —
+    // igual se debe poder listar/consultar, solo no se pinta en el mapa.
+    lat: number | null;
+    lng: number | null;
     urgency: UrgencyLevel;
     status: string;
     createdAt: string;
     // Emergencia
     requesterName?: string;
-    disabilityType?: DisabilityType;
+    // Emergencia: union fija (visual/auditiva/neuro/motriz). Help request:
+    // catálogo de 11 tipos en español (Visual, Física, Otras, ...). Se
+    // amplía a `string` para admitir ambos dominios sin duplicar el campo.
+    disabilityType?: DisabilityType | string;
+    disabilityOtherNote?: string;
     disabilitySubcategory?: string;
     communicationMode?: string | null;
     needType?: string;
@@ -34,6 +40,8 @@ export interface MapItem {
     // Help Request
     contactMethod?: string;
     contactValue?: string;
+    gender?: string;
+    age?: number;
     volunteerName?: string;
     volunteerContactMethod?: string | null;
     volunteerContactValue?: string | null;
@@ -52,13 +60,16 @@ export interface MapItem {
     imagen?: string;
 }
 
+/** MapItem con coordenadas garantizadas — lo que efectivamente puede pintarse como marcador. */
+export type MapItemWithCoords = MapItem & { lat: number; lng: number };
+
 // ── LeafletMap ──────────────────────────────────────────────────────────────
 
 export interface LeafletMapProps {
     shelters?: iRefugio[];
     selectedId: string | null;
     onSelect: (id: string | null) => void;
-    mapItems?: MapItem[];
+    mapItems?: MapItemWithCoords[];
     /** Centro inicial del mapa [lat, lng]. Si no se provee, usa Caracas por defecto. */
     initialCenter?: [number, number] | null;
 }

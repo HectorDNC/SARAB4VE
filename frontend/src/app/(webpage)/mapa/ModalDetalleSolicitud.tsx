@@ -81,6 +81,13 @@ const CONTACT_METHOD_LABELS: Record<string, string> = {
   onsite: "En el lugar",
   signal: "Signal",
   telegram: "Telegram",
+  other: "Otro",
+};
+
+const GENDER_LABELS: Record<string, string> = {
+  femenino: "Femenino",
+  masculino: "Masculino",
+  otro: "Otro",
 };
 
 // ── Mapeo API → MapItem ─────────────────────────────────────────────────────
@@ -115,8 +122,8 @@ function helpRequestDetailToMapItem(d: HelpRequestDetail): MapItem {
   return {
     kind: "help_request",
     id: d.id,
-    lat: d.latitude ?? 0,
-    lng: d.longitude ?? 0,
+    lat: d.latitude,
+    lng: d.longitude,
     urgency: d.urgency,
     status: d.status,
     createdAt: d.createdAt,
@@ -125,6 +132,12 @@ function helpRequestDetailToMapItem(d: HelpRequestDetail): MapItem {
     description: d.description,
     contactMethod: d.contactMethod,
     contactValue: d.contactValue,
+    address: d.address ?? undefined,
+    gender: d.gender ?? undefined,
+    age: d.age ?? undefined,
+    disabilityType: d.disabilityType ?? undefined,
+    disabilityOtherNote: d.disabilityOtherNote ?? undefined,
+    voiceNoteUrl: d.voiceNoteUrl,
     volunteerName: d.volunteerName ?? undefined,
     volunteerContactMethod: d.volunteerContactMethod,
     volunteerContactValue: d.volunteerContactValue,
@@ -310,7 +323,7 @@ export function ModalDetalleSolicitud({ id, kind, open, onClose, onAttendSuccess
 
   const isEmergency = kind === "emergency";
   const urgency = (item?.urgency ?? "medium") as UrgencyLevel;
-  const hasCoords = item != null && item.lat !== 0 && item.lng !== 0;
+  const hasCoords = item != null && item.lat != null && item.lng != null;
 
   return (
     <div
@@ -474,6 +487,33 @@ export function ModalDetalleSolicitud({ id, kind, open, onClose, onAttendSuccess
                       icon="contact_page"
                       label="Método de contacto"
                       value={`${CONTACT_METHOD_LABELS[item.contactMethod ?? ""] ?? item.contactMethod}: ${item.contactValue}`}
+                    />
+                  )}
+
+                  {item.address && (
+                    <FieldRow icon="location_on" label="Dirección o referencia" value={item.address} />
+                  )}
+
+                  {(item.gender || item.age != null) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {item.gender && (
+                        <FieldRow icon="wc" label="Género" value={GENDER_LABELS[item.gender] ?? item.gender} />
+                      )}
+                      {item.age != null && (
+                        <FieldRow icon="cake" label="Edad" value={String(item.age)} />
+                      )}
+                    </div>
+                  )}
+
+                  {item.disabilityType && (
+                    <FieldRow
+                      icon="accessibility_new"
+                      label="Tipo de discapacidad"
+                      value={
+                        item.disabilityType === "Otras" && item.disabilityOtherNote
+                          ? `Otras — ${item.disabilityOtherNote}`
+                          : item.disabilityType
+                      }
                     />
                   )}
 

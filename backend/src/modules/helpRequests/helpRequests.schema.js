@@ -188,6 +188,16 @@ function validateSearchHelpRequests(query) {
     }
   }
 
+  // Orden por fecha de creación — "desc" (más recientes primero, default) o "asc"
+  let sortOrder = "desc";
+  if (query.sortOrder !== undefined) {
+    if (query.sortOrder !== "asc" && query.sortOrder !== "desc") {
+      errors.push("sortOrder must be 'asc' or 'desc'");
+    } else {
+      sortOrder = query.sortOrder;
+    }
+  }
+
   if (!hasGeoFilter) {
     return {
       isValid: errors.length === 0,
@@ -198,6 +208,7 @@ function validateSearchHelpRequests(query) {
         longitude: null,
         radiusKm: null,
         statuses,
+        sortOrder,
       },
     };
   }
@@ -231,6 +242,7 @@ function validateSearchHelpRequests(query) {
       longitude,
       radiusKm,
       statuses,
+      sortOrder,
     },
   };
 }

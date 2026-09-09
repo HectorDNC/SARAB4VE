@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { MapItem, UrgencyLevel } from "@/types";
+import { MapItem, MapItemWithCoords, UrgencyLevel } from "@/types";
 import { Refugios, CONFIGURACION_SERVICIOS } from "@/mocks/refugios";
 import { TarjetaRefugio } from "@/app/(webpage)/mapa/TarjetaRefugio";
 import { TarjetaEmergencia } from "@/app/(webpage)/mapa/TarjetaEmergencia";
@@ -65,10 +65,9 @@ function emergencyToMapItem(e: EmergencyListItem): MapItem {
   };
 }
 
-function helpRequestToMapItem(h: HelpRequestListItem): MapItem | null {
-  // Sin coordenadas no se puede pintar en el mapa
-  if (h.latitude == null || h.longitude == null) return null;
-
+function helpRequestToMapItem(h: HelpRequestListItem): MapItem {
+  // Sin coordenadas igual se lista (en el sidebar), solo no se pinta en el
+  // mapa — ver el filtro por coordenadas antes de pasar a <LeafletMap>.
   return {
     kind: "help_request",
     id: h.id,
@@ -82,6 +81,12 @@ function helpRequestToMapItem(h: HelpRequestListItem): MapItem | null {
     description: h.description,
     contactMethod: h.contactMethod,
     contactValue: h.contactValue,
+    address: h.address ?? undefined,
+    gender: h.gender ?? undefined,
+    age: h.age ?? undefined,
+    disabilityType: h.disabilityType ?? undefined,
+    disabilityOtherNote: h.disabilityOtherNote ?? undefined,
+    voiceNoteUrl: h.voiceNoteUrl,
     volunteerName: h.volunteerName,
     volunteerContactMethod: h.volunteerContactMethod,
     volunteerContactValue: h.volunteerContactValue,
@@ -260,6 +265,7 @@ function MapaPageContent() {
   // ── Filtros ──
   const [kindFilter, setKindFilter] = useState<"all" | "emergency" | "help_request">("all");
   const [statusFilter, setStatusFilter] = useState<"active" | "assigned" | "resolved" | "all">("active");
+  const [sortMode, setSortMode] = useState<"urgency" | "date_desc" | "date_asc">("urgency");
 
   // ── Ubicación del usuario ──
   const { location: userLocation } = useLocation();
@@ -310,22 +316,28 @@ function MapaPageContent() {
 
         // Convertir a MapItem[]
         const emergencyItems: MapItem[] = emergencies.map(emergencyToMapItem);
-        const helpRequestItems: MapItem[] = helpRequests
-          .map(helpRequestToMapItem)
-          .filter((item): item is MapItem => item !== null);
+        const helpRequestItems: MapItem[] = helpRequests.map(helpRequestToMapItem);
 
-        // Merge: emergencias primero, ordenadas por urgencia, luego solicitudes
+        // Comparador según el modo de orden elegido — por urgencia (default,
+        // con fecha como desempate) o directamente por fecha de creación.
+        const compareItems = (a: MapItem, b: MapItem) => {
+          if (sortMode === "date_asc") {
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          }
+          if (sortMode === "date_desc") {
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          }
+          return (
+            URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency] ||
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        };
+
+        // Merge: emergencias primero, luego solicitudes — cada grupo ordenado
+        // según el modo elegido.
         const sorted: MapItem[] = [
-          ...emergencyItems.sort(
-            (a, b) =>
-              URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency] ||
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-          ),
-          ...helpRequestItems.sort(
-            (a, b) =>
-              URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency] ||
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-          ),
+          ...emergencyItems.sort(compareItems),
+          ...helpRequestItems.sort(compareItems),
         ];
 
         setMapItems(sorted);
@@ -342,7 +354,7 @@ function MapaPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [refreshTrigger, kindFilter, statusFilter]);
+  }, [refreshTrigger, kindFilter, statusFilter, sortMode]);
 
   // Filtrar refugios (mock) — solo visibles cuando no hay filtro de tipo activo o es "all"
   const refugiosFiltrados =
@@ -370,6 +382,12 @@ function MapaPageContent() {
   });
 
   const totalResultados = mapItemsFiltrados.length + refugiosFiltrados.length;
+
+  // Leaflet necesita coordenadas reales — las solicitudes sin ubicación
+  // se muestran en la lista lateral pero no se pueden pintar como marcador.
+  const mapItemsConCoordenadas = mapItemsFiltrados.filter(
+    (item): item is MapItemWithCoords => item.lat != null && item.lng != null,
+  );
 
   // ── Elemento seleccionado ──────────────────────────────────────────────
 
@@ -500,6 +518,23 @@ function MapaPageContent() {
           </div>
         )}
 
+        {/* Orden de la lista */}
+        {sidebarOpen && (
+          <div className="px-4 pb-2.5 border-b border-outline-variant flex gap-2">
+            <FilterSelect
+              value={sortMode}
+              onChange={setSortMode}
+              triggerIcon="sort"
+              ariaLabel="Ordenar por"
+              options={[
+                { value: "urgency", label: "Urgencia", icon: "priority_high" },
+                { value: "date_desc", label: "Más recientes", icon: "arrow_downward" },
+                { value: "date_asc", label: "Más antiguas", icon: "arrow_upward" },
+              ]}
+            />
+          </div>
+        )}
+
         {/* Lista de resultados */}
         {sidebarOpen ? (
           <div
@@ -604,7 +639,7 @@ function MapaPageContent() {
         <LeafletMap
           selectedId={selectedId}
           onSelect={handleSeleccionar}
-          mapItems={mapItemsFiltrados}
+          mapItems={mapItemsConCoordenadas}
           initialCenter={
             userLocation
               ? ([userLocation.latitude, userLocation.longitude] as [number, number])
@@ -959,15 +994,17 @@ function TarjetaDetalleEmergencia({ item, onViewDetails }: { item: MapItem; onVi
 
         {/* Botones */}
         <div className="grid grid-cols-2 gap-2 mt-2">
-          <a
-            href={`https://www.openstreetmap.org/directions?from=&to=${item.lat},${item.lng}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white rounded-xl py-3 text-sm font-bold shadow-sm transition-colors"
-          >
-            <span className="material-symbols-rounded text-lg">directions</span>
-            Cómo llegar
-          </a>
+          {item.lat != null && item.lng != null && (
+            <a
+              href={`https://www.openstreetmap.org/directions?from=&to=${item.lat},${item.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white rounded-xl py-3 text-sm font-bold shadow-sm transition-colors"
+            >
+              <span className="material-symbols-rounded text-lg">directions</span>
+              Cómo llegar
+            </a>
+          )}
           {onViewDetails && (
             <button
               onClick={() => onViewDetails(item)}
@@ -1034,17 +1071,23 @@ function TarjetaDetalleSolicitud({ item, onViewDetails }: { item: MapItem; onVie
           </div>
         )}
 
+        <p className="text-[11px] text-on-surface-variant">
+          Creada el {new Date(item.createdAt).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" })}
+        </p>
+
         {/* Botones */}
         <div className="grid grid-cols-2 gap-2 mt-2">
-          <a
-            href={`https://www.openstreetmap.org/directions?from=&to=${item.lat},${item.lng}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 bg-[#0040a1] hover:bg-[#0056d2] text-white rounded-xl py-3 text-sm font-bold shadow-sm transition-colors"
-          >
-            <span className="material-symbols-rounded text-lg">directions</span>
-            Cómo llegar
-          </a>
+          {item.lat != null && item.lng != null && (
+            <a
+              href={`https://www.openstreetmap.org/directions?from=&to=${item.lat},${item.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 bg-[#0040a1] hover:bg-[#0056d2] text-white rounded-xl py-3 text-sm font-bold shadow-sm transition-colors"
+            >
+              <span className="material-symbols-rounded text-lg">directions</span>
+              Cómo llegar
+            </a>
+          )}
           {onViewDetails && (
             <button
               onClick={() => onViewDetails(item)}

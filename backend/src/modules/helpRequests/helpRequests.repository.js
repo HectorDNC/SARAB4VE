@@ -46,6 +46,8 @@ function buildListHelpRequestsQuery(filters) {
     baseConditions.push(`status IN (${placeholders})`);
   }
 
+  const sortDirection = filters.sortOrder === "asc" ? "ASC" : "DESC";
+
   if (!filters.hasGeoFilter) {
     let sql = `
       SELECT id,
@@ -55,6 +57,12 @@ function buildListHelpRequestsQuery(filters) {
              need_type AS "needType",
              description,
              latitude, longitude, urgency, status,
+             address,
+             gender,
+             age,
+             disability_type AS "disabilityType",
+             disability_other_note AS "disabilityOtherNote",
+             voice_note_url AS "voiceNoteUrl",
              assigned_at AS "assignedAt",
              resolved_at AS "resolvedAt",
              created_at AS "createdAt"
@@ -65,7 +73,7 @@ function buildListHelpRequestsQuery(filters) {
       sql += ` WHERE ${baseConditions.join(" AND ")}`;
     }
 
-    sql += " ORDER BY \"createdAt\" DESC LIMIT 100";
+    sql += ` ORDER BY "createdAt" ${sortDirection} LIMIT 100`;
 
     return { sql, values };
   }
@@ -92,6 +100,12 @@ function buildListHelpRequestsQuery(filters) {
              need_type AS "needType",
              description,
              latitude, longitude, urgency, status,
+             address,
+             gender,
+             age,
+             disability_type AS "disabilityType",
+             disability_other_note AS "disabilityOtherNote",
+             voice_note_url AS "voiceNoteUrl",
              assigned_at AS "assignedAt",
              resolved_at AS "resolvedAt",
              created_at AS "createdAt",
@@ -102,7 +116,7 @@ function buildListHelpRequestsQuery(filters) {
     SELECT *
     FROM scoped_help_requests
     WHERE "distanceKm" <= $${radiusIndex}
-    ORDER BY "distanceKm" ASC, "createdAt" DESC
+    ORDER BY "distanceKm" ASC, "createdAt" ${sortDirection}
     LIMIT 100
   `;
 

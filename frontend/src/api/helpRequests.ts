@@ -55,6 +55,8 @@ interface ListHelpRequestsParams {
   latitude?: number;
   longitude?: number;
   radiusKm?: number;
+  /** Orden por fecha de creación — "desc" (más recientes primero, default) o "asc". */
+  sortOrder?: "asc" | "desc";
 }
 
 // ── GET — listar ────────────────────────────────────────────────────────────
@@ -67,6 +69,7 @@ export async function listHelpRequests(
   if (params.status && params.status.length > 0) {
     searchParams.set("status", params.status.join(","));
   }
+  if (params.sortOrder) searchParams.set("sortOrder", params.sortOrder);
   if (params.latitude !== undefined) searchParams.set("latitude", String(params.latitude));
   if (params.longitude !== undefined) searchParams.set("longitude", String(params.longitude));
   if (params.radiusKm !== undefined) searchParams.set("radiusKm", String(params.radiusKm));
@@ -147,6 +150,13 @@ export interface HelpRequestDetail {
   longitude: number | null;
   urgency: "low" | "medium" | "high" | "critical";
   status: string;
+  address: string | null;
+  gender: string | null;
+  age: number | null;
+  disabilityType: string | null;
+  disabilityOtherNote: string | null;
+  disabilityCardKey: string | null;
+  voiceNoteUrl: string | null;
   volunteerName: string | null;
   volunteerContactMethod: string | null;
   volunteerContactValue: string | null;
