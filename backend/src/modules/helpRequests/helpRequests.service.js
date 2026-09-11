@@ -10,11 +10,12 @@ const storage = require("../../services/storage");
  * @param {Object} payload — ya validado
  * @param {Object} schema
  * @param {Object} repository
+ * @param {string|null} [userId] — id del usuario autenticado (opcional)
  * @param {Object} [files] — req.files de multer, ej. { carnet: [file], voiceNote: [file] }
  * @returns {Promise<Object>}
  */
-async function createHelpRequest(payload, schema, repository, files = {}) {
-  const normalized = schema.normalizeCreateHelpRequest(payload);
+async function createHelpRequest(payload, schema, repository, userId, files = {}) {
+  const normalized = schema.normalizeCreateHelpRequest(payload, userId);
 
   const carnetFile = files.carnet?.[0];
   if (carnetFile) {

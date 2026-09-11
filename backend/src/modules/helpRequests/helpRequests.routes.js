@@ -13,6 +13,30 @@ const { optionalAuthenticate } = require("../../middleware/optionalAuthenticate"
 
 const router = express.Router();
 
+// Multer — recibe en memoria el carnet de discapacidad y/o la nota de voz
+// adjuntos a una solicitud de apoyo (ambos opcionales).
+const uploadHelpRequestFiles = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB por archivo
+}).fields([
+  { name: "carnet", maxCount: 1 },
+  { name: "voiceNote", maxCount: 1 },
+]);
+
+function handleHelpRequestUpload(req, res, next) {
+  uploadHelpRequestFiles(req, res, (err) => {
+    if (err) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({
+          errors: ["El archivo excede el tamaño máximo permitido (10 MB)"],
+        });
+      }
+      return res.status(400).json({ errors: [err.message] });
+    }
+    next();
+  });
+}
+
 router.get("/",
     authenticate, authorize("admin", "organization", "volunteer"),
     controller.listHelpRequests(service, repository, schema));
@@ -24,6 +48,7 @@ router.get("/:id",
     authenticate, authorize("admin", "organization", "volunteer"),
     controller.getHelpRequestById(service, schema, repository));
 router.post("/",
+    handleHelpRequestUpload,
     optionalAuthenticate,
     controller.createHelpRequest(service, schema, repository));
 router.post("/:id/accept", 
