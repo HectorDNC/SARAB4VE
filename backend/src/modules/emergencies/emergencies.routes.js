@@ -8,6 +8,7 @@ const repository = require("./emergencies.repository");
 const schema = require("./emergencies.schema");
 const { authenticate } = require("../../middleware/authenticate");
 const { authorize } = require("../../middleware/authorize");
+const { optionalAuthenticate } = require("../../middleware/optionalAuthenticate");
 
 // ── Voz ──
 const {
@@ -29,11 +30,14 @@ router.get("/:id/processing-status",
     authenticate, authorize("admin", "organization", "volunteer"),
     controller.getProcessingStatus(service, schema, repository));
 
-router.post("/", controller.createEmergency(service, schema));
+router.post("/",
+    optionalAuthenticate,
+    controller.createEmergency(service, schema));
 
-// ── Voz: reporte con audio + transcripción (autenticado, cualquier rol) ──
+// ── Voz: reporte con audio + transcripción (autenticado o anónimo) ──
 router.post("/voice",
     handleMulterUpload,
+    optionalAuthenticate,
     createEmergencyVoiceHandler(EmergenciaVozSchema));
 
 module.exports = router;
