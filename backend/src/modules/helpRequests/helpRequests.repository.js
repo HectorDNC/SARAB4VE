@@ -46,6 +46,8 @@ function buildListHelpRequestsQuery(filters) {
     baseConditions.push(`status IN (${placeholders})`);
   }
 
+  const sortDirection = filters.sortOrder === "asc" ? "ASC" : "DESC";
+
   if (!filters.hasGeoFilter) {
     let sql = `
       SELECT id,
@@ -55,6 +57,12 @@ function buildListHelpRequestsQuery(filters) {
              need_type AS "needType",
              description,
              latitude, longitude, urgency, status,
+             address,
+             gender,
+             age,
+             disability_type AS "disabilityType",
+             disability_other_note AS "disabilityOtherNote",
+             voice_note_url AS "voiceNoteUrl",
              assigned_at AS "assignedAt",
              resolved_at AS "resolvedAt",
              created_at AS "createdAt"
@@ -65,7 +73,7 @@ function buildListHelpRequestsQuery(filters) {
       sql += ` WHERE ${baseConditions.join(" AND ")}`;
     }
 
-    sql += " ORDER BY \"createdAt\" DESC LIMIT 100";
+    sql += ` ORDER BY "createdAt" ${sortDirection} LIMIT 100`;
 
     return { sql, values };
   }
@@ -92,6 +100,12 @@ function buildListHelpRequestsQuery(filters) {
              need_type AS "needType",
              description,
              latitude, longitude, urgency, status,
+             address,
+             gender,
+             age,
+             disability_type AS "disabilityType",
+             disability_other_note AS "disabilityOtherNote",
+             voice_note_url AS "voiceNoteUrl",
              assigned_at AS "assignedAt",
              resolved_at AS "resolvedAt",
              created_at AS "createdAt",
@@ -102,7 +116,7 @@ function buildListHelpRequestsQuery(filters) {
     SELECT *
     FROM scoped_help_requests
     WHERE "distanceKm" <= $${radiusIndex}
-    ORDER BY "distanceKm" ASC, "createdAt" DESC
+    ORDER BY "distanceKm" ASC, "createdAt" ${sortDirection}
     LIMIT 100
   `;
 
@@ -123,9 +137,16 @@ const INSERT_HELP_REQUEST = `
     description,
     latitude,
     longitude,
-    urgency
+    urgency,
+    address,
+    gender,
+    age,
+    disability_type,
+    disability_other_note,
+    disability_card_key,
+    voice_note_url
   )
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
   RETURNING id,
             user_id AS "userId",
             requester_name AS "requesterName",
@@ -134,13 +155,21 @@ const INSERT_HELP_REQUEST = `
             need_type AS "needType",
             description,
             latitude, longitude, urgency, status,
+            address,
+            gender,
+            age,
+            disability_type AS "disabilityType",
+            disability_other_note AS "disabilityOtherNote",
+            disability_card_key AS "disabilityCardKey",
+            voice_note_url AS "voiceNoteUrl",
             assigned_at AS "assignedAt",
             resolved_at AS "resolvedAt",
             created_at AS "createdAt"
 `;
 
 /**
- * @param {Object} payload — ya normalizado
+ * @param {Object} payload — ya normalizado (incluye disabilityCardKey/voiceNoteUrl
+ *   ya subidos a R2 por el service, si se adjuntaron)
  * @returns {Promise<Object>}
  */
 async function insertHelpRequest(payload) {
@@ -154,6 +183,13 @@ async function insertHelpRequest(payload) {
     payload.latitude,
     payload.longitude,
     payload.urgency,
+    payload.address,
+    payload.gender,
+    payload.age,
+    payload.disabilityType,
+    payload.disabilityOtherNote,
+    payload.disabilityCardKey || null,
+    payload.voiceNoteUrl || null,
   ]);
   return result.rows[0];
 }
@@ -245,6 +281,13 @@ const FIND_BY_ID = `
          need_type AS "needType",
          description,
          latitude, longitude, urgency, status,
+         address,
+         gender,
+         age,
+         disability_type AS "disabilityType",
+         disability_other_note AS "disabilityOtherNote",
+         disability_card_key AS "disabilityCardKey",
+         voice_note_url AS "voiceNoteUrl",
          volunteer_name AS "volunteerName",
          volunteer_contact_method AS "volunteerContactMethod",
          volunteer_contact_value AS "volunteerContactValue",
@@ -325,6 +368,12 @@ const FIND_BY_USER_ID = `
          need_type AS "needType",
          description,
          latitude, longitude, urgency, status,
+         address,
+         gender,
+         age,
+         disability_type AS "disabilityType",
+         disability_other_note AS "disabilityOtherNote",
+         voice_note_url AS "voiceNoteUrl",
          volunteer_name AS "volunteerName",
          volunteer_contact_method AS "volunteerContactMethod",
          volunteer_contact_value AS "volunteerContactValue",

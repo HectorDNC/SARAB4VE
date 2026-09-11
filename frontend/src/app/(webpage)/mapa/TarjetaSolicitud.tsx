@@ -108,7 +108,10 @@ export function TarjetaSolicitud({ item, isSelected, onClick }: Props) {
       </div>
 
       {/* Info extra */}
-      <div className="mt-2 flex flex-wrap gap-1">
+      <div className="mt-2 flex flex-wrap items-center gap-1">
+        <span className="text-[10px] text-on-surface-variant">
+          {new Date(item.createdAt).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" })}
+        </span>
         {item.volunteerName && (
           <span className="flex items-center gap-1 bg-green-50 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">
             <span className="material-symbols-rounded text-[12px]">volunteer_activism</span>

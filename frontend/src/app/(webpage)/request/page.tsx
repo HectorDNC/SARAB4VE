@@ -3,7 +3,7 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import CategoryCard from "@/components/ui/CategoryCard";
-import ApplicantForm, { type SOSFormValues } from "./components/ApplicantForm";
+import ApplicantForm, { type SOSFormValues, type VoiceNote } from "./components/ApplicantForm";
 import { alertService } from "@/services/alertService";
 import { sendHelpRequest } from "@/api/helpRequests";
 import { useFabVisibility } from "@/providers/FabVisibilityProvider";
@@ -64,6 +64,7 @@ export default function SOSPage() {
   const [createdRequestId, setCreatedRequestId] = useState<string | null>(null);
   const [form, setForm] = useState<SOSFormValues>({
     requester_name: "",
+    last_name: "",
     contact_method: "phone",
     contact_value: "",
     need_type: "",
@@ -71,7 +72,13 @@ export default function SOSPage() {
     urgency: "medium",
     address: "",
     people: 1,
+    gender: "",
+    age: "",
+    disability_type: "",
+    disability_other_note: "",
   });
+  const [disabilityCardFile, setDisabilityCardFile] = useState<File | null>(null);
+  const [voiceNote, setVoiceNote] = useState<VoiceNote | null>(null);
   // Step 1 only selects category; Step 2 (`/sos/ubicacion`) will collect details.
 
   // Esta ruta es de solicitudes de ayuda/insumos, no de emergencias,
@@ -127,7 +134,7 @@ export default function SOSPage() {
     e.preventDefault();
     setLoading(true);
 
-    if (!form.requester_name || !form.contact_method || !form.contact_value || !form.need_type) {
+    if (!form.requester_name || !form.last_name || !form.contact_method || !form.contact_value || !form.need_type) {
       alertService.warning("Por favor completa los campos requeridos.");
       setLoading(false);
       return;
@@ -145,7 +152,7 @@ export default function SOSPage() {
     }
 
     const payload = {
-      requesterName: form.requester_name,
+      requesterName: `${form.requester_name} ${form.last_name}`.trim(),
       contactMethod: form.contact_method,
       contactValue: form.contact_value,
       needType: form.need_type,
@@ -153,6 +160,13 @@ export default function SOSPage() {
       latitude,
       longitude,
       urgency: form.urgency,
+      address: form.address,
+      gender: form.gender,
+      age: form.age ? Number(form.age) : null,
+      disabilityType: form.disability_type,
+      disabilityOtherNote: form.disability_other_note,
+      disabilityCardFile,
+      voiceNoteBlob: voiceNote?.blob ?? null,
     };
 
     try {
@@ -320,6 +334,10 @@ export default function SOSPage() {
             onSubmit={handleSubmit}
             loading={loading}
             onBack={() => setStep(1)}
+            disabilityCardFile={disabilityCardFile}
+            onDisabilityCardFileChange={setDisabilityCardFile}
+            voiceNote={voiceNote}
+            onVoiceNoteChange={setVoiceNote}
             onFormFocus={handleFormFocus}
             onFormBlur={handleFormBlur}
           />

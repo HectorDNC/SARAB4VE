@@ -2,6 +2,7 @@
  * Rutas — definición del router de Express para help-requests.
  */
 const express = require("express");
+const multer = require("multer");
 const controller = require("./helpRequests.controller");
 const service = require("./helpRequests.service");
 const repository = require("./helpRequests.repository");
