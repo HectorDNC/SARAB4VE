@@ -105,7 +105,14 @@ export async function listMyHelpRequests(): Promise<HelpRequestListItem[]> {
 
 // ── POST — crear ────────────────────────────────────────────────────────────
 
-export async function sendHelpRequest(payload: HelpRequestPayload) {
+/** Respuesta de POST /api/help-requests. `warnings` aparece si algún adjunto opcional no se pudo guardar. */
+export interface CreateHelpRequestResponse {
+  data: HelpRequestListItem & { warnings?: string[] };
+}
+
+export async function sendHelpRequest(
+  payload: HelpRequestPayload,
+): Promise<CreateHelpRequestResponse | null> {
   // multipart/form-data — el carnet de discapacidad y la nota de voz son
   // archivos binarios, no representables en JSON.
   const formData = new FormData();
