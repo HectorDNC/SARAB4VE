@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { sendEmergency } from "@/api/emergencies";
+import { getUserById } from "@/api/user";
 import { alertService } from "@/services/alertService";
 import { useLocation } from "@/hooks/useLocation";
 import { useFabVisibility } from "@/providers/FabVisibilityProvider";
+import { useAuth } from "@/providers/AuthProvider";
 import StepDisabilityType from "./components/StepDisabilityType";
 import StepInitialStatus from "./components/StepInitialStatus";
 import StepNameAndLocation from "./components/StepNameAndLocation";
@@ -62,6 +64,9 @@ export default function SOSFlowPage() {
     requestLocation,
   } = useLocation();
 
+  const { user } = useAuth();
+  const userId = user?.id;
+
   // En `/sos` el FAB de voz convive con el formulario de emergencia,
   // por lo que lo minimizamos desde el instante en que el usuario
   // entra a la ruta, igual que ocurre en `/request`. Cuando abandona
@@ -102,6 +107,44 @@ export default function SOSFlowPage() {
     // Solo ejecutar al montar la página
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Precarga los datos del perfil en el SOS: nombre y discapacidad.
+  // La ubicación NO se precarga — se captura al momento de la emergencia
+  // (useLocation la solicita al entrar). Solo rellena lo que falte.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+
+    getUserById(userId)
+      .then((profile) => {
+        if (cancelled) return;
+
+        setRequesterName((current) => current || profile.fullName || "");
+
+        const saved = profile.citizenProfile;
+        if (!saved?.disabilityType) return;
+
+        setDisabilityType((current) => current ?? (saved.disabilityType as DisabilityType));
+
+        if (saved.disabilityType === "auditiva" && saved.communicationMode) {
+          setCommunicationMode((current) => current ?? (saved.communicationMode as CommunicationMode));
+        } else if (saved.disabilityType === "visual" && saved.disabilitySubcategory) {
+          setVisualSubcategory((current) => current ?? (saved.disabilitySubcategory as VisualSubcategory));
+        } else if (saved.disabilityType === "neuro" && saved.disabilitySubcategory) {
+          setNeuroSubcategory((current) => current ?? (saved.disabilitySubcategory as NeuroSubcategory));
+        } else if (saved.disabilityType === "motriz" && saved.disabilitySubcategory) {
+          setMotrizSubcategory((current) => current ?? (saved.disabilitySubcategory as MotrizSubcategory));
+        }
+      })
+      .catch(() => {
+        // Silencioso: el SOS se puede completar a mano.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
 
   // Minimizar el FAB desde el mount (mismo comportamiento que en
   // /request). Al salir de la ruta restauramos `isFormFocused = false`

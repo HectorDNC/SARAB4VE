@@ -21,6 +21,35 @@ const ROLES = ["citizen", "volunteer", "organization", "admin"];
 /** Estados válidos para un usuario. */
 const STATUSES = ["pending", "approved", "rejected", "suspended"];
 
+/**
+ * Catálogo de discapacidad para el perfil de ciudadano.
+ * Espeja los valores de emergencies.schema.js (mismo formulario de SOS) para
+ * que el perfil y las emergencias hablen el mismo idioma sin acoplar módulos.
+ */
+const CITIZEN_DISABILITY_TYPES = ["visual", "auditiva", "neuro", "motriz"];
+
+const CITIZEN_COMMUNICATION_MODES = [
+  "lengua_senas",
+  "audifono",
+  "implante_coclear",
+  "vibrador_oseo",
+];
+
+const CITIZEN_DISABILITY_SUBCATEGORIES = [
+  // visual
+  "guia_voz",
+  "braille",
+  "perro_guia",
+  // neuro
+  "ambiente_calmado",
+  "comunicacion_clara",
+  "acompanamiento",
+  // motriz
+  "silla_ruedas",
+  "traslado_asistido",
+  "evacuacion_accesible",
+];
+
 // ---------------------------------------------------------------------------
 // Sub-schemas reutilizables
 // ---------------------------------------------------------------------------
@@ -91,6 +120,17 @@ const UpdateUserBody = z.object({
     .min(8, "password debe tener al menos 8 caracteres")
     .optional()
     .openapi({ example: "nuevaClave2024!", description: "Nueva contraseña (mín. 8 caracteres)" }),
+
+  // Información de discapacidad (solo perfil de ciudadano).
+  // `null` limpia el valor; omitir el campo lo deja intacto.
+  disabilityType: z.enum(CITIZEN_DISABILITY_TYPES).nullable().optional()
+    .openapi({ example: "visual", description: "Tipo de discapacidad (null para limpiar)" }),
+
+  disabilitySubcategory: z.enum(CITIZEN_DISABILITY_SUBCATEGORIES).nullable().optional()
+    .openapi({ example: "guia_voz", description: "Subcategoría de la discapacidad" }),
+
+  communicationMode: z.enum(CITIZEN_COMMUNICATION_MODES).nullable().optional()
+    .openapi({ example: "lengua_senas", description: "Modo de comunicación (discapacidad auditiva)" }),
 }).refine(
   (data) => Object.keys(data).length > 0,
   { message: "Debe enviar al menos un campo para actualizar" },
@@ -151,6 +191,19 @@ const UserProfile = z.object({
   updatedAt: z.string().datetime().openapi({ example: "2024-01-15T10:30:00.000Z" }),
 }).openapi({ description: "Perfil de usuario sin datos sensibles" });
 
+/** Perfil de discapacidad de un ciudadano (citizen_profiles). */
+const CitizenProfile = z.object({
+  userId: z.string().uuid().openapi({ example: "550e8400-e29b-41d4-a716-446655440000" }),
+  disabilityType: z.enum(CITIZEN_DISABILITY_TYPES).nullable()
+    .openapi({ example: "visual" }),
+  disabilitySubcategory: z.enum(CITIZEN_DISABILITY_SUBCATEGORIES).nullable()
+    .openapi({ example: "guia_voz" }),
+  communicationMode: z.enum(CITIZEN_COMMUNICATION_MODES).nullable()
+    .openapi({ example: null }),
+  createdAt: z.string().datetime().openapi({ example: "2024-01-15T10:30:00.000Z" }),
+  updatedAt: z.string().datetime().openapi({ example: "2024-01-15T10:30:00.000Z" }),
+}).openapi({ description: "Perfil de discapacidad de un ciudadano" });
+
 /** Respuesta paginada de listado de usuarios. */
 const ListUsersResponse = z.object({
   data: z.object({
@@ -183,6 +236,9 @@ const UserStatsResponse = z.object({
 module.exports = {
   ROLES,
   STATUSES,
+  CITIZEN_DISABILITY_TYPES,
+  CITIZEN_COMMUNICATION_MODES,
+  CITIZEN_DISABILITY_SUBCATEGORIES,
   LocationSchema,
   ListUsersQuery,
   UpdateUserBody,
@@ -191,6 +247,7 @@ module.exports = {
   GetUserParams,
   ErrorResponse,
   UserProfile,
+  CitizenProfile,
   ListUsersResponse,
   UserStatsByRole,
   UserStatsResponse,

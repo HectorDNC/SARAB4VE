@@ -7,6 +7,12 @@ const storage = require("../../services/storage");
 /**
  * Crea un help-request. Si vienen archivos adjuntos (carnet de
  * discapacidad y/o nota de voz), los sube a R2 antes de insertar la fila.
+ *
+ * La subida de adjuntos es "best-effort": son opcionales y una falla de
+ * almacenamiento (p. ej. R2 sin configurar) NUNCA debe impedir registrar
+ * la solicitud de ayuda. Si un adjunto falla, se crea la solicitud sin él
+ * y se devuelve el motivo en `warnings`.
+ *
  * @param {Object} payload — ya validado
  * @param {Object} schema
  * @param {Object} repository
@@ -16,28 +22,45 @@ const storage = require("../../services/storage");
  */
 async function createHelpRequest(payload, schema, repository, userId, files = {}) {
   const normalized = schema.normalizeCreateHelpRequest(payload, userId);
+  const warnings = [];
 
   const carnetFile = files.carnet?.[0];
   if (carnetFile) {
-    const { storageKey } = await storage.uploadDocument(
-      carnetFile.buffer,
-      carnetFile.originalname,
-      carnetFile.mimetype,
-      crypto.randomUUID(),
-    );
-    normalized.disabilityCardKey = storageKey;
+    try {
+      const { storageKey } = await storage.uploadDocument(
+        carnetFile.buffer,
+        carnetFile.originalname,
+        carnetFile.mimetype,
+        crypto.randomUUID(),
+      );
+      normalized.disabilityCardKey = storageKey;
+    } catch (error) {
+      warnings.push(
+        "No se pudo guardar el carnet de discapacidad; tu solicitud se registró sin ese adjunto.",
+      );
+      console.warn("[helpRequests] No se pudo subir el carnet:", error.message);
+    }
   }
 
   const voiceNoteFile = files.voiceNote?.[0];
   if (voiceNoteFile) {
-    normalized.voiceNoteUrl = await storage.uploadAudio(
-      voiceNoteFile.buffer,
-      voiceNoteFile.originalname,
-      voiceNoteFile.mimetype,
-    );
+    try {
+      normalized.voiceNoteUrl = await storage.uploadAudio(
+        voiceNoteFile.buffer,
+        voiceNoteFile.originalname,
+        voiceNoteFile.mimetype,
+      );
+    } catch (error) {
+      warnings.push(
+        "No se pudo guardar la nota de voz; tu solicitud se registró sin ese adjunto.",
+      );
+      console.warn("[helpRequests] No se pudo subir la nota de voz:", error.message);
+    }
   }
 
-  return repository.insertHelpRequest(normalized);
+  const row = await repository.insertHelpRequest(normalized);
+
+  return warnings.length > 0 ? { ...row, warnings } : row;
 }
 
 /**

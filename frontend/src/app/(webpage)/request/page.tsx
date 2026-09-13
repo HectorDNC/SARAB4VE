@@ -6,8 +6,29 @@ import CategoryCard from "@/components/ui/CategoryCard";
 import ApplicantForm, { type SOSFormValues, type VoiceNote } from "./components/ApplicantForm";
 import { alertService } from "@/services/alertService";
 import { sendHelpRequest } from "@/api/helpRequests";
+import { getUserById } from "@/api/user";
 import { useFabVisibility } from "@/providers/FabVisibilityProvider";
 import { useAuth } from "@/providers/AuthProvider";
+
+/**
+ * El perfil guarda la discapacidad con el catálogo de emergencias
+ * (visual/auditiva/neuro/motriz), pero el formulario de solicitud usa el
+ * catálogo de 11 tipos. Traducimos lo mejor posible; el campo queda
+ * editable por si la persona quiere precisarlo.
+ */
+const PROFILE_DISABILITY_TO_REQUEST: Record<string, string> = {
+  visual: "Visual",
+  auditiva: "Auditiva",
+  motriz: "Física",
+  neuro: "TEA",
+};
+
+/** Separa el nombre completo del perfil en nombre + apellidos. */
+function splitFullName(fullName: string | undefined): { first: string; last: string } {
+  const parts = (fullName ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return { first: parts[0] ?? "", last: "" };
+  return { first: parts[0], last: parts.slice(1).join(" ") };
+}
 
 const categories = [
   {
@@ -56,6 +77,7 @@ const categories = [
 
 export default function SOSPage() {
   const { user } = useAuth();
+  const userId = user?.id;
   const { setFormFocused } = useFabVisibility();
   const [selected, setSelected] = useState<string | null>(null);
   const [step, setStep] = useState<number>(1);
@@ -79,6 +101,54 @@ export default function SOSPage() {
   });
   const [disabilityCardFile, setDisabilityCardFile] = useState<File | null>(null);
   const [voiceNote, setVoiceNote] = useState<VoiceNote | null>(null);
+  const [profileLocation, setProfileLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Si hay sesión iniciada, precarga los datos del perfil en la solicitud.
+  // Solo rellena los campos que la persona aún no haya tocado.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+
+    getUserById(userId)
+      .then((profile) => {
+        if (cancelled) return;
+        setProfileLocation(profile.location ?? null);
+        setForm((current) => {
+          const { first, last } = splitFullName(profile.fullName);
+          const next = { ...current };
+
+          if (!current.requester_name && first) next.requester_name = first;
+          if (!current.last_name && last) next.last_name = last;
+
+          if (!current.contact_value) {
+            if (profile.phone) {
+              next.contact_method = "phone";
+              next.contact_value = profile.phone;
+            } else if (profile.email) {
+              next.contact_method = "email";
+              next.contact_value = profile.email;
+            }
+          }
+
+          if (!current.address && profile.zone) next.address = profile.zone;
+
+          if (!current.disability_type && profile.citizenProfile?.disabilityType) {
+            next.disability_type =
+              PROFILE_DISABILITY_TO_REQUEST[profile.citizenProfile.disabilityType] ?? "";
+          }
+
+          return next;
+        });
+      })
+      .catch(() => {
+        // Silencioso: si falla, la persona puede llenar la solicitud a mano.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
   // Step 1 only selects category; Step 2 (`/sos/ubicacion`) will collect details.
 
   // Esta ruta es de solicitudes de ayuda/insumos, no de emergencias,
@@ -148,7 +218,13 @@ export default function SOSPage() {
       longitude = pos.longitude;
     } catch (error) {
       console.warn("No se pudo obtener geolocalización:", error);
-      alertService.info("No pudimos obtener tu ubicación exacta. La solicitud se enviará con la dirección que escribiste.");
+      // Fallback: usa la ubicación guardada en el perfil, si existe.
+      if (profileLocation) {
+        latitude = profileLocation.lat;
+        longitude = profileLocation.lng;
+      } else {
+        alertService.info("No pudimos obtener tu ubicación exacta. La solicitud se enviará con la dirección que escribiste.");
+      }
     }
 
     const payload = {
@@ -173,6 +249,10 @@ export default function SOSPage() {
       const response = await sendHelpRequest(payload);
       setCreatedRequestId(response?.data?.id ?? null);
       alertService.success("Solicitud enviada. Gracias.");
+      // Si algún adjunto opcional no se pudo guardar, la solicitud igual se creó.
+      if (response?.data?.warnings?.length) {
+        alertService.warning(response.data.warnings.join(" "));
+      }
       setSent(true);
     } catch (error) {
       alertService.error(`Error al enviar la solicitud: ${getErrorMessage(error)}`);

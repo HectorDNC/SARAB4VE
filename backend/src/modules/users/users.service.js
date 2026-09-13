@@ -123,8 +123,17 @@ async function getUserById(userId, requester, repository) {
   // Intentar obtener detalles (puede no existir para citizens/admins sin detalles)
   const details = await repository.findUserDetailsById(userId);
 
+  // Perfil de discapacidad — solo aplica a ciudadanos.
+  const citizenProfile = user.role === "citizen"
+    ? await repository.findCitizenProfileById(userId)
+    : null;
+
+  const data = { ...user };
+  if (details) data.details = details;
+  if (user.role === "citizen") data.citizenProfile = citizenProfile;
+
   return {
-    data: details ? { ...user, details } : user,
+    data,
     status: 200,
   };
 }
@@ -200,12 +209,43 @@ async function updateUser(targetUserId, updates, requester, repository) {
     repoUpdates.passwordHash = await hashPassword(updates.password);
   }
 
+  // Información de discapacidad — vive en citizen_profiles y solo aplica a
+  // ciudadanos. El frontend envía los tres campos juntos (null para limpiar).
+  const hasDisabilityUpdates =
+    updates.disabilityType !== undefined ||
+    updates.disabilitySubcategory !== undefined ||
+    updates.communicationMode !== undefined;
+
+  if (hasDisabilityUpdates && existingUser.role !== "citizen") {
+    return {
+      errors: ["La información de discapacidad solo aplica a usuarios ciudadanos"],
+      status: 400,
+    };
+  }
+
   try {
     const updatedUser = await repository.withTransaction(async (client) => {
-      return repository.updateUser(client, targetUserId, repoUpdates);
+      const user = await repository.updateUser(client, targetUserId, repoUpdates);
+
+      if (hasDisabilityUpdates) {
+        await repository.upsertCitizenProfile(client, targetUserId, {
+          disabilityType: updates.disabilityType,
+          disabilitySubcategory: updates.disabilitySubcategory,
+          communicationMode: updates.communicationMode,
+        });
+      }
+
+      return user;
     });
 
-    return { data: updatedUser, status: 200 };
+    // Adjuntar el perfil de discapacidad a la respuesta (solo ciudadanos).
+    let data = updatedUser;
+    if (existingUser.role === "citizen") {
+      const citizenProfile = await repository.findCitizenProfileById(targetUserId);
+      data = { ...updatedUser, citizenProfile };
+    }
+
+    return { data, status: 200 };
   } catch (error) {
     const { isUniqueViolation, field } = parseUniqueViolation(error);
     if (isUniqueViolation) {

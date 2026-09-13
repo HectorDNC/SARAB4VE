@@ -1,5 +1,5 @@
 import { normalizeUser } from "@/lib/normalizeUser";
-import { ApiUser, ListUsersParams, ListUsersResponse, OrganizationProfileResponse, VolunteerProfileResponse, UserStats } from "@/types";
+import { ApiUser, DisabilityType, ListUsersParams, ListUsersResponse, OrganizationProfileResponse, VolunteerProfileResponse, UserStats } from "@/types";
 import { API, getAuthHeaders } from "./client";
 
 export async function listUsers(params: ListUsersParams = {}): Promise<ListUsersResponse> {
@@ -77,6 +77,48 @@ export async function getUserById(id: string): Promise<ApiUser> {
     } catch (error) {
         throw new Error(`Error al procesar los datos del usuario del servidor. ${error}`);
     }
+}
+
+export type UpdateUserPayload = {
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    zone?: string | null;
+    location?: { lat: number; lng: number } | null;
+    password?: string;
+    disabilityType?: DisabilityType | null;
+    disabilitySubcategory?: string | null;
+    communicationMode?: string | null;
+};
+
+/**
+ * PATCH /api/users/:id — actualiza los datos básicos del perfil y, para
+ * ciudadanos, su información de discapacidad. El backend valida permisos
+ * (dueño o admin) y devuelve el usuario con su `citizenProfile`.
+ */
+export async function updateUser(
+    id: string,
+    payload: UpdateUserPayload
+): Promise<ApiUser> {
+    const res = await fetch(`${API}/api/users/${id}`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message = body?.errors?.join(", ") ?? `HTTP ${res.status}`;
+
+        if (res.status === 401) throw new Error("Sesión expirada. Inicia sesión nuevamente.");
+        if (res.status === 403) throw new Error("No tienes permisos para actualizar este perfil.");
+        if (res.status === 404) throw new Error("Usuario no encontrado.");
+        if (res.status === 409) throw new Error("El correo o el teléfono ya están en uso por otro usuario.");
+        throw new Error(message);
+    }
+
+    const rawData = await res.json();
+    return normalizeUser(rawData.data);
 }
 
 export async function approveUser(id: string): Promise<ApiUser> {

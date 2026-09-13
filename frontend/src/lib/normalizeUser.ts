@@ -1,4 +1,4 @@
-import type { ApiUser, ROLES_USER, STATUS_USERS } from "@/types/index";
+import type { ApiUser, CitizenProfile, ROLES_USER, STATUS_USERS } from "@/types/index";
 
 
 type RawUser = {
@@ -19,6 +19,7 @@ type RawUser = {
   created_at?: string;
   updatedAt?: string;
   updated_at?: string;
+  citizenProfile?: CitizenProfile | null;
 };
 
 function normalizeLocation(
@@ -64,5 +65,6 @@ export function normalizeUser(raw: RawUser): ApiUser {
     emailVerified: raw.emailVerified ?? raw.email_verified ?? false,
     createdAt: raw.createdAt ?? raw.created_at ?? "",
     updatedAt: raw.updatedAt ?? raw.updated_at ?? "",
+    citizenProfile: raw.citizenProfile ?? null,
   };
 }
