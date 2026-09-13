@@ -263,6 +263,18 @@ export interface ApiUser {
     emailVerified: boolean;
     createdAt: string;
     updatedAt: string;
+    /** Perfil de discapacidad — solo presente para ciudadanos (GET /api/users/:id). */
+    citizenProfile?: CitizenProfile | null;
+}
+
+/** Perfil de discapacidad persistente de un ciudadano (citizen_profiles). */
+export interface CitizenProfile {
+    userId: string;
+    disabilityType: DisabilityType | null;
+    disabilitySubcategory: string | null;
+    communicationMode: string | null;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface ListUsersResponse {

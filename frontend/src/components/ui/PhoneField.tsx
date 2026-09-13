@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     getExampleNumber,
     parsePhoneNumberFromString,
@@ -14,9 +14,21 @@ interface PhoneFieldProps {
     onChange: (value: string) => void;
 }
 
-export default function PhoneField({ onChange }: PhoneFieldProps) {
+export default function PhoneField({ value, onChange }: PhoneFieldProps) {
     const [country, setCountry] = useState<Country>("PE");
     const [rawNumber, setRawNumber] = useState("");
+
+    // Precarga un número existente (p. ej. al editar el perfil). Sincroniza
+    // cuando `value` cambia (carga asíncrona) sin pisar lo que el usuario
+    // escribe: solo reacciona a valores que no estén vacíos.
+    useEffect(() => {
+        if (!value) return;
+        const parsed = parsePhoneNumberFromString(value);
+        if (parsed) {
+            if (parsed.country) setCountry(parsed.country);
+            setRawNumber(parsed.nationalNumber);
+        }
+    }, [value]);
 
     const exampleNumber = getExampleNumber(country, examples);
     const exampleFormatted = exampleNumber ? exampleNumber.formatNational() : null;

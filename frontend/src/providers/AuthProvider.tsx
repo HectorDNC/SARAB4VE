@@ -12,6 +12,8 @@ interface AuthContextValue {
   isLoading: boolean;
   /** Guarda token + usuario en estado y localStorage. */
   login: (token: string, user: LoginUser) => void;
+  /** Actualiza parcialmente el usuario en estado y localStorage (tras editar el perfil). */
+  updateUser: (updates: Partial<LoginUser>) => void;
   /** Limpia la sesión (estado + localStorage). */
   logout: () => void;
 }
@@ -51,6 +53,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("user", JSON.stringify(newUser));
   }, []);
 
+  const updateUser = useCallback((updates: Partial<LoginUser>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...updates };
+      localStorage.setItem("user", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
@@ -59,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ token, user, isLoading, login, updateUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

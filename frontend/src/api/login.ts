@@ -1,6 +1,6 @@
 import { normalizeUser } from "@/lib/normalizeUser";
 import { API, getAuthHeaders } from "./client";
-import { ApiUser, ROLES_USER } from "@/types";
+import { ApiUser, CitizenProfile, ROLES_USER } from "@/types";
 
 export type LoginPayload = {
   email: string;
@@ -20,6 +20,8 @@ export type LoginUser = {
   emailVerified: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Perfil de discapacidad — solo presente para ciudadanos. */
+  citizenProfile?: CitizenProfile | null;
 };
 
 export type LoginResponse = {

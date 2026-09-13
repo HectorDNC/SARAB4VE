@@ -188,6 +188,69 @@ async function findUserDetailsById(userId) {
 }
 
 // ---------------------------------------------------------------------------
+// SELECT — buscar perfil de ciudadano (citizen_profiles)
+// ---------------------------------------------------------------------------
+
+const CITIZEN_PROFILE_SELECT = `
+  user_id AS "userId",
+  disability_type AS "disabilityType",
+  disability_subcategory AS "disabilitySubcategory",
+  communication_mode AS "communicationMode",
+  created_at AS "createdAt",
+  updated_at AS "updatedAt"
+`;
+
+const FIND_CITIZEN_PROFILE_BY_ID = `
+  SELECT ${CITIZEN_PROFILE_SELECT}
+  FROM citizen_profiles
+  WHERE user_id = $1
+`;
+
+/**
+ * Busca el perfil de discapacidad de un ciudadano.
+ * @param {string} userId
+ * @returns {Promise<Object|null>}
+ */
+async function findCitizenProfileById(userId) {
+  const result = await db.query(FIND_CITIZEN_PROFILE_BY_ID, [userId]);
+  return result.rows[0] || null;
+}
+
+/**
+ * Crea o actualiza el perfil de discapacidad de un ciudadano.
+ * Recibe los tres campos completos (el frontend los envía juntos), por lo
+ * que un `null` limpia explícitamente el valor correspondiente.
+ *
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} userId
+ * @param {{ disabilityType: string|null, disabilitySubcategory: string|null, communicationMode: string|null }} profile
+ * @returns {Promise<Object>} — Fila insertada/actualizada
+ */
+async function upsertCitizenProfile(client, userId, profile) {
+  const query = `
+    INSERT INTO citizen_profiles (
+      user_id, disability_type, disability_subcategory, communication_mode
+    )
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (user_id) DO UPDATE SET
+      disability_type = EXCLUDED.disability_type,
+      disability_subcategory = EXCLUDED.disability_subcategory,
+      communication_mode = EXCLUDED.communication_mode,
+      updated_at = NOW()
+    RETURNING ${CITIZEN_PROFILE_SELECT}
+  `;
+
+  const result = await (client || db).query(query, [
+    userId,
+    profile.disabilityType ?? null,
+    profile.disabilitySubcategory ?? null,
+    profile.communicationMode ?? null,
+  ]);
+
+  return result.rows[0] || null;
+}
+
+// ---------------------------------------------------------------------------
 // UPDATE — actualizar datos básicos del usuario
 // ---------------------------------------------------------------------------
 
@@ -526,6 +589,8 @@ module.exports = {
   getUserStats,
   findUserById,
   findUserDetailsById,
+  findCitizenProfileById,
+  upsertCitizenProfile,
   findOrganizationProfileById,
   findLegalRepresentatives,
   findOrganizationDisabilityTypes,
