@@ -4,6 +4,7 @@
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const db = require("../../db");
+const { notifyNewEmergency } = require("../notifications/requestNotifications.service");
 
 /** Costo del hash bcrypt para access tokens. */
 const BCRYPT_ROUNDS = 10;
@@ -115,6 +116,11 @@ async function createEmergency(payload, userId) {
   );
 
   const emergency = result.rows[0];
+
+  // Notificación best-effort: nunca debe impedir registrar la emergencia.
+  notifyNewEmergency(emergency).catch((error) => {
+    console.warn("[emergencies] No se pudo notificar la emergencia:", error?.message || error);
+  });
 
   // Retornar la emergencia + el access token en texto plano (solo una vez)
   // El ciudadano usará este token para acceder al chat via ?t=<token> o header X-Citizen-Token

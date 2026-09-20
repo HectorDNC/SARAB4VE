@@ -31,4 +31,10 @@ module.exports = {
   /** ── Groq (extracción de emergencia vía LLM gratuito, fallback) ── */
   groqApiKey: process.env.GROQ_API_KEY || "",
   groqModel: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+  /** ── Notificaciones de nuevas solicitudes de apoyo ── */
+  notifyRadiusKm: Number(process.env.NOTIFY_RADIUS_KM || 40),
+  notifyMaxRecipients: Number(process.env.NOTIFY_MAX_RECIPIENTS || 200),
+  notifyMapPath: process.env.NOTIFY_MAP_PATH || "/solicitudes",
+  /** Las emergencias se listan en el mapa, no en /solicitudes. */
+  notifyEmergencyMapPath: process.env.NOTIFY_EMERGENCY_MAP_PATH || "/mapa",
 };
