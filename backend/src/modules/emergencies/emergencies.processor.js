@@ -16,6 +16,7 @@ const { notifyEmergencyUpdate } = require('../../services/websocket');
 const { obtenerTranscript } = require('./transcriptorEmergencia');
 const { extraerInformacionEmergencia } = require('./extractorEmergencia');
 const { uploadAudio } = require('../../services/storage');
+const { notifyNewEmergency } = require('../notifications/requestNotifications.service');
 
 // ---------------------------------------------------------------------------
 // Constantes del dominio
@@ -117,10 +118,17 @@ function buildExtractedFields(payload, infoExtraida, transcript) {
     payload.cannotMove === true || payload.cannotMove === 'true' || infoExtraida?.cannotMove || false;
 
   // disability_type
-  const disabilityType =
+  // El valor puede venir del formulario o del LLM. Se normaliza y se valida
+  // SIEMPRE contra el enum: un valor inválido persistido haría que el mapeo de
+  // categorías de la notificación no resuelva, y una categoría sin resolver
+  // equivale a difundir la emergencia sin filtro de categoría.
+  const disabilityTypeCandidato =
     payload.disabilityType && DISABILITY_TYPES.includes(payload.disabilityType)
       ? payload.disabilityType
-      : (infoExtraida?.disabilityType || 'motriz');
+      : String(infoExtraida?.disabilityType || '').trim().toLowerCase();
+  const disabilityType = DISABILITY_TYPES.includes(disabilityTypeCandidato)
+    ? disabilityTypeCandidato
+    : 'motriz';
   fields.disability_type = disabilityType;
 
   // communication_mode / disability_subcategory
@@ -294,6 +302,17 @@ async function processVoiceEmergency(emergencyId, payload, audioBuffer, audioMim
     const finalStatus = tieneDatosUtiles ? 'completa' : 'pendiente_revision';
 
     await updateProcessingStatus(emergencyId, finalStatus);
+
+    // Notificación best-effort una vez que los datos extraídos ya están persistidos.
+    // Solo con datos útiles: nunca avisamos a organizaciones con datos de relleno.
+    if (finalStatus === 'completa') {
+      const { findEmergencyById } = require('./emergencies.repository');
+      findEmergencyById(emergencyId, db)
+        .then((row) => notifyNewEmergency(row))
+        .catch((error) => {
+          console.warn('[PROCESSOR] No se pudo notificar la emergencia:', error?.message || error);
+        });
+    }
 
     notify(emergencyId, {
       processingStatus: finalStatus,

@@ -3,6 +3,7 @@
  */
 const crypto = require("crypto");
 const storage = require("../../services/storage");
+const { notifyNewHelpRequest } = require("../notifications/requestNotifications.service");
 
 /**
  * Crea un help-request. Si vienen archivos adjuntos (carnet de
@@ -59,6 +60,11 @@ async function createHelpRequest(payload, schema, repository, userId, files = {}
   }
 
   const row = await repository.insertHelpRequest(normalized);
+
+  // Notificación best-effort: nunca debe impedir registrar la solicitud.
+  notifyNewHelpRequest(row).catch((error) => {
+    console.warn("[helpRequests] No se pudo notificar la nueva solicitud:", error?.message || error);
+  });
 
   return warnings.length > 0 ? { ...row, warnings } : row;
 }
