@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { MapItem, MapItemWithCoords, UrgencyLevel } from "@/types";
 import { Refugios, CONFIGURACION_SERVICIOS } from "@/mocks/refugios";
@@ -212,7 +212,10 @@ function FilterSelect<V extends string>({
 export default function MapaPage() {
   return (
     <MapaPageGuard>
-      <MapaPageContent />
+      {/* Suspense requerido por useSearchParams (preselección ?tipo=) */}
+      <Suspense fallback={null}>
+        <MapaPageContent />
+      </Suspense>
     </MapaPageGuard>
   );
 }
@@ -263,7 +266,13 @@ function MapaPageContent() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // ── Filtros ──
-  const [kindFilter, setKindFilter] = useState<"all" | "emergency" | "help_request">("all");
+  // ?tipo=emergency|help_request preselecciona el tipo (enlaces de los
+  // contadores del dashboard). Sin el parámetro, arranca en "all".
+  const searchParams = useSearchParams();
+  const tipoParam = searchParams.get("tipo");
+  const [kindFilter, setKindFilter] = useState<"all" | "emergency" | "help_request">(
+    tipoParam === "emergency" || tipoParam === "help_request" ? tipoParam : "all",
+  );
   const [statusFilter, setStatusFilter] = useState<"active" | "assigned" | "resolved" | "all">("active");
   const [sortMode, setSortMode] = useState<"urgency" | "date_desc" | "date_asc">("urgency");
 

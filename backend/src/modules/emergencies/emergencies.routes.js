@@ -22,6 +22,11 @@ const router = express.Router();
 router.get("/", 
     authenticate, authorize("admin", "organization", "volunteer"), 
     controller.listEmergencies(service, repository, schema));
+// Conteo por estado para los contadores del dashboard.
+// Debe ir antes de "/:id" — si no, Express interpreta "stats" como un id.
+router.get("/stats",
+    authenticate, authorize("admin", "organization", "volunteer"),
+    controller.getEmergencyStats(service, repository));
 router.get("/:id", 
     controller.getEmergencyById(service, schema, repository));
 

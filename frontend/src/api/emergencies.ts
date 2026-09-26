@@ -91,6 +91,26 @@ export async function listEmergencies(
   return json.data ?? [];
 }
 
+// ── GET — estadísticas (conteo por estado) ────────────────────────────────
+
+export interface EmergencyStats {
+  total: number;
+  received: number;
+  assigned: number;
+  resolved: number;
+}
+
+export async function getEmergencyStats(): Promise<EmergencyStats> {
+  const res = await fetch(`${API}/api/emergencies/stats`, { headers: getAuthHeaders() });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data;
+}
+
 // ── GET — por ID (detalle completo) ──────────────────────────────────────
 
 export interface EmergencyDetail {

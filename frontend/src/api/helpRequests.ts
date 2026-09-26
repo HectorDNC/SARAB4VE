@@ -88,6 +88,26 @@ export async function listHelpRequests(
   return json.data ?? [];
 }
 
+// ── GET — estadísticas (conteo por estado) ────────────────────────────────
+
+export interface HelpRequestStats {
+  total: number;
+  open: number;
+  assigned: number;
+  resolved: number;
+}
+
+export async function getHelpRequestStats(): Promise<HelpRequestStats> {
+  const res = await fetch(`${API}/api/help-requests/stats`, { headers: getAuthHeaders() });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data;
+}
+
 /** GET — solicitudes propias del ciudadano autenticado */
 export async function listMyHelpRequests(): Promise<HelpRequestListItem[]> {
   const res = await fetch(`${API}/api/help-requests/mine`, {

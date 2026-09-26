@@ -395,10 +395,30 @@ async function findHelpRequestsByUserId(userId) {
   return result.rows;
 }
 
+// ---------------------------------------------------------------------------
+// SELECT — conteo agrupado por estado (contadores del dashboard)
+// ---------------------------------------------------------------------------
+
+const COUNT_BY_STATUS = `
+  SELECT status, COUNT(*)::int AS count
+  FROM help_requests
+  GROUP BY status
+`;
+
+/**
+ * Obtiene el conteo de help-requests agrupado por estado.
+ * @returns {Promise<{ status: string, count: number }[]>}
+ */
+async function countHelpRequestsByStatus() {
+  const result = await db.query(COUNT_BY_STATUS);
+  return result.rows;
+}
+
 module.exports = {
   // queries de lectura
   buildListHelpRequestsQuery,
   findHelpRequestsByUserId,
+  countHelpRequestsByStatus,
   // queries de escritura
   insertHelpRequest,
   acceptHelpRequestById,

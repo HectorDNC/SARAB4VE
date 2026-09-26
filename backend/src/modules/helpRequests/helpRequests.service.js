@@ -4,6 +4,7 @@
 const crypto = require("crypto");
 const storage = require("../../services/storage");
 const { notifyNewHelpRequest } = require("../notifications/requestNotifications.service");
+const { REQUEST_STATUSES } = require("./helpRequests.schema");
 
 /**
  * Crea un help-request. Si vienen archivos adjuntos (carnet de
@@ -173,6 +174,28 @@ async function listMyHelpRequests(userId, repository) {
   return repository.findHelpRequestsByUserId(userId);
 }
 
+/**
+ * Estadísticas de help-requests: conteo por estado + total.
+ * Todos los estados vienen inicializados en 0 para que el cliente pueda
+ * distinguir "cero real" de "sin datos".
+ * @param {Object} repository
+ * @returns {Promise<{ data: Object, status: number }>}
+ */
+async function getHelpRequestStats(repository) {
+  const rows = await repository.countHelpRequestsByStatus();
+
+  const stats = { total: 0 };
+  for (const status of REQUEST_STATUSES) stats[status] = 0;
+
+  for (const row of rows) {
+    if (!(row.status in stats)) continue;
+    stats[row.status] = row.count;
+    stats.total += row.count;
+  }
+
+  return { data: stats, status: 200 };
+}
+
 module.exports = {
   createHelpRequest,
   listHelpRequests,
@@ -181,4 +204,5 @@ module.exports = {
   getHelpRequestById,
   linkRequesterUser,
   listMyHelpRequests,
+  getHelpRequestStats,
 };

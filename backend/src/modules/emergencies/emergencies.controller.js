@@ -91,9 +91,24 @@ function getProcessingStatus(service, schema, repository) {
   };
 }
 
+/**
+ * GET /api/emergencies/stats
+ */
+function getEmergencyStats(service, repository) {
+  return async (req, res, next) => {
+    try {
+      const result = await service.getEmergencyStats(repository);
+      return res.status(result.status).json({ data: result.data });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
 module.exports = {
   listEmergencies,
   createEmergency,
   getEmergencyById,
   getProcessingStatus,
+  getEmergencyStats,
 };

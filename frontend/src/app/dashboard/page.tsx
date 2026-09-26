@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getUserStats } from "@/api/user";
+import RequestCounters from "@/components/ui/RequestCounters";
 import { MOCK_USERS } from "@/hooks/mockDataDashboard";
 import { alertService } from "@/services/alertService";
 import { USE_MOCK, type ApiUser, type STATUS_USERS, type UserStats, type UserStatsByRole } from "@/types";
@@ -102,6 +103,15 @@ export default function DashboardHomePage() {
           Vista general del panel administrativo de SARA.
         </p>
       </div>
+
+      <section className="mb-8" aria-labelledby="solicitudes-heading">
+        <h2 id="solicitudes-heading" className="text-lg font-semibold text-on-surface mb-3">
+          Solicitudes
+        </h2>
+        <RequestCounters />
+      </section>
+
+      <h2 className="text-lg font-semibold text-on-surface mb-3">Usuarios</h2>
 
       {isLoading ? (
         <p className="text-on-surface-variant text-sm">Cargando estadísticas...</p>
