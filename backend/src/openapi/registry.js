@@ -670,6 +670,40 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: "get",
+  path: "/api/help-requests/stats",
+  summary: "Estadísticas de solicitudes de ayuda",
+  description: "Conteo de solicitudes de ayuda agrupado por estado (open, assigned, resolved) más el total. Requiere rol admin, organization o volunteer.",
+  tags: ["Help Requests"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      description: "Conteo por estado y total",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.object({
+              total: z.number().int().openapi({ example: 0 }),
+              open: z.number().int().openapi({ example: 0 }),
+              assigned: z.number().int().openapi({ example: 0 }),
+              resolved: z.number().int().openapi({ example: 0 }),
+            }),
+          }),
+        },
+      },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Rol no autorizado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
 // =========================================================================
 // EMERGENCIES
 // =========================================================================
@@ -695,6 +729,40 @@ registry.registerPath({
     200: { description: "Lista de emergencias" },
     400: {
       description: "Error de validación en query params",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/emergencies/stats",
+  summary: "Estadísticas de emergencias",
+  description: "Conteo de emergencias agrupado por estado (received, assigned, resolved) más el total. Requiere rol admin, organization o volunteer.",
+  tags: ["Emergencies"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      description: "Conteo por estado y total",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.object({
+              total: z.number().int().openapi({ example: 0 }),
+              received: z.number().int().openapi({ example: 0 }),
+              assigned: z.number().int().openapi({ example: 0 }),
+              resolved: z.number().int().openapi({ example: 0 }),
+            }),
+          }),
+        },
+      },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Rol no autorizado",
       content: { "application/json": { schema: ErrorResponse } },
     },
   },
