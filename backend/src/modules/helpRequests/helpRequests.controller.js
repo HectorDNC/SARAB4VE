@@ -166,6 +166,20 @@ function listMyHelpRequests(service, repository) {
   };
 }
 
+/**
+ * GET /api/help-requests/stats
+ */
+function getHelpRequestStats(service, repository) {
+  return async (req, res, next) => {
+    try {
+      const result = await service.getHelpRequestStats(repository);
+      return res.status(result.status).json({ data: result.data });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
 module.exports = {
   listHelpRequests,
   createHelpRequest,
@@ -174,4 +188,5 @@ module.exports = {
   getHelpRequestById,
   linkRequesterUser,
   listMyHelpRequests,
+  getHelpRequestStats,
 };

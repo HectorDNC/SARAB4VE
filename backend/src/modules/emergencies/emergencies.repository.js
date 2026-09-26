@@ -177,10 +177,30 @@ async function getProcessingStatus(id) {
   return result.rows[0] || null;
 }
 
+// ---------------------------------------------------------------------------
+// SELECT — conteo agrupado por estado (contadores del dashboard)
+// ---------------------------------------------------------------------------
+
+const COUNT_BY_STATUS = `
+  SELECT status, COUNT(*)::int AS count
+  FROM emergencies
+  GROUP BY status
+`;
+
+/**
+ * Obtiene el conteo de emergencias agrupado por estado.
+ * @returns {Promise<{ status: string, count: number }[]>}
+ */
+async function countEmergenciesByStatus() {
+  const result = await db.query(COUNT_BY_STATUS);
+  return result.rows;
+}
+
 module.exports = {
   buildDistanceExpression,
   buildListEmergenciesQuery,
   findEmergencyById,
   getProcessingStatus,
   updateEmergencyStatusToAssigned,
+  countEmergenciesByStatus,
 };

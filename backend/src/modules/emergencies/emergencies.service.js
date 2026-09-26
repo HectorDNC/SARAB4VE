@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const db = require("../../db");
 const { notifyNewEmergency } = require("../notifications/requestNotifications.service");
+const { EMERGENCY_STATUSES } = require("./emergencies.schema");
 
 /** Costo del hash bcrypt para access tokens. */
 const BCRYPT_ROUNDS = 10;
@@ -166,6 +167,28 @@ async function getProcessingStatus(id, repository) {
   return { data: row, status: 200 };
 }
 
+/**
+ * Estadísticas de emergencias: conteo por estado + total.
+ * Todos los estados vienen inicializados en 0 para que el cliente pueda
+ * distinguir "cero real" de "sin datos".
+ * @param {Object} repository
+ * @returns {Promise<{ data: Object, status: number }>}
+ */
+async function getEmergencyStats(repository) {
+  const rows = await repository.countEmergenciesByStatus();
+
+  const stats = { total: 0 };
+  for (const status of EMERGENCY_STATUSES) stats[status] = 0;
+
+  for (const row of rows) {
+    if (!(row.status in stats)) continue;
+    stats[row.status] = row.count;
+    stats.total += row.count;
+  }
+
+  return { data: stats, status: 200 };
+}
+
 module.exports = {
   generateAccessToken,
   hashAccessToken,
@@ -174,4 +197,5 @@ module.exports = {
   listEmergencies,
   getEmergencyById,
   getProcessingStatus,
+  getEmergencyStats,
 };
