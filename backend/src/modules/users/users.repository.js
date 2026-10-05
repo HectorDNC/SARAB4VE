@@ -71,6 +71,7 @@ const USER_DETAILS_SELECT_COLUMNS = `
  * Construye dinámicamente la consulta de listado con filtros opcionales.
  * @param {Object} filters
  * @param {string} [filters.role]
+ * @param {string} [filters.roles] — lista separada por comas
  * @param {string} [filters.status]
  * @param {string} [filters.search]
  * @param {number} [filters.limit]
@@ -85,6 +86,11 @@ function buildListUsersQuery(filters = {}) {
   if (filters.role) {
     conditions.push(`u.role = $${paramIndex++}`);
     params.push(filters.role);
+  }
+
+  if (filters.roles) {
+    conditions.push(`u.role = ANY($${paramIndex++})`);
+    params.push(filters.roles.split(",").map((r) => r.trim()));
   }
 
   if (filters.status) {
