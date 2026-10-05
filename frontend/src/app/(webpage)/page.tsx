@@ -15,11 +15,15 @@ type Aliado = { name: string; country: string; logo?: string };
 // TODO: confirmar el país real de cada uno — "Venezuela" es un supuesto,
 // no un dato verificado.
 const ALIADOS_AMERICA: Aliado[] = [
-  { name: "Eshalom21", country: "Argentina", logo: "/aliados/logo-ESHALOM21.png" }
+  { name: "Eshalom21", country: "Argentina", logo: "/aliados/logo-ESHALOM21.png" },
+  { name: "Psicoayudas", country: "Chile y España", logo: "/aliados/logo-psicoayudas.png" },
+  { name: "Proyecto Love", country: "Venezuela", logo: "/aliados/proyectolove.png" },
+  { name: "Auric Adaro", country: "México", logo: "/aliados/logo-auric.png" }
   
 ];
 const ALIADOS_EUROPA: Aliado[] = [
-  { name: "Manos al Mundo", country: "España", logo: "/aliados/logo-manosalmundo.png" }
+  { name: "Manos al Mundo", country: "España", logo: "/aliados/logo-manosalmundo.png" },
+  { name: "Trama Comunitaria", country: "España y Colombia", logo: "/aliados/logo-tramacomunitaria.png" }
 ];
 // Continentes sin aliados todavía. Para activar uno: descomentá su array de
 // datos acá y el bloque <ContinenteAliados> correspondiente más abajo, en
