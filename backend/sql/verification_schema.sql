@@ -346,7 +346,7 @@ INSERT INTO document_types (code, name, entity_type, is_required) VALUES
 INSERT INTO document_types (code, name, entity_type, is_required) VALUES
   ('identificacion', 'Documento de identidad (cédula o pasaporte)', 'volunteer_professional', true),
   ('titulo_profesional', 'Título profesional o certificación', 'volunteer_professional', true),
-  ('curriculum', 'Currículum vitae actualizado', 'volunteer_professional', false),
+  ('curriculum', 'Currículum', 'volunteer_professional', true),
   ('certificado_antecedentes', 'Certificado de antecedentes penales', 'volunteer_professional', false);
 
 -- Voluntario no profesional

@@ -52,6 +52,7 @@ export const COUNTRIES_FISCAL_ID = [
     "Local",
     "Regional",
     "Nacional",
+    "Internacional",
   ] as const;
 
   // Tipos de discapacidad (multipicklist)
