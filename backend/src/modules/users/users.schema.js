@@ -72,6 +72,16 @@ const ListUsersQuery = z.object({
   role: z.enum(ROLES).optional()
     .openapi({ example: "volunteer", description: "Filtrar por rol" }),
 
+  roles: z.string().optional()
+    .refine(
+      (value) => !value || value.split(",").every((r) => ROLES.includes(r.trim())),
+      "roles contiene un rol inválido",
+    )
+    .openapi({
+      example: "volunteer,organization,citizen",
+      description: "Filtrar por varios roles a la vez (lista separada por comas)",
+    }),
+
   status: z.enum(STATUSES).optional()
     .openapi({ example: "pending", description: "Filtrar por estado" }),
 

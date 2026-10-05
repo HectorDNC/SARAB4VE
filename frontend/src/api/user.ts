@@ -6,6 +6,7 @@ export async function listUsers(params: ListUsersParams = {}): Promise<ListUsers
     const searchParams = new URLSearchParams();
 
     if (params.role) searchParams.set("role", params.role);
+    if (params.roles?.length) searchParams.set("roles", params.roles.join(","));
     if (params.status) searchParams.set("status", params.status);
     if (params.search) searchParams.set("search", params.search);
     searchParams.set("limit", String(params.limit ?? 50));

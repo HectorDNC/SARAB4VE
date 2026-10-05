@@ -300,6 +300,7 @@ export type UserStats = Record<ROLES_USER, UserStatsByRole>;
 
 export interface ListUsersParams {
     role?: ROLES_USER;
+    roles?: ROLES_USER[];
     status?: STATUS_USERS;
     search?: string;
     limit?: number;
