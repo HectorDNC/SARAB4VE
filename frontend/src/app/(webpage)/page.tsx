@@ -1,9 +1,67 @@
 import Link from "next/link";
+import HomeCollabCta from "./HomeCollabCta";
 
 // TODO: conectar al conteo real de voluntarios activos cuando exista un
 // endpoint público para eso. Mientras sea null, el stat del hero y el texto
 // de la sección de colaboración quedan ocultos/genéricos automáticamente.
 const activeVolunteersCount: number | null = null;
+
+// Aliados de la red SARA, agrupados por continente. Para agregar uno real:
+// poné su logo en frontend/public/aliados/ y agregá la entrada (name,
+// country, logo) en el continente correspondiente. Mientras `logo` quede
+// sin definir, se muestra un recuadro vacío en su lugar.
+type Aliado = { name: string; country: string; logo?: string };
+
+// TODO: confirmar el país real de cada uno — "Venezuela" es un supuesto,
+// no un dato verificado.
+const ALIADOS_AMERICA: Aliado[] = [
+  { name: "Eshalom21", country: "Argentina", logo: "/aliados/logo-ESHALOM21.png" }
+  
+];
+const ALIADOS_EUROPA: Aliado[] = [
+  { name: "Manos al Mundo", country: "España", logo: "/aliados/logo-manosalmundo.png" }
+];
+// Continentes sin aliados todavía. Para activar uno: descomentá su array de
+// datos acá y el bloque <ContinenteAliados> correspondiente más abajo, en
+// el JSX de HomePage.
+// 
+// const ALIADOS_AFRICA: Aliado[] = [];
+// const ALIADOS_ASIA: Aliado[] = [];
+// const ALIADOS_OCEANIA: Aliado[] = [];
+
+/** Un continente con su contador de organizaciones y la fila de logos. */
+function ContinenteAliados({ nombre, aliados }: { nombre: string; aliados: Aliado[] }) {
+  return (
+    <div className="mt-10">
+      <div className="flex items-center justify-start gap-2 mb-7">
+        <h3 className="text-base font-bold text-on-surface">{nombre}</h3>
+        <span className="text-xs font-semibold text-on-surface-variant bg-surface-container-low px-2.5 py-1 rounded-full">
+          {aliados.length} {aliados.length === 1 ? "organización" : "organizaciones"}
+        </span>
+      </div>
+      <ul role="list" className="flex flex-wrap items-start justify-start gap-x-14 gap-y-10">
+        {aliados.map((aliado) => (
+          <li key={aliado.name} className="flex flex-col items-center gap-2 w-40">
+            {aliado.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={aliado.logo}
+                alt={aliado.name}
+                className="h-32 lg:h-40 w-auto max-w-[320px] object-contain"
+              />
+            ) : (
+              <div className="h-32 lg:h-40 w-40 flex items-center justify-center rounded-xl border border-dashed border-outline-variant text-on-surface-variant">
+                <span className="material-symbols-rounded text-3xl" aria-hidden="true">image</span>
+              </div>
+            )}
+            <span className="text-sm font-semibold text-on-surface text-center">{aliado.name}</span>
+            <span className="text-xs text-on-surface-variant text-center">{aliado.country}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function HomePage() {
   return (
@@ -145,39 +203,29 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* COLLAB CTA */}
-      <section className="px-5 lg:px-10 py-12" aria-labelledby="collab-heading">
-        <div className="max-w-5xl mx-auto">
-          <div className="rounded-3xl bg-primary p-8 lg:p-12 flex flex-col lg:flex-row items-start lg:items-center gap-6 lg:gap-12">
-            <div className="flex-1">
-              <h2 id="collab-heading" className="text-2xl font-bold text-on-primary">
-                ¿Quieres colaborar en la red de apoyo?
-              </h2>
-              <p className="text-on-primary/80 mt-2 text-base">
-                {activeVolunteersCount !== null && activeVolunteersCount > 0
-                  ? `Únete a los ${activeVolunteersCount.toLocaleString("es")} voluntarios que ya forman parte de la Red SARA.`
-                  : "Únete a la red de voluntarios y organizaciones que ya forman parte de SARA."}
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-              <Link
-                href="/registro/volunteer"
-                className="flex items-center justify-center gap-2 bg-on-primary text-primary px-6 py-3 rounded-full font-bold text-sm hover:bg-primary-fixed transition-colors focus-visible:outline-3 focus-visible:outline-on-primary min-h-[48px]"
-              >
-                <span className="material-symbols-rounded text-lg" aria-hidden="true">volunteer_activism</span>
-                Soy voluntario
-              </Link>
-              <Link
-                href="/registro/organization"
-                className="flex items-center justify-center gap-2 border-2 border-on-primary/50 text-on-primary px-6 py-3 rounded-full font-bold text-sm hover:border-on-primary transition-colors focus-visible:outline-3 focus-visible:outline-on-primary min-h-[48px]"
-              >
-                <span className="material-symbols-rounded text-lg" aria-hidden="true">corporate_fare</span>
-                Soy organización
-              </Link>
-            </div>
-          </div>
+      {/* ALIADOS */}
+      <section className="px-5 lg:px-10 py-14 border-t border-outline-variant" aria-labelledby="aliados-heading">
+        <div className="max-w-5xl mx-auto text-center">
+          <span className="material-symbols-rounded text-4xl text-primary" aria-hidden="true">public</span>
+          <h2 id="aliados-heading" className="mt-3 text-xl lg:text-2xl font-bold text-on-surface">
+            Trabajando en comunidad por un mundo inclusivo y sin barreras
+          </h2>
+          <p className="mt-2 text-on-surface-variant text-sm lg:text-base max-w-2xl mx-auto">
+            SARA cuenta con organizaciones aliadas en Latinoamérica y el mundo que forman una red de apoyo para personas con discapacidad durante y después de una emergencia, promoviendo comunidades más inclusivas y sin barreras.
+          </p>
+
+          <ContinenteAliados nombre="América" aliados={ALIADOS_AMERICA} />
+          <ContinenteAliados nombre="Europa" aliados={ALIADOS_EUROPA} />
+          {/* Continentes sin aliados todavía — descomentar cuando haya al
+             menos uno, junto con su array de datos más arriba. */}
+          {/* <ContinenteAliados nombre="África" aliados={ALIADOS_AFRICA} /> */}
+          {/* <ContinenteAliados nombre="Asia" aliados={ALIADOS_ASIA} /> */}
+          {/* <ContinenteAliados nombre="Oceanía" aliados={ALIADOS_OCEANIA} /> */}
         </div>
       </section>
+
+      {/* COLLAB CTA */}
+      <HomeCollabCta activeVolunteersCount={activeVolunteersCount} />
     </>
   );
 }
