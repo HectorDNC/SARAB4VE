@@ -6,6 +6,9 @@ import Pagination from "@/components/layout/dashboard/Pagination";
 import StatusBadge from "@/components/layout/dashboard/StatusBadge";
 import Link from "next/link";
 
+/** `fullName` guarda al representante legal, no el nombre de la organización — ver organizationName. */
+const ORG_NAME_FALLBACK = "Organización sin nombre registrado";
+
 export default function OrganizationPage() {
   const {
     users,
@@ -45,37 +48,47 @@ export default function OrganizationPage() {
           </p>
         ) : (
           <div className="divide-y divide-outline-variant">
-            {users.map((user) => (
-              <div key={user.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 sm:p-5">
+            {users.map((user) => {
+              const orgName = user.organizationName || ORG_NAME_FALLBACK;
+              return (
+                <div key={user.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 sm:p-5">
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-on-surface">{user.fullName}</p>
-                    <StatusBadge status={user.status as "pending" | "approved" | "rejected"} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p
+                        className="font-semibold text-on-surface truncate min-w-0 flex-1"
+                        title={orgName}
+                      >
+                        {orgName}
+                      </p>
+                      <span className="shrink-0">
+                        <StatusBadge status={user.status as "pending" | "approved" | "rejected"} />
+                      </span>
+                    </div>
+                    <p className="text-sm text-on-surface-variant mt-0.5 truncate">{user.email}</p>
+                    {user.zone && (
+                      <p className="text-xs text-on-surface-variant mt-1 inline-flex items-center gap-1 min-w-0">
+                        <span className="material-symbols-rounded text-sm shrink-0" aria-hidden="true">location_on</span>
+                        <span className="truncate">{user.zone}</span>
+                      </p>
+                    )}
                   </div>
-                  <p className="text-sm text-on-surface-variant mt-0.5">{user.email}</p>
-                  {user.zone && (
-                    <p className="text-xs text-on-surface-variant mt-1 inline-flex items-center gap-1">
-                      <span className="material-symbols-rounded text-sm" aria-hidden="true">location_on</span>
-                      {user.zone}
-                    </p>
-                  )}
-                </div>
 
-                <div className="shrink-0">
-                  <Link
-                    href={`/dashboard/organizaciones/${user.id}`}
-                    className="flex items-center justify-center w-10 h-10 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-colors"
-                    aria-label={`Ver detalles de ${user.fullName}`}
-                  >
-                    <span className="material-symbols-rounded text-xl" aria-hidden="true">
-                      edit_note
-                    </span>
-                  </Link>
-                </div>
+                  <div className="shrink-0">
+                    <Link
+                      href={`/dashboard/organizaciones/${user.id}`}
+                      className="flex items-center justify-center w-10 h-10 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-colors"
+                      aria-label={`Ver detalles de ${orgName}`}
+                    >
+                      <span className="material-symbols-rounded text-xl" aria-hidden="true">
+                        edit_note
+                      </span>
+                    </Link>
+                  </div>
 
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

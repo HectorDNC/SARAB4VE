@@ -378,6 +378,10 @@ async function getOrganizationProfile(organizationId, requester, repository) {
     };
   }
 
+  // Obtener nombre real de la organización (vive en user_details, no en
+  // users.full_name — ese campo guarda al representante legal).
+  const userDetails = await repository.findUserDetailsById(organizationId);
+
   // Obtener perfil de organización
   const organizationProfile = await repository.findOrganizationProfileById(organizationId);
 
@@ -398,7 +402,7 @@ async function getOrganizationProfile(organizationId, requester, repository) {
 
   // Construir respuesta completa
   const data = {
-    user,
+    user: { ...user, organizationName: userDetails?.organizationName ?? null },
     organizationProfile: organizationProfile || null,
     legalRepresentatives,
     disabilityTypes,

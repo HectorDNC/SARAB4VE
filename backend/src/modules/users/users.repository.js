@@ -25,6 +25,28 @@ const USER_SELECT_COLUMNS = `
   updated_at AS "updatedAt"
 `;
 
+/**
+ * Columnas para el listado — mismas columnas que USER_SELECT_COLUMNS pero
+ * calificadas con el alias "u." porque esta consulta hace LEFT JOIN con
+ * user_details para traer organization_name (el nombre real de la
+ * organización no vive en users.full_name, ver migración de este fix).
+ */
+const USER_LIST_SELECT_COLUMNS = `
+  u.id,
+  u.full_name AS "fullName",
+  u.email,
+  u.phone,
+  u.role,
+  u.status,
+  ST_AsGeoJSON(u.location)::json AS location,
+  u.zone,
+  u.phone_verified AS "phoneVerified",
+  u.email_verified AS "emailVerified",
+  u.created_at AS "createdAt",
+  u.updated_at AS "updatedAt",
+  ud.organization_name AS "organizationName"
+`;
+
 /** Columnas de user_details. */
 const USER_DETAILS_SELECT_COLUMNS = `
   user_id AS "userId",
@@ -87,8 +109,9 @@ function buildListUsersQuery(filters = {}) {
 
   // Consulta de datos
   const dataQuery = `
-    SELECT ${USER_SELECT_COLUMNS}
+    SELECT ${USER_LIST_SELECT_COLUMNS}
     FROM users u
+    LEFT JOIN user_details ud ON ud.user_id = u.id
     ${whereClause}
     ORDER BY u.created_at DESC
     LIMIT $${paramIndex++} OFFSET $${paramIndex++}
@@ -583,6 +606,7 @@ async function findVolunteerExperience(userId) {
 
 module.exports = {
   USER_SELECT_COLUMNS,
+  USER_LIST_SELECT_COLUMNS,
   USER_DETAILS_SELECT_COLUMNS,
   buildListUsersQuery,
   listUsers,

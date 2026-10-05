@@ -20,6 +20,7 @@ type RawUser = {
   updatedAt?: string;
   updated_at?: string;
   citizenProfile?: CitizenProfile | null;
+  organizationName?: string | null;
 };
 
 function normalizeLocation(
@@ -66,5 +67,6 @@ export function normalizeUser(raw: RawUser): ApiUser {
     createdAt: raw.createdAt ?? raw.created_at ?? "",
     updatedAt: raw.updatedAt ?? raw.updated_at ?? "",
     citizenProfile: raw.citizenProfile ?? null,
+    organizationName: raw.organizationName ?? null,
   };
 }
