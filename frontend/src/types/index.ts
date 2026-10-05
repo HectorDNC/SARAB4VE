@@ -265,6 +265,8 @@ export interface ApiUser {
     updatedAt: string;
     /** Perfil de discapacidad — solo presente para ciudadanos (GET /api/users/:id). */
     citizenProfile?: CitizenProfile | null;
+    /** Nombre real de la organización (user_details.organization_name) — solo presente para organizaciones; `fullName` guarda al representante legal, no el nombre de la organización. */
+    organizationName?: string | null;
 }
 
 /** Perfil de discapacidad persistente de un ciudadano (citizen_profiles). */

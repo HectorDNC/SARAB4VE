@@ -52,6 +52,9 @@ const DOC_STATUS_CLASSES: Record<DocumentStatus, string> = {
     rejected: "bg-error-container text-on-error-container",
 };
 
+/** `fullName` guarda al representante legal, no el nombre de la organización — ver organizationName. */
+const ORG_NAME_FALLBACK = "Organización sin nombre registrado";
+
 /** Formatear fecha ISO → "8 de agosto de 2026" */
 function fmtDate(iso: string | null | undefined): string {
     if (!iso) return "—";
@@ -290,6 +293,7 @@ export default function OrganizationDetailPage() {
     }
 
     const { user, organizationProfile, legalRepresentatives, disabilityTypes, services, verification, documents } = perfil;
+    const orgName = user.organizationName || ORG_NAME_FALLBACK;
 
     /* --------------------- Vista principal ---------------------------- */
 
@@ -300,9 +304,11 @@ export default function OrganizationDetailPage() {
             {/* 1. Cabecera + Datos básicos del usuario                           */}
             {/* ================================================================ */}
             <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-6">
-                <div className="flex items-center gap-3 flex-wrap">
-                    <h1 className="text-xl sm:text-2xl font-bold text-on-surface">{user.fullName}</h1>
-                    <StatusBadge status={user.status} />
+                <div className="flex items-center gap-3">
+                    <h1 className="text-xl sm:text-2xl font-bold text-on-surface truncate min-w-0" title={orgName}>{orgName}</h1>
+                    <span className="shrink-0">
+                        <StatusBadge status={user.status} />
+                    </span>
                 </div>
 
                 <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -703,8 +709,8 @@ export default function OrganizationDetailPage() {
                     </div>
                     <p className="text-sm text-on-surface-variant mb-6">
                         {(executingDecision ?? pendingDecision) === "approved"
-                            ? `Vas a aprobar a "${perfil?.user.fullName}". La organización podrá operar en la plataforma.`
-                            : `Vas a rechazar a "${perfil?.user.fullName}". La organización no podrá operar en la plataforma.`
+                            ? `Vas a aprobar a "${orgName}". La organización podrá operar en la plataforma.`
+                            : `Vas a rechazar a "${orgName}". La organización no podrá operar en la plataforma.`
                         }
                     </p>
                     <div className="flex gap-3">
