@@ -53,37 +53,36 @@ export const SERVICE_CATALOG_IDS: Record<string, number> = {
     "Comedor / alimentación": 50,
 };
 
-// Mapeo de IDs de documentos del formulario a document_types del backend.
-// Ver backend/sql/migrations/006_fix_organization_document_types.sql — los
-// nombres en la BD ya coinciden 1:1 con las etiquetas de REQUIRED_DOCUMENTS
-// en constants.ts, y cada documento tiene su propio ID (ya no comparten).
+// Mapeo del id de campo del formulario (REQUIRED_DOCUMENTS en constants.ts)
+// al `code` real de document_types en el backend. Los nombres de campo del
+// formulario nunca coincidieron con los `code` de la BD (ej. "cif" en el
+// form es el código "rif" en document_types) — por eso hace falta esta
+// traducción.
 //
-// IMPORTANTE — IDs 1-7 verificados contra la BD REAL de producción
-// (proyecto Supabase, base "sara", tabla document_types, 2026-08-31):
-// coinciden con el orden del seed (estatutos=1, rif=2 "Identificación
-// Fiscal", acta_constitutiva=3, identificacion_representante=4,
-// certificado_bancario=5 "Seguro de responsabilidad civil",
-// declaracion_impuestos=6 "Certificado fiscal", memoria_actividades=7
-// "Acuerdo de Participación"). PERO codigo_etico/politica_accesibilidad
-// son filas NUEVAS agregadas por la migración 006 — en una base recién
-// creada desde verification_schema.sql les tocaría 8/9, pero en la BD
-// real de producción (que ya tenía muchas más filas acumuladas en
-// document_types antes de correr esta migración) terminaron en 34/35.
-// Los valores de abajo son los reales de producción — si vuelves a correr
-// la migración 006 en otro entorno (ej. un nuevo ambiente de staging),
-// verifica los IDs reales con:
-//   SELECT id, code FROM document_types WHERE entity_type='organization';
-// y actualiza este mapa si no coinciden.
-export const DOCUMENT_TYPE_IDS: Record<string, number> = {
-    "cif": 2,
-    "estatutos": 1,
-    "inscripcion": 3,
-    "id_representante": 4,
-    "certificado_fiscal": 6,
-    "seguro_responsabilidad": 5,
-    "politica_proteccion_datos": 7,
-    "codigo_etico": 34,
-    "politica_accesibilidad": 35,
+// A propósito NO se usa el `id` numérico de document_types acá: ese id es
+// autoincremental y depende del orden en que se insertaron las filas en
+// cada entorno (ver backend/sql/migrations/006_fix_organization_document_types.sql,
+// donde codigo_etico/politica_accesibilidad terminaron en ids distintos en
+// producción vs. una base nueva). Usar esos ids hardcodeados causaba que
+// cada documento se subiera bajo un document_type equivocado en cuanto el
+// entorno no tuviera exactamente el mismo historial de inserts, y el panel
+// de aprobación mostraba nombres de documento incorrectos para todos ellos.
+//
+// `code` sí es estable: es un valor literal fijado en el SQL de la
+// migración, igual en cualquier entorno que corra esas mismas migraciones.
+// El id real se resuelve en tiempo de registro contra el checklist que
+// genera el backend (ver page.tsx, igual que ya hace el registro de
+// voluntarios).
+export const DOCUMENT_TYPE_CODES: Record<string, string> = {
+    "cif": "rif",
+    "estatutos": "estatutos",
+    "inscripcion": "acta_constitutiva",
+    "id_representante": "identificacion_representante",
+    "certificado_fiscal": "declaracion_impuestos",
+    "seguro_responsabilidad": "certificado_bancario",
+    "politica_proteccion_datos": "memoria_actividades",
+    "codigo_etico": "codigo_etico",
+    "politica_accesibilidad": "politica_accesibilidad",
 };
 
 /**

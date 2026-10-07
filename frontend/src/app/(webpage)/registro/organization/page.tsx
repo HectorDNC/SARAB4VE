@@ -17,8 +17,8 @@ import { organizationSchema, getFieldErrors, type OrganizationFormData } from ".
 import { alertService } from "@/services/alertService";
 import dynamic from "next/dynamic";
 import PhoneField from "@/components/ui/PhoneField";
-import { buildOrganizationRegisterPayload, DOCUMENT_TYPE_IDS } from "./mapper";
-import { uploadVerificationDocument } from "@/api/verification";
+import { buildOrganizationRegisterPayload, DOCUMENT_TYPE_CODES } from "./mapper";
+import { getDocumentChecklist, uploadVerificationDocument } from "@/api/verification";
 
 
 const Location = dynamic(() => import("@/components/ui/Location"), {
@@ -212,21 +212,28 @@ export default function OrganizationRegister() {
                 throw new Error("No se recibió el token de autenticación");
             }
 
-            // Paso 2: Subir todos los documentos de verificación
+            // Paso 2: Subir todos los documentos de verificación, emparejando por
+            // "code" contra el checklist real que el backend generó para esta
+            // organización (evita hardcodear IDs de document_types en el frontend
+            // — esos IDs son autoincrementales y pueden no coincidir entre
+            // entornos, lo que subía cada documento bajo el tipo equivocado).
+            const checklist = await getDocumentChecklist(registerResponse.user.id, registerResponse.token);
+
             const uploadPromises = REQUIRED_DOCUMENTS.map(async (doc) => {
                 const file = documentFiles[doc.id];
                 if (!file) return null;
-                
-                const documentTypeId = DOCUMENT_TYPE_IDS[doc.id];
-                if (!documentTypeId) {
-                    console.warn(`No se encontró documentTypeId para ${doc.id}`);
+
+                const code = DOCUMENT_TYPE_CODES[doc.id];
+                const match = checklist.find((item) => item.documentType.code === code);
+                if (!match) {
+                    console.warn(`No se encontró un document_type para "${doc.id}" (code "${code}") en el checklist del backend`);
                     return null;
                 }
 
                 try {
                     return await uploadVerificationDocument(
                         file,
-                        documentTypeId,
+                        match.documentType.id,
                         registerResponse.token
                     );
                 } catch (err) {
