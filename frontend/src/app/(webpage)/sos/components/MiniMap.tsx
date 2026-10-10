@@ -41,9 +41,9 @@ export default function MiniMap({ latitude, longitude, label = "Tu ubicación" }
       keyboard: false,
     }).setView([latitude, longitude], 15);
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      subdomains: "abcd",
-      maxZoom: 20,
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      subdomains: "abc",
+      maxZoom: 19,
     }).addTo(map);
 
     // Marcador de ubicación del usuario (pulso animado)
