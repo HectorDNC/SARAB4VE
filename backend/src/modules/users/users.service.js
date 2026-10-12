@@ -338,6 +338,48 @@ async function rejectUser(targetUserId, repository) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Carga el perfil completo de una organización sin verificar permisos.
+ * Usado por GET (tras la verificación admin) y por la edición admin.
+ *
+ * @param {string} organizationId
+ * @param {Object} repository — users.repository
+ * @returns {Promise<{ data: Object } | { error: { errors: string[], status: number } }>}
+ */
+async function loadOrganizationProfileData(organizationId, repository) {
+  const user = await repository.findUserById(organizationId);
+
+  if (!user) {
+    return { error: { errors: ["Usuario no encontrado"], status: 404 } };
+  }
+
+  if (user.role !== "organization") {
+    return { error: { errors: ["El usuario no es una organización"], status: 400 } };
+  }
+
+  // El nombre real de la organización vive en user_details, no en
+  // users.full_name (ese campo guarda al representante legal).
+  const userDetails = await repository.findUserDetailsById(organizationId);
+  const organizationProfile = await repository.findOrganizationProfileById(organizationId);
+  const legalRepresentatives = await repository.findLegalRepresentatives(organizationId);
+  const disabilityTypes = await repository.findOrganizationDisabilityTypes(organizationId);
+  const services = await repository.findOrganizationServices(organizationId);
+  const verification = await repository.findVerificationByOwner(organizationId);
+  const documents = await repository.findVerificationDocuments(organizationId);
+
+  return {
+    data: {
+      user: { ...user, organizationName: userDetails?.organizationName ?? null },
+      organizationProfile: organizationProfile || null,
+      legalRepresentatives,
+      disabilityTypes,
+      services,
+      verification: verification || null,
+      documents,
+    },
+  };
+}
+
+/**
  * Obtiene el perfil completo de una organización, incluyendo:
  * - Datos básicos del usuario
  * - Perfil de organización (organization_profiles)
@@ -363,55 +405,173 @@ async function getOrganizationProfile(organizationId, requester, repository) {
     };
   }
 
-  // Obtener datos básicos del usuario
-  const user = await repository.findUserById(organizationId);
+  const loaded = await loadOrganizationProfileData(organizationId, repository);
+  if (loaded.error) return loaded.error;
 
-  if (!user) {
+  return { data: loaded.data, status: 200 };
+}
+
+// ---------------------------------------------------------------------------
+// Actualizar perfil de organización (solo admin) — corrección de datos
+// ---------------------------------------------------------------------------
+
+/**
+ * Corrige los campos editables de una organización ya registrada.
+ *
+ * Política de verificación: editar NO cambia el estado de la solicitud de
+ * verificación (entregada / en_estudio / aceptada / rechazada). El estado solo
+ * cambia con PATCH /api/admin/verifications/:id/transition.
+ *
+ * Reglas de validación: idénticas al formulario de registro (el schema
+ * UpdateOrganizationProfileBody se deriva de RegisterOrganizationBody).
+ * La actualización es atómica y parcial: solo se persiste lo enviado.
+ *
+ * @param {string} organizationId — UUID de la organización
+ * @param {Object} payload — Campos validados (todos opcionales)
+ * @param {Object} requester — req.user (JWT)
+ * @param {Object} repository — users.repository
+ * @returns {Promise<{ data?: Object, status: number, errors?: string[] }>}
+ */
+async function updateOrganizationProfile(organizationId, payload, requester, repository) {
+  const isAdmin = requester.role === "admin";
+
+  if (!isAdmin) {
+    return { errors: ["No tienes permiso para editar este perfil"], status: 403 };
+  }
+
+  const existingUser = await repository.findUserById(organizationId);
+  if (!existingUser) {
     return { errors: ["Usuario no encontrado"], status: 404 };
   }
-
-  // Verificar que sea una organización
-  if (user.role !== "organization") {
-    return {
-      errors: ["El usuario no es una organización"],
-      status: 400,
-    };
+  if (existingUser.role !== "organization") {
+    return { errors: ["El usuario no es una organización"], status: 400 };
   }
 
-  // Obtener nombre real de la organización (vive en user_details, no en
-  // users.full_name — ese campo guarda al representante legal).
-  const userDetails = await repository.findUserDetailsById(organizationId);
+  // --- Campos de users ---
+  const userFields = {};
+  if (payload.fullName !== undefined) userFields.fullName = payload.fullName.trim();
+  if (payload.email !== undefined) userFields.email = payload.email.trim().toLowerCase();
+  if (payload.phone !== undefined) userFields.phone = payload.phone.trim().replace(/[\s-]/g, "");
+  if (payload.zone !== undefined) userFields.zone = payload.zone.trim();
+  if (payload.location !== undefined) userFields.location = payload.location;
 
-  // Obtener perfil de organización
-  const organizationProfile = await repository.findOrganizationProfileById(organizationId);
+  // --- Campos de user_details ---
+  const detailsFields = {};
+  if (payload.organizationName !== undefined) detailsFields.organizationName = payload.organizationName.trim();
+  if (payload.legalDocument !== undefined) detailsFields.legalDocument = payload.legalDocument.trim();
+  if (payload.workArea !== undefined) detailsFields.workArea = payload.workArea.map((a) => a.trim());
 
-  // Obtener representantes legales
-  const legalRepresentatives = await repository.findLegalRepresentatives(organizationId);
+  // --- Campos de organization_profiles ---
+  const profileFields = {};
+  if (payload.organizationTypeId !== undefined) profileFields.organizationTypeId = payload.organizationTypeId;
+  if (payload.taxId !== undefined) profileFields.taxId = payload.taxId?.trim() || null;
+  if (payload.taxIdType !== undefined) profileFields.taxIdType = payload.taxIdType?.trim() || null;
+  if (payload.otherEntityType !== undefined) profileFields.otherEntityType = payload.otherEntityType?.trim() || null;
+  if (payload.registryNumber !== undefined) profileFields.registryNumber = payload.registryNumber?.trim() || null;
+  if (payload.foundedAt !== undefined) profileFields.foundedAt = payload.foundedAt || null;
+  if (payload.country !== undefined) profileFields.country = payload.country?.trim() || null;
+  if (payload.province !== undefined) profileFields.province = payload.province?.trim() || null;
+  if (payload.city !== undefined) profileFields.city = payload.city?.trim() || null;
+  if (payload.address !== undefined) profileFields.address = payload.address?.trim() || null;
+  if (payload.website !== undefined) profileFields.website = payload.website?.trim() || null;
+  if (payload.socialLinks !== undefined) profileFields.socialLinks = payload.socialLinks || null;
+  if (payload.mission !== undefined) profileFields.mission = payload.mission?.trim() || null;
+  if (payload.vision !== undefined) profileFields.vision = payload.vision?.trim() || null;
+  if (payload.scope !== undefined) profileFields.scope = payload.scope?.trim() || null;
+  if (payload.servedGroups !== undefined) profileFields.servedGroups = payload.servedGroups?.trim() || null;
 
-  // Obtener tipos de discapacidad
-  const disabilityTypes = await repository.findOrganizationDisabilityTypes(organizationId);
+  // --- Representantes legales (reemplazo total si se envían) ---
+  const legalRepresentatives = payload.legalRepresentatives !== undefined
+    ? payload.legalRepresentatives.map((rep) => ({
+        fullName: rep.fullName.trim(),
+        position: rep.position?.trim() || null,
+        phone: rep.phone?.trim() || null,
+        email: rep.email?.trim().toLowerCase() || null,
+      }))
+    : null;
 
-  // Obtener servicios
-  const services = await repository.findOrganizationServices(organizationId);
+  try {
+    await repository.withTransaction(async (client) => {
+      if (Object.keys(userFields).length > 0) {
+        await repository.updateUser(client, organizationId, userFields);
+      }
+      if (Object.keys(detailsFields).length > 0) {
+        await repository.updateUserDetails(client, organizationId, detailsFields);
+      }
+      if (Object.keys(profileFields).length > 0) {
+        await repository.updateOrganizationProfile(client, organizationId, profileFields);
+      }
+      if (legalRepresentatives !== null) {
+        await repository.replaceLegalRepresentatives(client, organizationId, legalRepresentatives);
+      }
+      if (payload.disabilityTypeIds !== undefined) {
+        await repository.replaceCatalogRelations(
+          client, "organization_disability_types", organizationId, payload.disabilityTypeIds,
+        );
+      }
+      if (payload.serviceIds !== undefined) {
+        await repository.replaceCatalogRelations(
+          client, "organization_services", organizationId, payload.serviceIds,
+        );
+      }
+    });
+  } catch (error) {
+    const { isUniqueViolation, field } = parseUniqueViolation(error);
+    if (isUniqueViolation) {
+      return { errors: [`El ${field} ya está en uso por otro usuario`], status: 409 };
+    }
+    if (error.code === "23503") {
+      return {
+        errors: ["Uno o más IDs de catálogo no son válidos para el tipo esperado"],
+        status: 400,
+      };
+    }
+    throw error;
+  }
 
-  // Obtener solicitud de verificación
-  const verification = await repository.findVerificationByOwner(organizationId);
+  const reloaded = await loadOrganizationProfileData(organizationId, repository);
+  if (reloaded.error) return reloaded.error;
 
-  // Obtener documentos de verificación
-  const documents = await repository.findVerificationDocuments(organizationId);
+  return { data: reloaded.data, status: 200 };
+}
 
-  // Construir respuesta completa
-  const data = {
-    user: { ...user, organizationName: userDetails?.organizationName ?? null },
-    organizationProfile: organizationProfile || null,
-    legalRepresentatives,
-    disabilityTypes,
-    services,
-    verification: verification || null,
-    documents,
+/**
+ * Carga el perfil completo de un voluntario sin verificar permisos.
+ * Usado por GET (tras la verificación admin) y por la edición admin.
+ *
+ * @param {string} volunteerId
+ * @param {Object} repository — users.repository
+ * @returns {Promise<{ data: Object } | { error: { errors: string[], status: number } }>}
+ */
+async function loadVolunteerProfileData(volunteerId, repository) {
+  const user = await repository.findUserById(volunteerId);
+
+  if (!user) {
+    return { error: { errors: ["Usuario no encontrado"], status: 404 } };
+  }
+
+  if (user.role !== "volunteer") {
+    return { error: { errors: ["El usuario no es un voluntario"], status: 400 } };
+  }
+
+  const details = await repository.findUserDetailsById(volunteerId);
+  const volunteerProfile = await repository.findVolunteerProfileById(volunteerId);
+  const interestAreas = await repository.findVolunteerInterestAreas(volunteerId);
+  const experience = await repository.findVolunteerExperience(volunteerId);
+  const verification = await repository.findVerificationByOwner(volunteerId);
+  const documents = await repository.findVerificationDocuments(volunteerId);
+
+  return {
+    data: {
+      user,
+      details: details || null,
+      volunteerProfile: volunteerProfile || null,
+      interestAreas,
+      experience,
+      verification: verification || null,
+      documents,
+    },
   };
-
-  return { data, status: 200 };
 }
 
 /**
@@ -440,51 +600,125 @@ async function getVolunteerProfile(volunteerId, requester, repository) {
     };
   }
 
-  // Obtener datos básicos del usuario
-  const user = await repository.findUserById(volunteerId);
+  const loaded = await loadVolunteerProfileData(volunteerId, repository);
+  if (loaded.error) return loaded.error;
 
-  if (!user) {
+  return { data: loaded.data, status: 200 };
+}
+
+// ---------------------------------------------------------------------------
+// Actualizar perfil de voluntario (solo admin) — corrección de datos
+// ---------------------------------------------------------------------------
+
+/**
+ * Corrige los campos editables de un voluntario ya registrado.
+ *
+ * Política de verificación: editar NO cambia el estado de la solicitud de
+ * verificación. Si se cambia `volunteerType`, se sincroniza el `entity_type`
+ * de la solicitud (volunteer_professional / volunteer_non_professional) para
+ * mantener la coherencia con el checklist de documentos, pero sin tocar el
+ * estado.
+ *
+ * Reglas de validación: idénticas al formulario de registro (el schema
+ * UpdateVolunteerProfileBody se deriva de RegisterVolunteerBody).
+ * La actualización es atómica y parcial: solo se persiste lo enviado.
+ *
+ * @param {string} volunteerId — UUID del voluntario
+ * @param {Object} payload — Campos validados (todos opcionales)
+ * @param {Object} requester — req.user (JWT)
+ * @param {Object} repository — users.repository
+ * @returns {Promise<{ data?: Object, status: number, errors?: string[] }>}
+ */
+async function updateVolunteerProfile(volunteerId, payload, requester, repository) {
+  const isAdmin = requester.role === "admin";
+
+  if (!isAdmin) {
+    return { errors: ["No tienes permiso para editar este perfil"], status: 403 };
+  }
+
+  const existingUser = await repository.findUserById(volunteerId);
+  if (!existingUser) {
     return { errors: ["Usuario no encontrado"], status: 404 };
   }
-
-  // Verificar que sea un voluntario
-  if (user.role !== "volunteer") {
-    return {
-      errors: ["El usuario no es un voluntario"],
-      status: 400,
-    };
+  if (existingUser.role !== "volunteer") {
+    return { errors: ["El usuario no es un voluntario"], status: 400 };
   }
 
-  // Obtener detalles de disponibilidad y habilidades (user_details)
-  const details = await repository.findUserDetailsById(volunteerId);
+  // --- Campos de users ---
+  const userFields = {};
+  if (payload.fullName !== undefined) userFields.fullName = payload.fullName.trim();
+  if (payload.email !== undefined) userFields.email = payload.email.trim().toLowerCase();
+  if (payload.phone !== undefined) userFields.phone = payload.phone.trim().replace(/[\s-]/g, "");
+  if (payload.zone !== undefined) userFields.zone = payload.zone.trim();
+  if (payload.location !== undefined) userFields.location = payload.location;
 
-  // Obtener perfil de voluntario
-  const volunteerProfile = await repository.findVolunteerProfileById(volunteerId);
+  // --- Campos de user_details ---
+  const detailsFields = {};
+  if (payload.skills !== undefined) detailsFields.skills = payload.skills.map((s) => s.trim());
+  if (payload.availableHours !== undefined) detailsFields.availableHours = Number(payload.availableHours);
+  if (payload.availableDays !== undefined) {
+    detailsFields.availableDays = payload.availableDays.map((d) => d.toLowerCase().trim());
+  }
 
-  // Obtener áreas de interés
-  const interestAreas = await repository.findVolunteerInterestAreas(volunteerId);
+  // --- Campos de volunteer_profiles ---
+  const profileFields = {};
+  if (payload.volunteerType !== undefined) profileFields.volunteerType = payload.volunteerType;
+  if (payload.documentType !== undefined) profileFields.documentType = payload.documentType?.trim() || null;
+  if (payload.documentNumber !== undefined) profileFields.documentNumber = payload.documentNumber?.trim() || null;
+  if (payload.birthDate !== undefined) profileFields.birthDate = payload.birthDate || null;
+  if (payload.address !== undefined) profileFields.address = payload.address?.trim() || null;
+  if (payload.profession !== undefined) profileFields.profession = payload.profession?.trim() || null;
+  if (payload.languages !== undefined) profileFields.languages = payload.languages.map((l) => l.trim());
+  if (payload.availabilityMode !== undefined) profileFields.availabilityMode = payload.availabilityMode || null;
+  if (payload.hasPriorExperience !== undefined) profileFields.hasPriorExperience = payload.hasPriorExperience;
+  if (payload.transportAvailable !== undefined) profileFields.transportAvailable = payload.transportAvailable;
 
-  // Obtener categorías de experiencia
-  const experience = await repository.findVolunteerExperience(volunteerId);
+  try {
+    await repository.withTransaction(async (client) => {
+      if (Object.keys(userFields).length > 0) {
+        await repository.updateUser(client, volunteerId, userFields);
+      }
+      if (Object.keys(detailsFields).length > 0) {
+        await repository.updateUserDetails(client, volunteerId, detailsFields);
+      }
+      if (Object.keys(profileFields).length > 0) {
+        await repository.updateVolunteerProfile(client, volunteerId, profileFields);
+      }
+      if (payload.volunteerType !== undefined) {
+        const entityType = payload.volunteerType === "professional"
+          ? "volunteer_professional"
+          : "volunteer_non_professional";
+        await repository.updateVerificationEntityType(client, volunteerId, entityType);
+      }
+      if (payload.interestAreaIds !== undefined) {
+        await repository.replaceCatalogRelations(
+          client, "volunteer_interest_areas", volunteerId, payload.interestAreaIds,
+        );
+      }
+      if (payload.experienceCategoryIds !== undefined) {
+        await repository.replaceCatalogRelations(
+          client, "volunteer_experience", volunteerId, payload.experienceCategoryIds,
+        );
+      }
+    });
+  } catch (error) {
+    const { isUniqueViolation, field } = parseUniqueViolation(error);
+    if (isUniqueViolation) {
+      return { errors: [`El ${field} ya está en uso por otro usuario`], status: 409 };
+    }
+    if (error.code === "23503") {
+      return {
+        errors: ["Uno o más IDs de catálogo no son válidos para el tipo esperado"],
+        status: 400,
+      };
+    }
+    throw error;
+  }
 
-  // Obtener solicitud de verificación
-  const verification = await repository.findVerificationByOwner(volunteerId);
+  const reloaded = await loadVolunteerProfileData(volunteerId, repository);
+  if (reloaded.error) return reloaded.error;
 
-  // Obtener documentos de verificación
-  const documents = await repository.findVerificationDocuments(volunteerId);
-
-  // Construir respuesta completa
-  const data = {
-    user,
-    details: details || null,
-    volunteerProfile: volunteerProfile || null,
-    interestAreas,
-    experience,
-    verification: verification || null,
-    documents,
-  };
-
-  return { data, status: 200 };
+  return { data: reloaded.data, status: 200 };
 }
 
 module.exports = {
@@ -496,4 +730,6 @@ module.exports = {
   rejectUser,
   getOrganizationProfile,
   getVolunteerProfile,
+  updateOrganizationProfile,
+  updateVolunteerProfile,
 };

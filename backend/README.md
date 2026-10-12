@@ -49,6 +49,10 @@ npm start
 - `POST /api/help-requests/:id/accept`
 - `POST /api/help-requests/:id/resolve`
 - `POST /api/emergencies/voice` — reporte de emergencia por voz (audio + transcript)
+- `GET /api/users/:id/organization-profile` — perfil completo de organización (admin)
+- `GET /api/users/:id/volunteer-profile` — perfil completo de voluntario (admin)
+- `PATCH /api/users/:id/organization-profile` — corregir datos de organización (admin)
+- `PATCH /api/users/:id/volunteer-profile` — corregir datos de voluntario (admin)
 
 ## Reporte de emergencias por voz
 
@@ -151,6 +155,48 @@ Respuestas:
 - `400` si el `id` es invalido
 - `404` si la solicitud no existe
 - `409` si la solicitud no esta asignada o ya fue resuelta
+
+## Corrección de organizaciones y voluntarios (admin)
+
+Endpoints para que un administrador corrija los campos de un registro ya
+enviado:
+
+- `PATCH /api/users/:id/organization-profile`
+- `PATCH /api/users/:id/volunteer-profile`
+
+Reglas:
+
+- **Solo administradores autenticados** (`authenticate` + `authorize("admin")`).
+  El rol se vuelve a verificar en el servicio (defensa en profundidad).
+- La validación usa **exactamente las mismas reglas del formulario de
+  registro**: los bodies `UpdateOrganizationProfileBody` /
+  `UpdateVolunteerProfileBody` se derivan de `RegisterOrganizationBody` /
+  `RegisterVolunteerBody` (`.partial()` + `.omit(password, acceptedTerms)`).
+  Todos los campos son opcionales; enviar `{}` responde `400`.
+- No se permite cambiar `password` ni `acceptedTerms` por esta vía (para la
+  contraseña, usar `PATCH /api/users/:id`).
+- La actualización es atómica y **parcial**: solo se persiste lo enviado.
+  Toca `users`, `user_details`, `organization_profiles` / `volunteer_profiles`,
+  representantes legales y las tablas puente del catálogo. Enviar
+  `legalRepresentatives`, `disabilityTypeIds`, `serviceIds`,
+  `interestAreaIds` o `experienceCategoryIds` **reemplaza** el conjunto
+  completo (no hace merge).
+- La respuesta es el perfil completo, con el mismo formato que el `GET` del
+  perfil correspondiente.
+- Errores: `400` (validación / rol incorrecto del usuario target),
+  `403` (no admin), `404` (usuario inexistente), `409` (email/teléfono en uso).
+
+### ¿Editar cambia el estado de verificación?
+
+**No.** Editar los datos de un registro **no modifica** el estado de la
+solicitud de verificación (`entregada` / `en_estudio` / `aceptada` /
+`rechazada`). El estado solo cambia mediante
+`PATCH /api/admin/verifications/:id/transition`.
+
+Matiz: si en el perfil de voluntario se cambia `volunteerType`, el backend
+sincroniza el `entity_type` de la solicitud (`volunteer_professional` /
+`volunteer_non_professional`) para mantener la coherencia con el checklist de
+documentos, **sin tocar el estado**.
 
 ## Ejemplo de payload
 

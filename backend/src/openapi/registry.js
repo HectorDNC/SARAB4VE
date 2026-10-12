@@ -59,6 +59,8 @@ const {
 const {
   ListUsersQuery,
   UpdateUserBody,
+  UpdateOrganizationProfileBody,
+  UpdateVolunteerProfileBody,
   ListUsersResponse,
   UserStatsResponse,
 } = require("../modules/users/users.schema");
@@ -1021,6 +1023,133 @@ registry.registerPath({
     },
     403: {
       description: "No tienes permiso para modificar este usuario",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    404: {
+      description: "Usuario no encontrado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    409: {
+      description: "Conflicto — email o teléfono ya en uso por otro usuario",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/api/users/{id}/organization-profile",
+  summary: "Corregir perfil de organización (admin)",
+  description: [
+    "Actualiza los campos editables de una organización ya registrada.",
+    "Valida con **exactamente las mismas reglas del formulario de registro**",
+    "(mismas restricciones de cada campo), con todos los campos opcionales.",
+    "Solo accesible por administradores autenticados.",
+    "",
+    "**Política de verificación:** editar los datos **NO cambia el estado** de la",
+    "solicitud de verificación (entregada / en_estudio / aceptada / rechazada).",
+    "El estado solo cambia mediante `PATCH /api/admin/verifications/{id}/transition`.",
+    "",
+    "Actualiza de forma atómica: `users`, `user_details`, `organization_profiles`,",
+    "`legal_representatives` (reemplazo total si se envía) y las tablas puente",
+    "`organization_disability_types` / `organization_services` (reemplazo total",
+    "si se envían `disabilityTypeIds` / `serviceIds`). Responde con el perfil",
+    "completo, en el mismo formato que `GET /api/users/{id}/organization-profile`.",
+  ].join("\n"),
+  tags: ["Users"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID de la organización a corregir",
+      }),
+    }),
+    body: {
+      content: { "application/json": { schema: UpdateOrganizationProfileBody } },
+      description: "Campos a corregir (todos opcionales)",
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      description: "Perfil de organización actualizado",
+      content: { "application/json": { schema: z.object({ data: z.object({}).openapi({ description: "Perfil completo (user, organizationProfile, legalRepresentatives, disabilityTypes, services, verification, documents)" }) }) } },
+    },
+    400: {
+      description: "Error de validación o el usuario no es una organización",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Acceso denegado — solo administradores",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    404: {
+      description: "Usuario no encontrado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    409: {
+      description: "Conflicto — email o teléfono ya en uso por otro usuario",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/api/users/{id}/volunteer-profile",
+  summary: "Corregir perfil de voluntario (admin)",
+  description: [
+    "Actualiza los campos editables de un voluntario ya registrado.",
+    "Valida con **exactamente las mismas reglas del formulario de registro**",
+    "(mismas restricciones de cada campo), con todos los campos opcionales.",
+    "Solo accesible por administradores autenticados.",
+    "",
+    "**Política de verificación:** editar los datos **NO cambia el estado** de la",
+    "solicitud de verificación. Si se envía `volunteerType`, se sincroniza el",
+    "`entity_type` (volunteer_professional / volunteer_non_professional) para",
+    "mantener la coherencia con el checklist de documentos, sin tocar el estado.",
+    "",
+    "Actualiza de forma atómica: `users`, `user_details`, `volunteer_profiles` y",
+    "las tablas puente `volunteer_interest_areas` / `volunteer_experience`",
+    "(reemplazo total si se envían `interestAreaIds` / `experienceCategoryIds`).",
+    "Responde con el perfil completo, en el mismo formato que",
+    "`GET /api/users/{id}/volunteer-profile`.",
+  ].join("\n"),
+  tags: ["Users"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().uuid().openapi({
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "UUID del voluntario a corregir",
+      }),
+    }),
+    body: {
+      content: { "application/json": { schema: UpdateVolunteerProfileBody } },
+      description: "Campos a corregir (todos opcionales)",
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      description: "Perfil de voluntario actualizado",
+      content: { "application/json": { schema: z.object({ data: z.object({}).openapi({ description: "Perfil completo (user, details, volunteerProfile, interestAreas, experience, verification, documents)" }) }) } },
+    },
+    400: {
+      description: "Error de validación o el usuario no es un voluntario",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    401: {
+      description: "No autenticado",
+      content: { "application/json": { schema: ErrorResponse } },
+    },
+    403: {
+      description: "Acceso denegado — solo administradores",
       content: { "application/json": { schema: ErrorResponse } },
     },
     404: {

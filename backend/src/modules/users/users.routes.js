@@ -79,4 +79,24 @@ router.get(
   controller.getVolunteerProfile(service, repository),
 );
 
+// PATCH /api/users/:id/organization-profile — Corregir perfil de organización (solo admin)
+// Valida con las mismas reglas del formulario de registro. Editar NO cambia
+// el estado de verificación (ver PATCH /api/admin/verifications/:id/transition).
+router.patch(
+  "/:id/organization-profile",
+  authenticate,
+  authorize("admin"),
+  controller.updateOrganizationProfile(service, repository),
+);
+
+// PATCH /api/users/:id/volunteer-profile — Corregir perfil de voluntario (solo admin)
+// Valida con las mismas reglas del formulario de registro. Editar NO cambia
+// el estado de verificación (ver PATCH /api/admin/verifications/:id/transition).
+router.patch(
+  "/:id/volunteer-profile",
+  authenticate,
+  authorize("admin"),
+  controller.updateVolunteerProfile(service, repository),
+);
+
 module.exports = router;
