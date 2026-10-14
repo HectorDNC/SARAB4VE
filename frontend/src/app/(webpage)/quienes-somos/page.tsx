@@ -6,15 +6,17 @@ export const metadata: Metadata = {
     "Conoce la misión, la visión y al equipo detrás de SARA, la red de apoyo accesible para personas con discapacidad durante emergencias.",
 };
 
-// Texto tomado tal cual del README del proyecto — no inventar una misión
-// distinta a la ya definida ahí.
-const MISION =
-  "Que cualquier persona con discapacidad pueda solicitar ayuda en minutos y encontrar una red de apoyo cercana cuando más lo necesita.";
-const MISION_TAGLINE = "Porque la accesibilidad también salva vidas.";
+const QUE_ES_SARA = [
+  "Una iniciativa que nace de una necesidad muy concreta: hay personas con discapacidades visibles y no visibles que necesitan apoyo, pero muchas veces no saben dónde encontrarlo o no tienen acceso a las oportunidades y recursos disponibles.",
+  "S.A.R.A. es una plataforma social que conecta a personas con discapacidades visibles y no visibles con empresas, instituciones y organizaciones capaces de ofrecer apoyo, recursos, servicios y oportunidades.",
+  "S.A.R.A. es un puente entre las necesidades y las oportunidades, creando una red de apoyo basada en la cooperación, la inclusión y la suma de capacidades para que ninguna persona tenga que afrontar sus barreras en soledad.",
+];
 
-// TODO: primer borrador de visión — pendiente de ajuste por el equipo.
+const MISION =
+  "Favorecer la inclusión, la autonomía, la participación social y la igualdad de oportunidades de las personas con discapacidades visibles y no visibles, facilitando su conexión con entidades que pueden contribuir a sus necesidades y proyectos de vida.";
+
 const VISION =
-  "Ser la red de apoyo accesible de referencia en Iberoamérica: un ecosistema de voluntarios, organizaciones y tecnología donde ninguna persona con discapacidad enfrente sola una emergencia, sin importar dónde se encuentre.";
+  "Construir y hacer crecer una red de cooperación e inclusión social en la que personas y entidades puedan encontrarse, colaborar y generar nuevas oportunidades. La visión parte de convertir la inclusión en acción real, no solo en una declaración de intenciones.";
 
 type Miembro = { name: string; role: string; country: string; photo?: string };
 
@@ -22,19 +24,19 @@ type Miembro = { name: string; role: string; country: string; photo?: string };
 // `photo` con esa ruta (ver frontend/public/equipo/README.md). Mientras
 // `photo` quede sin definir, la tarjeta muestra las iniciales en su lugar.
 const LIDERAZGO: Miembro[] = [
-  { name: "Candelaria Zamora", role: "Project Manager", country: "Perú" },
+  { name: "Candelaria Zamora", role: "Project Manager", country: "Perú" , photo: "/equipo/candelaria.jpg"}
 ];
 
 const EQUIPO_TECNICO: Miembro[] = [
   { name: "Julian Alvarez", role: "Product Owner", country: "Colombia" , photo: "/equipo/julian.jpg"},
   { name: "Hector Noguera", role: "Developer", country: "Venezuela", photo: "/equipo/hector.jpg" },
-  { name: "Milagros Cáceres", role: "Developer", country: "Perú" },
+  { name: "Milagros Cáceres", role: "Developer", country: "Perú", photo: "/equipo/milagros.jpg" }
 ];
 
 const EQUIPO_SOCIAL: Miembro[] = [
-  { name: "Carol Cayotopa", role: "Social Team", country: "España" },
+  { name: "Carol Cayotopa", role: "Social Team", country: "España", photo: "/equipo/carol.jpg"  },
   { name: "Zuli López", role: "Social Team", country: "México", photo: "/equipo/zuly.jpg" },
-  { name: "Yoselyn Mendoza", role: "Social Team", country: "Argentina" },
+  { name: "Yoselyn Mendoza", role: "Social Team", country: "Argentina",photo: "/equipo/yocelyn.jpg" },
 ];
 
 /** Avatar circular: foto si existe, si no las iniciales del nombre. */
@@ -104,6 +106,20 @@ export default function QuienesSomosPage() {
         </div>
       </section>
 
+      {/* QUÉ ES SARA */}
+      <section className="px-5 lg:px-10 py-12" aria-labelledby="que-es-sara-heading">
+        <div className="max-w-3xl mx-auto">
+          <h2 id="que-es-sara-heading" className="text-xl lg:text-2xl font-bold text-on-surface text-center">
+            ¿Qué es SARA?
+          </h2>
+          <div className="mt-4 space-y-4">
+            {QUE_ES_SARA.map((parrafo, i) => (
+              <p key={i} className="text-on-surface-variant">{parrafo}</p>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* MISIÓN Y VISIÓN */}
       <section className="px-5 lg:px-10 py-12" aria-labelledby="mision-vision-heading">
         <div className="max-w-5xl mx-auto">
@@ -115,7 +131,6 @@ export default function QuienesSomosPage() {
               </div>
               <h3 className="mt-4 font-bold text-lg text-on-surface">Misión</h3>
               <p className="mt-2 text-on-surface-variant">{MISION}</p>
-              <p className="mt-3 font-semibold text-on-surface">{MISION_TAGLINE}</p>
             </div>
 
             <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-6 lg:p-8">
