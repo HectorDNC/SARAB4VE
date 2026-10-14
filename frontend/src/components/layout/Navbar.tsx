@@ -24,6 +24,7 @@ const navLinks: NavLink[] = [
   { href: "/solicitudes", label: "Solicitudes", icon: "handshake", roles: ["admin", "organization", "volunteer"] },
   { href: "/recursos", label: "Recursos", icon: "inventory_2" },
   { href: "/directorio", label: "Directorio", icon: "contact_page" },
+  { href: "/quienes-somos", label: "Quiénes somos", icon: "diversity_3" },
 ];
 
 export default function Navbar() {
