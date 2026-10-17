@@ -5,6 +5,8 @@
 const {
   ListUsersQuery,
   UpdateUserBody,
+  UpdateOrganizationProfileBody,
+  UpdateVolunteerProfileBody,
 } = require("./users.schema");
 
 // ---------------------------------------------------------------------------
@@ -252,6 +254,82 @@ function getVolunteerProfile(service, repository) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// PATCH /api/users/:id/organization-profile — Corregir perfil de organización (solo admin)
+// ---------------------------------------------------------------------------
+
+/**
+ * Corrige los campos editables de una organización ya registrada.
+ * Valida con las mismas reglas del formulario de registro.
+ * @param {Object} service — users.service
+ * @param {Object} repository — users.repository
+ * @returns {(req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => Promise<void>}
+ */
+function updateOrganizationProfile(service, repository) {
+  return async (req, res, next) => {
+    const validation = UpdateOrganizationProfileBody.safeParse(req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({ errors: formatZodErrors(validation.error) });
+    }
+
+    try {
+      const result = await service.updateOrganizationProfile(
+        req.params.id,
+        validation.data,
+        req.user,
+        repository,
+      );
+
+      if (result.errors) {
+        return res.status(result.status).json({ errors: result.errors });
+      }
+
+      return res.status(200).json({ data: result.data });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
+// PATCH /api/users/:id/volunteer-profile — Corregir perfil de voluntario (solo admin)
+// ---------------------------------------------------------------------------
+
+/**
+ * Corrige los campos editables de un voluntario ya registrado.
+ * Valida con las mismas reglas del formulario de registro.
+ * @param {Object} service — users.service
+ * @param {Object} repository — users.repository
+ * @returns {(req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => Promise<void>}
+ */
+function updateVolunteerProfile(service, repository) {
+  return async (req, res, next) => {
+    const validation = UpdateVolunteerProfileBody.safeParse(req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({ errors: formatZodErrors(validation.error) });
+    }
+
+    try {
+      const result = await service.updateVolunteerProfile(
+        req.params.id,
+        validation.data,
+        req.user,
+        repository,
+      );
+
+      if (result.errors) {
+        return res.status(result.status).json({ errors: result.errors });
+      }
+
+      return res.status(200).json({ data: result.data });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
 module.exports = {
   listUsers,
   getUserStats,
@@ -261,4 +339,6 @@ module.exports = {
   rejectUser,
   getOrganizationProfile,
   getVolunteerProfile,
+  updateOrganizationProfile,
+  updateVolunteerProfile,
 };

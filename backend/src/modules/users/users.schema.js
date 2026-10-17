@@ -8,6 +8,14 @@
 const { z } = require("zod");
 const { extendZodWithOpenApi } = require("@asteasolutions/zod-to-openapi");
 
+// Schemas del formulario de registro: única fuente de verdad de las reglas de
+// validación. La edición admin los reutiliza (partial + omit) para garantizar
+// que "editar" valide exactamente igual que "registrar".
+const {
+  RegisterOrganizationBody,
+  RegisterVolunteerBody,
+} = require("../auth/auth.schema");
+
 // Extender Zod con el método .openapi()
 extendZodWithOpenApi(z);
 
@@ -153,6 +161,75 @@ const UpdateUserBody = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// PATCH /api/users/:id/organization-profile — Body para corregir una organización
+// ---------------------------------------------------------------------------
+
+/**
+ * Derivado 1:1 de RegisterOrganizationBody (mismas reglas del formulario de
+ * registro). `partial()` hace todos los campos opcionales (edición parcial) y
+ * `omit()` excluye password/acceptedTerms: corregir datos no reestablece la
+ * contraseña ni vuelve a aceptar términos.
+ */
+const UpdateOrganizationProfileBody = RegisterOrganizationBody
+  .partial()
+  .omit({ password: true, acceptedTerms: true })
+  .refine(
+    (data) => Object.keys(data).length > 0,
+    { message: "Debe enviar al menos un campo para actualizar" },
+  )
+  .openapi({
+    description: [
+      "Payload para corregir los datos de una organización ya registrada.",
+      "Reutiliza exactamente las mismas reglas de validación del formulario de",
+      "registro (RegisterOrganizationBody), con todos los campos opcionales.",
+      "No permite cambiar password ni acceptedTerms.",
+      "Editar estos datos NO modifica el estado de verificación del registro.",
+    ].join(" "),
+    example: {
+      organizationName: "Cruz Roja Venezolana",
+      taxId: "J-12345678-9",
+      city: "Caracas",
+      mission: "Aliviar el sufrimiento humano",
+      disabilityTypeIds: [12, 14],
+    },
+  });
+
+// ---------------------------------------------------------------------------
+// PATCH /api/users/:id/volunteer-profile — Body para corregir un voluntario
+// ---------------------------------------------------------------------------
+
+/**
+ * Derivado 1:1 de RegisterVolunteerBody (mismas reglas del formulario de
+ * registro). `partial()` hace todos los campos opcionales y `omit()` excluye
+ * password/acceptedTerms.
+ *
+ * Nota: si se envía `volunteerType`, el backend mantiene sincronizado el
+ * `entity_type` de la solicitud de verificación, pero NO cambia su estado.
+ */
+const UpdateVolunteerProfileBody = RegisterVolunteerBody
+  .partial()
+  .omit({ password: true, acceptedTerms: true })
+  .refine(
+    (data) => Object.keys(data).length > 0,
+    { message: "Debe enviar al menos un campo para actualizar" },
+  )
+  .openapi({
+    description: [
+      "Payload para corregir los datos de un voluntario ya registrado.",
+      "Reutiliza exactamente las mismas reglas de validación del formulario de",
+      "registro (RegisterVolunteerBody), con todos los campos opcionales.",
+      "No permite cambiar password ni acceptedTerms.",
+      "Editar estos datos NO modifica el estado de verificación del registro.",
+    ].join(" "),
+    example: {
+      fullName: "Carlos Pérez",
+      profession: "Médico cirujano",
+      address: "Av. Principal 123",
+      interestAreaIds: [23, 25],
+    },
+  });
+
+// ---------------------------------------------------------------------------
 // POST /api/users/:id/approve — Sin body (solo path param)
 // ---------------------------------------------------------------------------
 
@@ -252,6 +329,8 @@ module.exports = {
   LocationSchema,
   ListUsersQuery,
   UpdateUserBody,
+  UpdateOrganizationProfileBody,
+  UpdateVolunteerProfileBody,
   ApproveUserParams,
   RejectUserParams,
   GetUserParams,

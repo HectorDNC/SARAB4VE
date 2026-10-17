@@ -388,6 +388,261 @@ async function updateUserStatus(client, userId, newStatus, approvedBy) {
 }
 
 // ---------------------------------------------------------------------------
+// UPDATE — user_details (corrección admin de perfiles de organización/voluntario)
+// ---------------------------------------------------------------------------
+
+/** Mapa campo-de-servicio → columna real de user_details. */
+const USER_DETAILS_COLUMN_MAP = {
+  skills: "skills",
+  availableHours: "available_hours",
+  availableDays: "available_days",
+  organizationName: "organization_name",
+  legalDocument: "legal_document",
+  workArea: "work_area",
+};
+
+/**
+ * Actualiza dinámicamente user_details con solo los campos enviados.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} userId
+ * @param {Object} updates — Subconjunto de USER_DETAILS_COLUMN_MAP
+ * @returns {Promise<Object|null>} — Fila actualizada o null si no había cambios
+ */
+async function updateUserDetails(client, userId, updates) {
+  const setClauses = [];
+  const params = [];
+  let paramIndex = 1;
+
+  for (const [field, column] of Object.entries(USER_DETAILS_COLUMN_MAP)) {
+    if (updates[field] === undefined) continue;
+    setClauses.push(`${column} = $${paramIndex++}`);
+    params.push(updates[field]);
+  }
+
+  if (setClauses.length === 0) return null;
+
+  setClauses.push("updated_at = NOW()");
+  params.push(userId);
+
+  const query = `
+    UPDATE user_details
+    SET ${setClauses.join(", ")}
+    WHERE user_id = $${paramIndex}
+    RETURNING ${USER_DETAILS_SELECT_COLUMNS}
+  `;
+
+  const result = await (client || db).query(query, params);
+  return result.rows[0] || null;
+}
+
+// ---------------------------------------------------------------------------
+// UPDATE — organization_profiles (corrección admin)
+// ---------------------------------------------------------------------------
+
+/** Mapa campo-de-servicio → columna real de organization_profiles. */
+const ORGANIZATION_PROFILE_COLUMN_MAP = {
+  organizationTypeId: "organization_type_id",
+  taxId: "tax_id",
+  taxIdType: "tax_id_type",
+  otherEntityType: "other_entity_type",
+  registryNumber: "registry_number",
+  foundedAt: "founded_at",
+  country: "country",
+  province: "province",
+  city: "city",
+  address: "address",
+  website: "website",
+  socialLinks: "social_links",
+  mission: "mission",
+  vision: "vision",
+  scope: "scope",
+  servedGroups: "served_groups",
+};
+
+/**
+ * Actualiza dinámicamente organization_profiles con solo los campos enviados.
+ * `socialLinks` se serializa a jsonb; el resto son escalares/null.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} userId
+ * @param {Object} updates — Subconjunto de ORGANIZATION_PROFILE_COLUMN_MAP
+ * @returns {Promise<number>} — Cantidad de filas afectadas
+ */
+async function updateOrganizationProfile(client, userId, updates) {
+  const setClauses = [];
+  const params = [];
+  let paramIndex = 1;
+
+  for (const [field, column] of Object.entries(ORGANIZATION_PROFILE_COLUMN_MAP)) {
+    if (updates[field] === undefined) continue;
+    if (field === "socialLinks") {
+      setClauses.push(`${column} = $${paramIndex}::jsonb`);
+      params.push(updates[field] ? JSON.stringify(updates[field]) : null);
+    } else {
+      setClauses.push(`${column} = $${paramIndex}`);
+      params.push(updates[field]);
+    }
+    paramIndex++;
+  }
+
+  if (setClauses.length === 0) return 0;
+
+  // El trigger trg_organization_profiles_updated_at lo hace igual; se deja
+  // explícito por claridad y por si el trigger no existe en algún entorno.
+  setClauses.push("updated_at = NOW()");
+  params.push(userId);
+
+  const query = `
+    UPDATE organization_profiles
+    SET ${setClauses.join(", ")}
+    WHERE user_id = $${paramIndex}
+  `;
+
+  const result = await (client || db).query(query, params);
+  return result.rowCount || 0;
+}
+
+// ---------------------------------------------------------------------------
+// UPDATE — volunteer_profiles (corrección admin)
+// ---------------------------------------------------------------------------
+
+/** Mapa campo-de-servicio → columna real de volunteer_profiles. */
+const VOLUNTEER_PROFILE_COLUMN_MAP = {
+  volunteerType: "volunteer_type",
+  documentType: "document_type",
+  documentNumber: "document_number",
+  birthDate: "birth_date",
+  address: "address",
+  profession: "profession",
+  languages: "languages",
+  availabilityMode: "availability_mode",
+  hasPriorExperience: "has_prior_experience",
+  transportAvailable: "transport_available",
+};
+
+/**
+ * Actualiza dinámicamente volunteer_profiles con solo los campos enviados.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} userId
+ * @param {Object} updates — Subconjunto de VOLUNTEER_PROFILE_COLUMN_MAP
+ * @returns {Promise<number>} — Cantidad de filas afectadas
+ */
+async function updateVolunteerProfile(client, userId, updates) {
+  const setClauses = [];
+  const params = [];
+  let paramIndex = 1;
+
+  for (const [field, column] of Object.entries(VOLUNTEER_PROFILE_COLUMN_MAP)) {
+    if (updates[field] === undefined) continue;
+    setClauses.push(`${column} = $${paramIndex++}`);
+    params.push(updates[field]);
+  }
+
+  if (setClauses.length === 0) return 0;
+
+  setClauses.push("updated_at = NOW()");
+  params.push(userId);
+
+  const query = `
+    UPDATE volunteer_profiles
+    SET ${setClauses.join(", ")}
+    WHERE user_id = $${paramIndex}
+  `;
+
+  const result = await (client || db).query(query, params);
+  return result.rowCount || 0;
+}
+
+// ---------------------------------------------------------------------------
+// REPLACE — legal_representatives (corrección admin: reemplazo total)
+// ---------------------------------------------------------------------------
+
+/**
+ * Reemplaza todos los representantes legales de una organización.
+ * Borra los existentes e inserta la lista recibida (puede ser vacía).
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} organizationId
+ * @param {Array<{fullName: string, position?: string|null, phone?: string|null, email?: string|null}>} reps
+ * @returns {Promise<void>}
+ */
+async function replaceLegalRepresentatives(client, organizationId, reps) {
+  await client.query(
+    "DELETE FROM legal_representatives WHERE organization_id = $1",
+    [organizationId],
+  );
+
+  for (const rep of reps) {
+    await client.query(
+      `INSERT INTO legal_representatives (organization_id, full_name, position, phone, email)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [organizationId, rep.fullName, rep.position ?? null, rep.phone ?? null, rep.email ?? null],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// REPLACE — tablas puente many-to-many (corrección admin: reemplazo total)
+// ---------------------------------------------------------------------------
+
+/**
+ * Whitelist de tablas puente: nombre de tabla → columna del dueño y tipo de
+ * catálogo. El nombre de tabla/columna se interpola en SQL a partir de este
+ * mapa fijo (nunca de input del usuario), por lo que es seguro.
+ */
+const CATALOG_RELATION_TABLES = {
+  organization_disability_types: { ownerColumn: "organization_id", catalogType: "disability_type" },
+  organization_services: { ownerColumn: "organization_id", catalogType: "service" },
+  volunteer_interest_areas: { ownerColumn: "user_id", catalogType: "interest_area" },
+  volunteer_experience: { ownerColumn: "user_id", catalogType: "experience_category" },
+};
+
+/**
+ * Reemplaza las relaciones de una tabla puente: borra las del dueño e inserta
+ * la lista recibida (puede ser vacía). Idempotente por ON CONFLICT DO NOTHING.
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} tableName — Una de las claves de CATALOG_RELATION_TABLES
+ * @param {string} ownerId — UUID del dueño (organización o voluntario)
+ * @param {number[]} catalogIds
+ * @returns {Promise<void>}
+ */
+async function replaceCatalogRelations(client, tableName, ownerId, catalogIds) {
+  const config = CATALOG_RELATION_TABLES[tableName];
+  if (!config) throw new Error(`Unknown catalog relation table: ${tableName}`);
+
+  await client.query(
+    `DELETE FROM ${tableName} WHERE ${config.ownerColumn} = $1`,
+    [ownerId],
+  );
+
+  for (const catalogId of catalogIds) {
+    await client.query(
+      `INSERT INTO ${tableName} (${config.ownerColumn}, catalog_id, catalog_type)
+       VALUES ($1, $2, $3)
+       ON CONFLICT DO NOTHING`,
+      [ownerId, catalogId, config.catalogType],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// UPDATE — entity_type de la solicitud de verificación (sincroniza volunteerType)
+// ---------------------------------------------------------------------------
+
+/**
+ * Sincroniza el entity_type de la solicitud de verificación de un voluntario.
+ * NO cambia el estado (verificación de que editar no altera el flujo).
+ * @param {import("pg").PoolClient} client — Cliente de transacción
+ * @param {string} ownerId — UUID del voluntario
+ * @param {"volunteer_professional"|"volunteer_non_professional"} entityType
+ * @returns {Promise<void>}
+ */
+async function updateVerificationEntityType(client, ownerId, entityType) {
+  await client.query(
+    "UPDATE verification_requests SET entity_type = $1 WHERE owner_id = $2",
+    [entityType, ownerId],
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Helpers de transacción
 // ---------------------------------------------------------------------------
 
@@ -632,5 +887,11 @@ module.exports = {
   findVerificationDocuments,
   updateUser,
   updateUserStatus,
+  updateUserDetails,
+  updateOrganizationProfile,
+  updateVolunteerProfile,
+  replaceLegalRepresentatives,
+  replaceCatalogRelations,
+  updateVerificationEntityType,
   withTransaction,
 };
