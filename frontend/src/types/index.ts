@@ -397,6 +397,49 @@ export interface OrganizationProfileResponse {
     documents: VerificationDocument[];
 }
 
+/** Representante legal enviado en escritura — sin id/createdAt (los genera el backend). */
+export interface LegalRepresentativeInput {
+    fullName: string;
+    position?: string;
+    phone?: string;
+    email?: string;
+}
+
+/**
+ * Payload de `PATCH /api/users/:id/organization-profile` (solo admin).
+ * Todos los campos son opcionales; el backend aplica las mismas reglas del
+ * formulario de registro. Editar NO cambia el estado de verificación.
+ */
+export interface UpdateOrganizationProfilePayload {
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    zone?: string;
+    location?: { lat: number; lng: number } | null;
+    organizationName?: string;
+    legalDocument?: string;
+    workArea?: string[];
+    organizationTypeId?: number;
+    taxId?: string;
+    taxIdType?: string;
+    otherEntityType?: string;
+    registryNumber?: string;
+    foundedAt?: string;
+    country?: string;
+    province?: string;
+    city?: string;
+    address?: string;
+    website?: string;
+    socialLinks?: Record<string, string>;
+    mission?: string;
+    vision?: string;
+    scope?: string;
+    servedGroups?: string;
+    legalRepresentatives?: LegalRepresentativeInput[];
+    disabilityTypeIds?: number[];
+    serviceIds?: number[];
+}
+
 // ── Perfil completo de voluntario (GET /api/users/:id/volunteer-profile) ─────────────
 
 export type VolunteerType = "professional" | "non_professional";

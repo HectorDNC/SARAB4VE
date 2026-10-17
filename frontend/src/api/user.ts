@@ -1,5 +1,5 @@
 import { normalizeUser } from "@/lib/normalizeUser";
-import { ApiUser, DisabilityType, ListUsersParams, ListUsersResponse, OrganizationProfileResponse, VolunteerProfileResponse, UserStats } from "@/types";
+import { ApiUser, DisabilityType, ListUsersParams, ListUsersResponse, OrganizationProfileResponse, UpdateOrganizationProfilePayload, VolunteerProfileResponse, UserStats } from "@/types";
 import { API, getAuthHeaders } from "./client";
 
 export async function listUsers(params: ListUsersParams = {}): Promise<ListUsersResponse> {
@@ -174,6 +174,28 @@ export async function rejectUser(id: string): Promise<ApiUser> {
 
 }
 
+/**
+ * Normaliza el cuerpo `{ data: ... }` que devuelven tanto
+ * GET /api/users/:id/organization-profile como su PATCH — comparten forma.
+ */
+function parseOrganizationProfileResponse(rawData: { data: OrganizationProfileResponse }): OrganizationProfileResponse {
+    try {
+        const data = rawData.data;
+
+        return {
+            user: normalizeUser(data.user),
+            organizationProfile: data.organizationProfile ?? null,
+            legalRepresentatives: data.legalRepresentatives ?? [],
+            disabilityTypes: data.disabilityTypes ?? [],
+            services: data.services ?? [],
+            verification: data.verification ?? null,
+            documents: data.documents ?? [],
+        };
+    } catch (error) {
+        throw new Error(`Error al procesar el perfil de la organización. ${error}`);
+    }
+}
+
 export async function getOrganizationProfile(id: string): Promise<OrganizationProfileResponse> {
     const res = await fetch(`${API}/api/users/${id}/organization-profile`, {
         headers: getAuthHeaders(),
@@ -189,22 +211,38 @@ export async function getOrganizationProfile(id: string): Promise<OrganizationPr
         throw new Error(message);
     }
 
-    try {
-        const rawData = await res.json();
-        const data = rawData.data;
+    const rawData = await res.json();
+    return parseOrganizationProfileResponse(rawData);
+}
 
-        return {
-            user: normalizeUser(data.user),
-            organizationProfile: data.organizationProfile ?? null,
-            legalRepresentatives: data.legalRepresentatives ?? [],
-            disabilityTypes: data.disabilityTypes ?? [],
-            services: data.services ?? [],
-            verification: data.verification ?? null,
-            documents: data.documents ?? [],
-        };
-    } catch (error) {
-        throw new Error(`Error al procesar el perfil de la organización. ${error}`);
+/**
+ * PATCH /api/users/:id/organization-profile — corrige los datos de una
+ * organización (solo admin). Devuelve el perfil completo actualizado.
+ */
+export async function updateOrganizationProfile(
+    id: string,
+    payload: UpdateOrganizationProfilePayload,
+): Promise<OrganizationProfileResponse> {
+    const res = await fetch(`${API}/api/users/${id}/organization-profile`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message = body?.errors?.join(", ") ?? `HTTP ${res.status}`;
+
+        if (res.status === 401) throw new Error("Sesión expirada. Inicia sesión nuevamente.");
+        if (res.status === 403) throw new Error("No tienes permisos para editar este perfil.");
+        if (res.status === 404) throw new Error("Usuario no encontrado.");
+        if (res.status === 409) throw new Error("El correo o el teléfono ya están en uso por otro usuario.");
+        // 400 y el resto: mostrar el detalle de validación del backend.
+        throw new Error(message);
     }
+
+    const rawData = await res.json();
+    return parseOrganizationProfileResponse(rawData);
 }
 
 export async function getVolunteerProfile(id: string): Promise<VolunteerProfileResponse> {
