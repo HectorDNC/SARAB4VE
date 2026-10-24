@@ -483,6 +483,34 @@ export interface VolunteerProfileResponse {
     documents: VerificationDocument[];
 }
 
+/**
+ * Payload de `PATCH /api/users/:id/volunteer-profile` (solo admin).
+ * Todos los campos son opcionales; el backend aplica las mismas reglas del
+ * formulario de registro. Editar NO cambia el estado de verificación.
+ */
+export interface UpdateVolunteerProfilePayload {
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    zone?: string;
+    location?: { lat: number; lng: number } | null;
+    skills?: string[];
+    availableHours?: number;
+    availableDays?: string[];
+    volunteerType?: VolunteerType;
+    documentType?: string;
+    documentNumber?: string;
+    birthDate?: string;
+    address?: string;
+    profession?: string;
+    languages?: string[];
+    availabilityMode?: AvailabilityMode;
+    hasPriorExperience?: boolean;
+    transportAvailable?: boolean;
+    interestAreaIds?: number[];
+    experienceCategoryIds?: number[];
+}
+
 // -------- Perfil administrador - Registro ----------------------
 
 export interface iAdmin extends BaseUserForm {
