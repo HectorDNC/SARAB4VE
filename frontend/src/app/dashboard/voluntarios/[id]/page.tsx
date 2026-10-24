@@ -10,6 +10,7 @@ import {
     getDocumentDownloadUrl,
     reviewVerificationDocument,
 } from "@/api/verification";
+import VolunteerEditForm from "./VolunteerEditForm";
 import dynamic from "next/dynamic";
 import type {
     VolunteerProfileResponse,
@@ -147,6 +148,7 @@ export default function VolunteerDetailPage() {
 
     const [perfil, setPerfil] = useState<VolunteerProfileResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
     const [pendingDecision, setPendingDecision] = useState<"approved" | "rejected" | null>(null);
     const [executingDecision, setExecutingDecision] = useState<"approved" | "rejected" | null>(null);
@@ -319,11 +321,26 @@ export default function VolunteerDetailPage() {
             {/* 1. Cabecera + Datos básicos del usuario                           */}
             {/* ================================================================ */}
             <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-6">
-                <div className="flex items-center gap-3 flex-wrap">
-                    <h1 className="text-xl sm:text-2xl font-bold text-on-surface">{user.fullName}</h1>
-                    <StatusBadge status={user.status} />
+                <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-wrap min-w-0">
+                        <h1 className="text-xl sm:text-2xl font-bold text-on-surface truncate min-w-0" title={user.fullName}>{user.fullName}</h1>
+                        <span className="shrink-0">
+                            <StatusBadge status={user.status} />
+                        </span>
+                    </div>
+                    {!isEditing && (
+                        <button
+                            type="button"
+                            onClick={() => setIsEditing(true)}
+                            className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-outline px-4 py-2 text-sm font-semibold text-primary hover:bg-surface-container transition-colors focus-visible:outline-3 focus-visible:outline-primary focus-visible:outline-offset-2"
+                        >
+                            <span className="material-symbols-rounded text-lg" aria-hidden="true">edit</span>
+                            Editar
+                        </button>
+                    )}
                 </div>
 
+                {!isEditing && (
                 <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <InfoCard icon="mail" label="Correo electrónico">
                         <div className="flex items-center gap-1.5">
@@ -360,7 +377,21 @@ export default function VolunteerDetailPage() {
                         <p className="text-sm font-medium text-on-surface">{fmtDate(user.updatedAt)}</p>
                     </InfoCard>
                 </div>
+                )}
             </div>
+
+            {/* Modo edición: reemplaza las secciones de solo lectura 1-4. */}
+            {isEditing ? (
+                <VolunteerEditForm
+                    perfil={perfil}
+                    onCancel={() => setIsEditing(false)}
+                    onSaved={(updated) => {
+                        setPerfil(updated);
+                        setIsEditing(false);
+                    }}
+                />
+            ) : (
+                <>
 
             {/* ================================================================ */}
             {/* 2. Perfil de voluntariado (volunteer_profiles)                    */}
@@ -415,6 +446,10 @@ export default function VolunteerDetailPage() {
 
                         <InfoCard icon="history" label="Experiencia previa">
                             <p className="text-sm font-medium text-on-surface">{fmtBoolean(volunteerProfile.hasPriorExperience)}</p>
+                        </InfoCard>
+
+                        <InfoCard icon="directions_car" label="Medio de transporte">
+                            <p className="text-sm font-medium text-on-surface">{fmtBoolean(volunteerProfile.transportAvailable)}</p>
                         </InfoCard>
 
                         {volunteerProfile.languages && volunteerProfile.languages.length > 0 && (
@@ -493,6 +528,8 @@ export default function VolunteerDetailPage() {
                     </div>
                 )}
             </div>
+            </>
+            )}
 
             {/* ================================================================ */}
             {/* 4. Verificación                                                   */}
